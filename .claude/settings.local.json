@@ -36,7 +36,10 @@
       "Bash(awk -F= '{ if \\(length\\($0\\)==0\\) {print \"\\(blank line\\)\"} else {print NR\": \"$1\" = [\"length\\($2\\)\" chars]\"} }' \"c:/Users/MnS/Kagu/demo/RE/frontend/.env.local\")",
       "Bash(node -e ' *)",
       "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" install -D \"@types/leaflet@^1.9.12\" \"tsx@^4.19.0\")",
-      "Bash(npx --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" tsc --noEmit -p \"c:/Users/MnS/Kagu/demo/RE/frontend\")"
+      "Bash(npx --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" tsc --noEmit -p \"c:/Users/MnS/Kagu/demo/RE/frontend\")",
+      "Bash(npm view *)",
+      "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" install leaflet.markercluster@^1.5.3)",
+      "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" install -D @types/leaflet.markercluster@^1.5.5)"
     ]
   }
 }

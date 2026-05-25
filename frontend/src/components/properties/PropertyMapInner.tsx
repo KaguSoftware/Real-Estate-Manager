@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
+import "leaflet.markercluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import { ensureLeafletIcons } from "@/src/lib/leaflet-icons";
 import type { Property } from "@/src/lib/db/types";
-import { ArrowRight } from "lucide-react";
 
 ensureLeafletIcons();
 
@@ -16,6 +18,12 @@ interface MappedProperty {
 	lon: number;
 	address_line: string;
 	homeowner_name: string;
+}
+
+function escapeHtml(s: string): string {
+	return s.replace(/[&<>"']/g, (c) =>
+		({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!),
+	);
 }
 
 function FitBounds({ points }: { points: MappedProperty[] }) {
@@ -32,6 +40,70 @@ function FitBounds({ points }: { points: MappedProperty[] }) {
 			// initial center/zoom.
 		}
 	}, [points, map]);
+	return null;
+}
+
+// Renders all markers inside a leaflet.markercluster group, which natively
+// merges nearby points into numbered cluster bubbles and spider-fies them
+// on click (the "flare" effect).
+function ClusterLayer({
+	points,
+	onMarkerClick,
+}: {
+	points: MappedProperty[];
+	onMarkerClick: (id: string) => void;
+}) {
+	const map = useMap();
+
+	useEffect(() => {
+		const cluster = L.markerClusterGroup({
+			showCoverageOnHover: false,
+			spiderfyOnMaxZoom: true,
+			disableClusteringAtZoom: 18,
+			maxClusterRadius: 40,
+			// Custom minimalist cluster bubble: dark slate fill, white number.
+			iconCreateFunction: (c) => {
+				const count = c.getChildCount();
+				return L.divIcon({
+					html:
+						`<div style="` +
+						`display:flex;align-items:center;justify-content:center;` +
+						`width:32px;height:32px;border-radius:9999px;` +
+						`background:#0f172a;color:#fff;` +
+						`font-size:12px;font-weight:700;` +
+						`box-shadow:0 1px 4px rgba(0,0,0,0.25);` +
+						`border:2px solid #fff;` +
+						`">${count}</div>`,
+					className: "property-cluster-icon",
+					iconSize: L.point(32, 32),
+					iconAnchor: L.point(16, 16),
+				});
+			},
+		});
+
+		for (const p of points) {
+			const marker = L.marker([p.lat, p.lon]);
+
+			// Hover tooltip — non-blocking, dismisses when the cursor leaves.
+			marker.bindTooltip(
+				`<div style="font-size:11px;line-height:1.35">` +
+					`<div style="font-weight:600;color:#0f172a">${escapeHtml(p.homeowner_name)}</div>` +
+					`<div style="color:#475569;margin-top:2px">${escapeHtml(p.address_line)}</div>` +
+					`</div>`,
+				{ direction: "top", offset: L.point(0, -28), opacity: 1 },
+			);
+
+			marker.on("click", () => onMarkerClick(p.id));
+			cluster.addLayer(marker);
+		}
+
+		map.addLayer(cluster);
+
+		return () => {
+			map.removeLayer(cluster);
+		};
+	}, [map, points, onMarkerClick]);
+
 	return null;
 }
 
@@ -58,6 +130,11 @@ export function PropertyMapInner({ properties }: { properties: Property[] }) {
 		[properties],
 	);
 
+	// Stable navigation callback — points only re-cluster when properties change.
+	const onMarkerClick = useRef((id: string) => router.push(`/properties/${id}`));
+	useEffect(() => { onMarkerClick.current = (id) => router.push(`/properties/${id}`); }, [router]);
+	const stableOnClick = useMemo(() => (id: string) => onMarkerClick.current(id), []);
+
 	// react-leaflet 5 requires a stable container; remember the initial center
 	// so re-renders don't reset the view.
 	const initialCenterRef = useRef<[number, number]>(
@@ -82,33 +159,15 @@ export function PropertyMapInner({ properties }: { properties: Property[] }) {
 			className="h-80 w-full rounded-2xl"
 			style={{ zIndex: 0 }}
 		>
+			{/* CartoDB Positron — light, near-monochrome tiles. Free, no key. */}
 			<TileLayer
-				attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-				url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+				attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+				url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+				subdomains="abcd"
+				maxZoom={20}
 			/>
 			<FitBounds points={points} />
-			{points.map((p) => (
-				<Marker
-					key={p.id}
-					position={[p.lat, p.lon]}
-					eventHandlers={{ click: () => router.push(`/properties/${p.id}`) }}
-				>
-					<Popup>
-						<div className="text-xs">
-							<p className="font-semibold text-slate-900">{p.homeowner_name}</p>
-							<p className="text-slate-600 mt-0.5">{p.address_line}</p>
-							<button
-								type="button"
-								onClick={() => router.push(`/properties/${p.id}`)}
-								className="mt-2 text-primary font-semibold hover:underline inline-flex items-center gap-1"
-							>
-								Open property
-								<ArrowRight className="w-3 h-3" />
-							</button>
-						</div>
-					</Popup>
-				</Marker>
-			))}
+			<ClusterLayer points={points} onMarkerClick={stableOnClick} />
 		</MapContainer>
 	);
 }
