@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { getProperty, updateProperty } from "@/src/lib/db/properties";
 import { endLease } from "@/src/lib/db/leases";
-import type { PropertyWithActiveLease } from "@/src/lib/db/types";
+import { getActiveSaleForProperty } from "@/src/lib/db/sales";
+import type { PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
 import { PaymentList } from "@/src/components/payments/PaymentList";
 import { PropertyGallery } from "./PropertyGallery";
 import { PropertyForm } from "./PropertyForm";
@@ -22,6 +23,7 @@ export function PropertyDetail({ propertyId }: Props) {
 	const upsertProperty = useAppStore((s) => s.upsertProperty);
 
 	const [data, setData] = useState<PropertyWithActiveLease | null>(null);
+	const [sale, setSale] = useState<(Sale & { buyer: Tenant }) | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [editing, setEditing] = useState(false);
@@ -30,7 +32,15 @@ export function PropertyDetail({ propertyId }: Props) {
 	const reload = useCallback(async () => {
 		setLoading(true);
 		setError(null);
-		try { setData(await getProperty(propertyId)); }
+		try {
+			const prop = await getProperty(propertyId);
+			setData(prop);
+			if (prop.listing_type === "for_sale") {
+				setSale(await getActiveSaleForProperty(propertyId));
+			} else {
+				setSale(null);
+			}
+		}
 		catch (e) { setError(e instanceof Error ? e.message : String(e)); }
 		finally { setLoading(false); }
 	}, [propertyId]);
@@ -132,13 +142,67 @@ export function PropertyDetail({ propertyId }: Props) {
 					)}
 				</section>
 
-				{/* Active lease */}
+				{/* Active lease / sale */}
 				<section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
 					<h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">
-						{data.active_lease ? "Active lease" : "Lease"}
+						{data.listing_type === "for_sale"
+							? (sale ? "Sale" : "Sales agreement")
+							: (data.active_lease ? "Active lease" : "Lease")}
 					</h2>
 
-					{data.active_lease ? (
+					{data.listing_type === "for_sale" ? (
+						sale ? (
+							<div className="space-y-4">
+								<div className="flex flex-wrap items-center justify-between gap-2">
+									<div>
+										<p className="text-sm font-bold text-slate-900">{sale.buyer.full_name}</p>
+										{(sale.buyer.phone || sale.buyer.email) && (
+											<p className="text-xs text-slate-500 mt-0.5">
+												{sale.buyer.phone ?? ""}
+												{sale.buyer.phone && sale.buyer.email ? " · " : ""}
+												{sale.buyer.email ?? ""}
+											</p>
+										)}
+									</div>
+									<span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${
+										sale.status === "active"
+											? "bg-amber-50 text-amber-700 border-amber-200"
+											: sale.status === "closed"
+												? "bg-emerald-50 text-emerald-700 border-emerald-200"
+												: "bg-slate-50 text-slate-600 border-slate-200"
+									}`}>
+										{sale.status}
+									</span>
+								</div>
+
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<Highlight label="Sale price" value={fmtMoney(Number(sale.sale_price), sale.currency)} />
+									{sale.deposit_amount != null && (
+										<Highlight label="Deposit" value={fmtMoney(Number(sale.deposit_amount), sale.currency)} />
+									)}
+								</div>
+
+								<dl className="grid grid-cols-2 gap-4 text-xs pt-1">
+									<Field label="Sale date" value={sale.sale_date} />
+									<Field label="Target close" value={sale.target_close_date ?? "—"} />
+								</dl>
+							</div>
+						) : data.status === "sold" ? (
+							<div className="text-center py-6">
+								<p className="text-xs text-slate-500">This property is sold.</p>
+							</div>
+						) : (
+							<div className="text-center py-6">
+								<p className="text-xs text-slate-500 mb-4">No sales agreement for this property.</p>
+								<button
+									onClick={() => router.push("/documents/new")}
+									className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity"
+								>
+									+ New sales agreement
+								</button>
+							</div>
+						)
+					) : data.active_lease ? (
 						<div className="space-y-4">
 							<div className="flex flex-wrap items-center justify-between gap-2">
 								<div>
