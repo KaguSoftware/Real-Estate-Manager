@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -21,8 +21,15 @@ function FitBounds({ points }: { points: MappedProperty[] }) {
 	const map = useMap();
 	useEffect(() => {
 		if (points.length === 0) return;
-		const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lon] as [number, number]));
-		map.fitBounds(bounds, { padding: [32, 32], maxZoom: 15 });
+		try {
+			const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lon] as [number, number]));
+			if (bounds.isValid()) {
+				map.fitBounds(bounds, { padding: [32, 32], maxZoom: 15 });
+			}
+		} catch {
+			// Bad coords shouldn't crash the whole dashboard. Leave the map at its
+			// initial center/zoom.
+		}
 	}, [points, map]);
 	return null;
 }
@@ -33,14 +40,20 @@ export function PropertyMapInner({ properties }: { properties: Property[] }) {
 	const points = useMemo<MappedProperty[]>(
 		() =>
 			properties
-				.filter((p) => p.latitude != null && p.longitude != null)
 				.map((p) => ({
 					id: p.id,
 					lat: Number(p.latitude),
 					lon: Number(p.longitude),
 					address_line: p.address_line,
 					homeowner_name: p.homeowner_name,
-				})),
+				}))
+				.filter(
+					(p) =>
+						Number.isFinite(p.lat) &&
+						Number.isFinite(p.lon) &&
+						Math.abs(p.lat) <= 90 &&
+						Math.abs(p.lon) <= 180,
+				),
 		[properties],
 	);
 
@@ -50,6 +63,15 @@ export function PropertyMapInner({ properties }: { properties: Property[] }) {
 		points.length > 0 ? [points[0].lat, points[0].lon] : [41.015, 28.979], // İstanbul
 	);
 	const initialZoomRef = useRef<number>(points.length > 0 ? 11 : 6);
+
+	// Defer mount by one tick so React 19's StrictMode double-invoke in dev
+	// commits the DOM before Leaflet binds. Prevents "Map container is already
+	// initialized" on remount.
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => { setMounted(true); }, []);
+	if (!mounted) {
+		return <div className="h-80 w-full rounded-2xl bg-slate-100 animate-pulse" />;
+	}
 
 	return (
 		<MapContainer
