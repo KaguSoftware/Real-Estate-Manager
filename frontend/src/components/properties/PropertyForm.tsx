@@ -43,7 +43,6 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const router = useRouter();
 	const upsertProperty = useAppStore((s) => s.upsertProperty);
 	const removeProperty = useAppStore((s) => s.removeProperty);
-	const selectProperty = useAppStore((s) => s.selectProperty);
 
 	const [homeowner_name, setHomeownerName] = useState(initial?.homeowner_name ?? "");
 
@@ -103,8 +102,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					: await updateProperty(initial!.id, input);
 			upsertProperty(row);
 			if (mode === "create") {
-				selectProperty(row.id);
-				router.push("/");
+				router.push(`/properties/${row.id}`);
 			}
 			onDone?.();
 		} catch (e) {
@@ -121,7 +119,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 		try {
 			await deleteProperty(initial.id);
 			removeProperty(initial.id);
-			selectProperty(null);
+			router.push("/");
 			onDone?.();
 		} catch (e) {
 			setError(e instanceof Error ? e.message : String(e));
@@ -177,7 +175,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					</FormField>
 				</div>
 
-				<div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 					<FormField label="Bina No">
 						<input
 							value={buildingNo}
@@ -220,7 +218,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 				)}
 			</div>
 
-			<div className="grid grid-cols-3 gap-4">
+			<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 				<FormField label="Size (m²)">
 					<input
 						type="number"

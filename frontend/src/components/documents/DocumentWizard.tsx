@@ -64,7 +64,6 @@ function buildRentalPDFData(args: {
 export function DocumentWizard() {
 	const router = useRouter();
 	const upsertProperty = useAppStore((s) => s.upsertProperty);
-	const selectProperty = useAppStore((s) => s.selectProperty);
 
 	const [step, setStep] = useState<Step>("type");
 	const [kind, setKind] = useState<DocKind>("rental");
@@ -163,8 +162,7 @@ export function DocumentWizard() {
 			const filename = `rental-${safeFilename(tenant.full_name)}-${safeFilename(property.address_line)}.pdf`;
 			await exportToPDF("rental", rentalData, filename);
 
-			selectProperty(updated.id);
-			router.push("/");
+			router.push(`/properties/${updated.id}`);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : String(e));
 		} finally {
@@ -180,9 +178,9 @@ export function DocumentWizard() {
 		startDate.length === 10;
 
 	return (
-		<div className="max-w-4xl mx-auto px-6 py-8">
+		<div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
 			{/* Stepper */}
-			<ol className="flex items-center gap-2 mb-8 text-[11px] font-bold uppercase tracking-widest">
+			<ol className="flex flex-wrap items-center gap-x-2 gap-y-2 mb-8 text-[11px] font-bold uppercase tracking-widest">
 				{(["type", "property", "details", "preview"] as Step[]).map((s, i) => (
 					<li key={s} className="flex items-center gap-2">
 						<span

@@ -14,7 +14,6 @@ export function UserMenu() {
   const user = useAppStore((s) => s.user);
   const setUser = useAppStore((s) => s.setUser);
   const setProperties = useAppStore((s) => s.setProperties);
-  const selectProperty = useAppStore((s) => s.selectProperty);
   const [showModal, setShowModal] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -23,7 +22,6 @@ export function UserMenu() {
     await supabase.auth.signOut();
     setUser(null);
     setProperties([]);
-    selectProperty(null);
     setMenuOpen(false);
   }
 

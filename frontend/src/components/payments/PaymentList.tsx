@@ -85,7 +85,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged }: Props
 
 			{showForm && (
 				<form onSubmit={handleSubmit} className="mb-4 space-y-2 p-3 bg-white rounded-lg border border-slate-200">
-					<div className="grid grid-cols-2 gap-2">
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 						<label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
 							Period start
 							<input
@@ -107,7 +107,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged }: Props
 							/>
 						</label>
 					</div>
-					<div className="grid grid-cols-2 gap-2">
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 						<label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
 							Amount ({currency})
 							<input

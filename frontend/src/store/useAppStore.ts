@@ -27,9 +27,6 @@ interface AppState {
 	filters: Filters;
 	setFilter: <K extends keyof Filters>(k: K, v: Filters[K]) => void;
 	resetFilters: () => void;
-
-	selectedPropertyId: string | null;
-	selectProperty: (id: string | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -56,7 +53,4 @@ export const useAppStore = create<AppState>((set) => ({
 	filters: { listing_type: "all", status: "all", q: "" },
 	setFilter: (k, v) => set((s) => ({ filters: { ...s.filters, [k]: v } })),
 	resetFilters: () => set({ filters: { listing_type: "all", status: "all", q: "" } }),
-
-	selectedPropertyId: null,
-	selectProperty: (id) => set({ selectedPropertyId: id }),
 }));

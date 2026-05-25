@@ -19,7 +19,7 @@ export default function RootLayout({
 	return (
 		<html lang="en" data-theme="lofi">
 			<body
-				className={`${jakarta.variable} ${notoArabic.variable} bg-base-200 text-base-content antialiased`}
+				className={`${jakarta.variable} ${notoArabic.variable} bg-base-200 text-base-content antialiased overflow-x-hidden`}
 				style={{ fontFamily: "var(--font-latin), var(--font-arabic), sans-serif" }}
 			>
 				<AuthProvider>{children}</AuthProvider>

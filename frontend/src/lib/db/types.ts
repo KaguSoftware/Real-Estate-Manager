@@ -94,5 +94,16 @@ export interface PropertyWithActiveLease extends Property {
 		| null;
 }
 
+export interface PropertyImage {
+	id: string;
+	owner_id: string;
+	property_id: string;
+	storage_path: string;
+	position: number;
+	created_at: string;
+	/** Populated client-side via supabase.storage.getPublicUrl(). */
+	url: string;
+}
+
 /** What the document wizard generates. */
 export type DocKind = "rental" | "sales" | "receipt";
