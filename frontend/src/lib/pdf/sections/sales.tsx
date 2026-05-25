@@ -86,7 +86,7 @@ function CommissionRow({
 			<Text style={styles.commissionDataCell}>
 				{line.kdv == null ? "—" : fmtMoney(line.kdv)}
 			</Text>
-			<Text style={[styles.commissionDataCell, { borderRightWidth: 0, fontFamily: "Helvetica-Bold" }]}>
+			<Text style={[styles.commissionDataCell, { borderRightWidth: 0, fontWeight: "bold" }]}>
 				{line.total == null ? "—" : fmtMoney(line.total)}
 			</Text>
 		</View>

@@ -3,6 +3,17 @@ import { StyleSheet, Font } from "@react-pdf/renderer";
 // Prevent word hyphenation in @react-pdf/renderer
 Font.registerHyphenationCallback((word) => [word]);
 
+// Unicode-capable family used across every PDF. Built-in Helvetica is WinAnsi-only
+// and renders Turkish glyphs (ğ, İ, ş, ı, …) as fallbacks with stacked diacritics.
+// Google Sans Flex 36pt covers Latin Extended-A in full.
+Font.register({
+	family: "Sans",
+	fonts: [
+		{ src: "/fonts/GoogleSansFlex_36pt-Regular.ttf", fontWeight: 400 },
+		{ src: "/fonts/GoogleSansFlex_36pt-Bold.ttf",    fontWeight: 700 },
+	],
+});
+
 export const colors = {
 	slate900: "#0f172a",
 	slate800: "#1e293b",
@@ -34,7 +45,7 @@ export const styles = StyleSheet.create({
 		paddingTop: 48,
 		paddingBottom: 60,
 		paddingHorizontal: 48,
-		fontFamily: "Helvetica",
+		fontFamily: "Sans",
 		fontSize: 10,
 		color: colors.slate800,
 		backgroundColor: colors.white,
@@ -49,7 +60,7 @@ export const styles = StyleSheet.create({
 	},
 	docType: {
 		fontSize: 20,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.slate900,
 		letterSpacing: 1.2,
 		marginBottom: 2,
@@ -59,7 +70,7 @@ export const styles = StyleSheet.create({
 		color: colors.slate500,
 		letterSpacing: 1.2,
 		textTransform: "uppercase",
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 	},
 	dividerThin: {
 		width: "100%",
@@ -82,12 +93,12 @@ export const styles = StyleSheet.create({
 		color: colors.slate400,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		marginBottom: 4,
 	},
 	heroAddress: {
 		fontSize: 13,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.slate900,
 		lineHeight: 1.35,
 	},
@@ -111,7 +122,7 @@ export const styles = StyleSheet.create({
 		color: colors.slate500,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 	},
 	sectionRule: {
 		flex: 1,
@@ -142,12 +153,12 @@ export const styles = StyleSheet.create({
 		color: colors.slate400,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		marginBottom: 8,
 	},
 	cardPrimary: {
 		fontSize: 12,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.slate900,
 		marginBottom: 6,
 		lineHeight: 1.3,
@@ -174,14 +185,14 @@ export const styles = StyleSheet.create({
 	kvLabel: {
 		fontSize: 8.5,
 		color: colors.slate500,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		textTransform: "uppercase",
 		letterSpacing: 0.5,
 	},
 	kvValue: {
 		fontSize: 9.5,
 		color: colors.slate900,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 	},
 
 	// ── Highlight box (rent + deposit) ─────────────────────────────────
@@ -203,17 +214,17 @@ export const styles = StyleSheet.create({
 		color: colors.indigo500,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		marginBottom: 6,
 	},
 	highlightValue: {
 		fontSize: 18,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.slate900,
 	},
 	highlightCurrency: {
 		fontSize: 9,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.slate500,
 		marginLeft: 4,
 	},
@@ -235,7 +246,7 @@ export const styles = StyleSheet.create({
 	clauseNumber: {
 		width: 22,
 		fontSize: 9,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.slate400,
 	},
 	clauseText: {
@@ -265,7 +276,7 @@ export const styles = StyleSheet.create({
 		color: colors.slate500,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 	},
 	signatureSubLabel: {
 		fontSize: 7,
@@ -291,12 +302,12 @@ export const styles = StyleSheet.create({
 		color: colors.slate400,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 	},
 	pageNumber: {
 		fontSize: 7,
 		color: colors.slate400,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 	},
 
 	// ── Sales agreement — Avera branding ──────────────────────────────
@@ -314,14 +325,14 @@ export const styles = StyleSheet.create({
 	},
 	salesHeroTitle: {
 		fontSize: 14,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.white,
 		letterSpacing: 1.5,
 		textTransform: "uppercase",
 	},
 	salesHeroDate: {
 		fontSize: 7.5,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.gray_brand,
 		letterSpacing: 1.5,
 		textTransform: "uppercase",
@@ -337,7 +348,7 @@ export const styles = StyleSheet.create({
 	},
 	salesSectionChipText: {
 		fontSize: 8,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.white,
 		letterSpacing: 1.5,
 		textTransform: "uppercase",
@@ -355,7 +366,7 @@ export const styles = StyleSheet.create({
 	},
 	salesCardLabel: {
 		fontSize: 6.5,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.navy_brand,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
@@ -364,13 +375,15 @@ export const styles = StyleSheet.create({
 	salesCardValue: {
 		fontSize: 9.5,
 		color: colors.slate900,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		marginBottom: 6,
+		lineHeight: 1.3,
 	},
 	salesCardLine: {
 		fontSize: 8.5,
 		color: colors.slate700,
-		marginBottom: 2,
+		marginBottom: 3,
+		lineHeight: 1.4,
 	},
 
 	// Property "C" block — single full-width card with 4-col KV grid.
@@ -383,7 +396,7 @@ export const styles = StyleSheet.create({
 	},
 	propAddressLabel: {
 		fontSize: 6.5,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.navy_brand,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
@@ -391,7 +404,7 @@ export const styles = StyleSheet.create({
 	},
 	propAddressValue: {
 		fontSize: 10,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.slate900,
 		marginBottom: 10,
 	},
@@ -403,18 +416,21 @@ export const styles = StyleSheet.create({
 		width: "25%",          // 4 columns
 		paddingRight: 8,
 		marginBottom: 6,
+		minHeight: 32,
 	},
 	propGridLabel: {
 		fontSize: 6,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.gray_brand,
 		textTransform: "uppercase",
-		letterSpacing: 1,
+		letterSpacing: 0.5,
 		marginBottom: 1,
+		lineHeight: 1.2,
 	},
 	propGridValue: {
 		fontSize: 9,
 		color: colors.slate800,
+		lineHeight: 1.35,
 	},
 
 	// Commission table (E).
@@ -431,10 +447,11 @@ export const styles = StyleSheet.create({
 		paddingVertical: 6,
 		paddingHorizontal: 8,
 		fontSize: 7,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.white,
 		textTransform: "uppercase",
-		letterSpacing: 1,
+		letterSpacing: 0.5,
+		lineHeight: 1.25,
 		borderRightWidth: 0.5,
 		borderRightColor: colors.navy_brand_dark,
 	},
@@ -443,10 +460,11 @@ export const styles = StyleSheet.create({
 		paddingVertical: 6,
 		paddingHorizontal: 8,
 		fontSize: 7,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.white,
 		textTransform: "uppercase",
-		letterSpacing: 1,
+		letterSpacing: 0.5,
+		lineHeight: 1.25,
 		borderRightWidth: 0.5,
 		borderRightColor: colors.navy_brand_dark,
 	},
@@ -466,8 +484,9 @@ export const styles = StyleSheet.create({
 		paddingVertical: 6,
 		paddingHorizontal: 8,
 		fontSize: 8,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.navy_brand,
+		lineHeight: 1.3,
 		borderRightWidth: 0.5,
 		borderRightColor: colors.gray_brand,
 	},
@@ -477,6 +496,7 @@ export const styles = StyleSheet.create({
 		paddingHorizontal: 8,
 		fontSize: 8,
 		color: colors.slate800,
+		lineHeight: 1.3,
 		borderRightWidth: 0.5,
 		borderRightColor: colors.gray_brand,
 		textAlign: "right",
@@ -491,7 +511,7 @@ export const styles = StyleSheet.create({
 	},
 	salesPriceLabel: {
 		fontSize: 7,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.gray_brand,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
@@ -499,7 +519,7 @@ export const styles = StyleSheet.create({
 	},
 	salesPriceValue: {
 		fontSize: 18,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.white,
 	},
 	salesDepositBox: {
@@ -511,7 +531,7 @@ export const styles = StyleSheet.create({
 	},
 	salesDepositLabel: {
 		fontSize: 7,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.red_brand,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
@@ -519,19 +539,18 @@ export const styles = StyleSheet.create({
 	},
 	salesDepositValue: {
 		fontSize: 18,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		color: colors.navy_brand,
 	},
 	salesCurrencyTag: {
 		fontSize: 9,
-		fontFamily: "Helvetica-Bold",
+		fontWeight: "bold",
 		marginLeft: 4,
 	},
 
 	// Tax responsibility tag below the price boxes.
 	avaraLine: {
 		fontSize: 8,
-		fontFamily: "Helvetica-Oblique",
 		color: colors.slate600,
 		textAlign: "center",
 		marginTop: 12,

@@ -33,7 +33,8 @@
       "Bash(curl -s -o nul -w \"HTTP %{http_code}\\\\n\" http://localhost:3217/documents/new)",
       "Bash(taskkill /PID 27040 /F)",
       "PowerShell(Stop-Process -Id 27040 -Force)",
-      "Bash(awk -F= '{ if \\(length\\($0\\)==0\\) {print \"\\(blank line\\)\"} else {print NR\": \"$1\" = [\"length\\($2\\)\" chars]\"} }' \"c:/Users/MnS/Kagu/demo/RE/frontend/.env.local\")"
+      "Bash(awk -F= '{ if \\(length\\($0\\)==0\\) {print \"\\(blank line\\)\"} else {print NR\": \"$1\" = [\"length\\($2\\)\" chars]\"} }' \"c:/Users/MnS/Kagu/demo/RE/frontend/.env.local\")",
+      "Bash(node -e ' *)"
     ]
   }
 }
