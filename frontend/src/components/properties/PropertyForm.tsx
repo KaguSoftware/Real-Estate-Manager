@@ -114,7 +114,10 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			// Autofill empty fields only.
 			if (result.placeName) {
 				const parts = splitPlaceName(result.placeName);
+				if (parts.mahalle && !mahalle.trim()) setMahalle(parts.mahalle);
 				if (parts.street && !street.trim()) setStreet(parts.street);
+				if (parts.buildingNo && !buildingNo.trim()) setBuildingNo(parts.buildingNo);
+				if (parts.apartmentNo && !apartmentNo.trim()) setApartmentNo(parts.apartmentNo);
 				if (parts.district && !district.trim()) setDistrict(parts.district);
 				if (parts.city && !city.trim()) setCity(parts.city);
 			}

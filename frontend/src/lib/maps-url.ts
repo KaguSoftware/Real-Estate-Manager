@@ -76,24 +76,133 @@ export function parseLongMapsUrl(url: string): ParsedMapsUrl {
 }
 
 export interface SplitPlaceName {
+	mahalle?: string;
 	street?: string;
+	buildingNo?: string;
+	apartmentNo?: string;
 	district?: string;
 	city?: string;
 	country?: string;
 }
 
-// Google formats place names as "Street, District, City, Country" — but the
-// number of segments varies. Assign tail-first: last → country, then city,
-// then district, then street. Best-effort.
+const TURKISH_STREET_TOKENS = /\b(Sk\.?|Sok\.?|Sokak|Cd\.?|Cad\.?|Cadde(?:si)?|Bul\.?|Bulvar(?:ı)?)\b/i;
+const TURKISH_PROVINCES = new Set([
+	"adana", "adıyaman", "afyonkarahisar", "ağrı", "amasya", "ankara", "antalya", "artvin",
+	"aydın", "balıkesir", "bilecik", "bingöl", "bitlis", "bolu", "burdur", "bursa", "çanakkale",
+	"çankırı", "çorum", "denizli", "diyarbakır", "edirne", "elazığ", "erzincan", "erzurum",
+	"eskişehir", "gaziantep", "giresun", "gümüşhane", "hakkari", "hatay", "ısparta", "isparta",
+	"mersin", "istanbul", "i̇stanbul", "izmir", "i̇zmir", "kars", "kastamonu", "kayseri",
+	"kırklareli", "kırşehir", "kocaeli", "konya", "kütahya", "malatya", "manisa", "kahramanmaraş",
+	"mardin", "muğla", "muş", "nevşehir", "niğde", "ordu", "rize", "sakarya", "samsun", "siirt",
+	"sinop", "sivas", "tekirdağ", "tokat", "trabzon", "tunceli", "şanlıurfa", "uşak", "van",
+	"yozgat", "zonguldak", "aksaray", "bayburt", "karaman", "kırıkkale", "batman", "şırnak",
+	"bartın", "ardahan", "ığdır", "yalova", "karabük", "kilis", "osmaniye", "düzce",
+]);
+
+function stripLeadingZip(s: string): string {
+	// "34260 Sultangazi" → "Sultangazi". Turkish ZIPs are 5 digits.
+	return s.replace(/^\d{4,6}\s+/, "").trim();
+}
+
+function extractDoorNumbers(seg: string): { rest: string; buildingNo?: string; apartmentNo?: string } {
+	let rest = seg;
+	let buildingNo: string | undefined;
+	let apartmentNo: string | undefined;
+
+	// "No:34" / "No. 34" / "no:34/5" — common Turkish notation. Allow the unit
+	// part to optionally trail after a slash.
+	const noMatch = rest.match(/\bno\s*[:.\s]\s*(\d+[A-Za-z]?)(?:\s*\/\s*(\d+[A-Za-z]?))?/i);
+	if (noMatch) {
+		buildingNo = noMatch[1];
+		if (noMatch[2]) apartmentNo = noMatch[2];
+		rest = (rest.slice(0, noMatch.index) + rest.slice(noMatch.index! + noMatch[0].length)).trim();
+		rest = rest.replace(/,\s*,/g, ", ").replace(/^[,\s]+|[,\s]+$/g, "");
+	}
+
+	// "Daire: 8" / "D:8" / "D.8"
+	const dMatch = rest.match(/\b(?:daire|d)\s*[:.\s]\s*(\d+[A-Za-z]?)/i);
+	if (dMatch) {
+		apartmentNo = dMatch[1];
+		rest = (rest.slice(0, dMatch.index) + rest.slice(dMatch.index! + dMatch[0].length)).trim();
+		rest = rest.replace(/,\s*,/g, ", ").replace(/^[,\s]+|[,\s]+$/g, "");
+	}
+
+	return { rest, buildingNo, apartmentNo };
+}
+
+// Google formats Turkish place names like:
+//   "Yunus Emre, 1328/2. Sk. No:34, 34260 Sultangazi/İstanbul"
+//   "Atatürk Mah., Cumhuriyet Cd. No:42 Daire:8, Kadıköy/İstanbul"
+// The structure varies, so we identify segments by their content rather than
+// relying on a fixed positional split.
 export function splitPlaceName(name: string): SplitPlaceName {
-	const parts = name.split(",").map((p) => p.trim()).filter((p) => p.length > 0);
+	const segments = name.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
 	const out: SplitPlaceName = {};
-	if (parts.length === 0) return out;
-	if (parts.length === 1) { out.street = parts[0]; return out; }
-	out.country = parts[parts.length - 1];
-	if (parts.length >= 2) out.city = parts[parts.length - 2];
-	if (parts.length >= 3) out.district = parts[parts.length - 3];
-	if (parts.length >= 4) out.street = parts.slice(0, parts.length - 3).join(", ");
+	if (segments.length === 0) return out;
+
+	// 1) Last segment may be "District/City" or "City" or "City, Country".
+	//    With trailing "Türkiye": treat it as country.
+	let tail = segments[segments.length - 1];
+	if (/^t[üu]rkiye$/i.test(tail) && segments.length >= 2) {
+		out.country = tail;
+		segments.pop();
+		tail = segments[segments.length - 1];
+	}
+
+	// "Sultangazi/İstanbul" → district = Sultangazi, city = İstanbul.
+	// Strip any leading ZIP code first.
+	const tailNoZip = stripLeadingZip(tail);
+	if (tailNoZip.includes("/")) {
+		const [district, city] = tailNoZip.split("/").map((s) => s.trim()).filter(Boolean);
+		if (district) out.district = district;
+		if (city) out.city = city;
+		segments.pop();
+	} else if (TURKISH_PROVINCES.has(tailNoZip.toLowerCase())) {
+		out.city = tailNoZip;
+		segments.pop();
+	} else if (segments.length >= 2) {
+		// Two trailing segments: assume "District, City".
+		out.city = tailNoZip;
+		segments.pop();
+		out.district = stripLeadingZip(segments.pop()!);
+	} else {
+		// Single tail token, unknown — treat as city (best-effort).
+		out.city = tailNoZip;
+		segments.pop();
+	}
+
+	// 2) Of the remaining segments, find a mahalle ("Foo Mah." / "Foo Mahallesi")
+	//    and the street (the one with a street suffix and/or "No:").
+	const remaining = segments;
+	const mahalleIdx = remaining.findIndex((s) => /\bMah(?:\.|allesi)\b/i.test(s));
+	if (mahalleIdx !== -1) {
+		out.mahalle = remaining[mahalleIdx].replace(/\s*Mah(?:\.|allesi)\s*$/i, "").trim();
+		remaining.splice(mahalleIdx, 1);
+	}
+
+	// Street: the segment with street suffix or door numbers — typically the
+	// last remaining segment.
+	if (remaining.length > 0) {
+		const streetIdx = (() => {
+			for (let i = remaining.length - 1; i >= 0; i--) {
+				if (TURKISH_STREET_TOKENS.test(remaining[i]) || /\bno\s*[:.\s]/i.test(remaining[i])) return i;
+			}
+			return remaining.length - 1;
+		})();
+		const streetSeg = remaining.splice(streetIdx, 1)[0];
+		const { rest, buildingNo, apartmentNo } = extractDoorNumbers(streetSeg);
+		if (rest) out.street = rest;
+		if (buildingNo) out.buildingNo = buildingNo;
+		if (apartmentNo) out.apartmentNo = apartmentNo;
+	}
+
+	// Anything left (rare): if no mahalle yet and one segment remains, treat it
+	// as the mahalle (Google often leads with the neighborhood name even without
+	// "Mah." suffix, e.g. "Yunus Emre").
+	if (!out.mahalle && remaining.length === 1) {
+		out.mahalle = remaining[0];
+	}
+
 	return out;
 }
 
