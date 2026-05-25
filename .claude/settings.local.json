@@ -23,7 +23,14 @@
       "Bash(npx eslint *)",
       "Bash(git -C c:\\\\Users\\\\MnS\\\\Kagu\\\\genbuzz\\\\project1 pull --ff-only)",
       "Bash(git pull *)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(dir \"c:\\\\Users\\\\MnS\\\\Kagu\\\\demo\\\\RE\" -Depth 2)",
+      "Bash(ls \"c:\\\\Users\\\\MnS\\\\Kagu\\\\demo\\\\RE\\\\frontend\\\\supabase\")",
+      "Bash(ls \"c:\\\\Users\\\\MnS\\\\Kagu\\\\demo\\\\RE\\\\frontend\\\\src\\\\lib\\\\store.ts\")",
+      "Bash(ls \"c:\\\\Users\\\\MnS\\\\Kagu\\\\demo\\\\RE\\\\frontend\\\\src\\\\lib\\\\permissions.ts\")",
+      "Bash(curl -s -o nul -w \"HTTP %{http_code}\\\\n\" http://localhost:3217/)",
+      "Bash(curl -s -o nul -w \"HTTP %{http_code}\\\\n\" http://localhost:3217/properties/new)",
+      "Bash(curl -s -o nul -w \"HTTP %{http_code}\\\\n\" http://localhost:3217/documents/new)"
     ]
   }
 }

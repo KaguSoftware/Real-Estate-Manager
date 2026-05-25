@@ -1,200 +1,29 @@
 import { Document, Page, pdf } from "@react-pdf/renderer";
-import { styles, ensureArabicFonts, ensureTurkishFonts } from "./styles";
-import type { DocumentData, CustomSection } from "@/src/store/types";
-import { View } from "@react-pdf/renderer";
+import { styles } from "./styles";
+import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData } from "./types";
+import { RentalAgreement } from "./sections/rental";
+import { SalesAgreementStub } from "./sections/sales";
+import { RentReceiptStub } from "./sections/receipt";
 
-import {
-    Header,
-    ClientInfo,
-    ExecutiveSummary,
-    TextSection,
-    TermsList,
-    SignatureBlock,
-    PageFooter,
-} from "./sections/common";
-import {
-    EngagementOverview,
-    DeliverablesTable,
-    ScopeOfWork,
-} from "./sections/proposal-contract";
-import { InvoiceTable } from "./sections/invoice";
-import { PerformanceMetrics, TopPostsTable, KeyInsightsPDF, TopPerformingContentPDF, AudienceInsightsPDF } from "./sections/social-media";
-import { SalesMetrics, DealBreakdownTable, WeeklySalesPDF } from "./sections/sales";
-import { KPIGrid, InfluencerRoster } from "./sections/influencer";
+type AnyPDFData = RentalPDFData | SalesPDFData | ReceiptPDFData;
 
-type Lang = "en" | "ar" | "tr";
+export function PDFDocument({ kind, data }: { kind: DocKind; data: AnyPDFData }) {
+	const titleByKind: Record<DocKind, string> = {
+		rental: "Rental Agreement",
+		sales: "Sales Agreement",
+		receipt: "Rent Receipt",
+	};
+	return (
+		<Document title={titleByKind[kind]} author="Real Estate Manager">
+			<Page size="A4" style={styles.page} wrap>
+				{kind === "rental"  && <RentalAgreement data={data as RentalPDFData} />}
+				{kind === "sales"   && <SalesAgreementStub />}
+				{kind === "receipt" && <RentReceiptStub />}
+			</Page>
+		</Document>
+	);
+}
 
-export const PDFDocument = ({
-    data,
-    lang = "en",
-}: {
-    data: DocumentData;
-    lang?: Lang;
-}) => (
-    <Document
-        title={`${data.type.replace(/_/g, " ")} - ${
-            data.clientName || "Draft"
-        }`}
-        author="GENBUZZ"
-        subject={data.projectTitle}
-    >
-        <Page size="A4" style={styles.page} wrap>
-            <Header data={data} lang={lang} />
-            <ClientInfo data={data} lang={lang} />
-
-            {data.aiIntro ? (
-                <ExecutiveSummary text={data.aiIntro} lang={lang} />
-            ) : (
-                <View />
-            )}
-
-            {(data.type === "proposal" || data.type === "contract") && (
-                <View>
-                    <EngagementOverview data={data} lang={lang} />
-                    {data.type === "contract" && data.agreementOverview ? (
-                        <TextSection
-                            text={data.agreementOverview}
-                            label="Agreement Overview"
-                            lang={lang}
-                        />
-                    ) : (
-                        <View />
-                    )}
-                    {data.scopeOfWork ? (
-                        <ScopeOfWork text={data.scopeOfWork} lang={lang} />
-                    ) : (
-                        <View />
-                    )}
-                    <DeliverablesTable rows={data.deliverables} lang={lang} />
-                </View>
-            )}
-
-            {(data.type === "proposal" || data.type === "contract") && (
-                <TermsList terms={data.termsAndConditions} lang={lang} />
-            )}
-
-            {data.type === "contract" && (
-                <SignatureBlock lang={lang} />
-            )}
-
-            {data.type === "invoice" && (
-                <View>
-                    <InvoiceTable data={data} lang={lang} />
-                    <TermsList
-                        terms={data.termsAndConditions}
-                        label="Payment Terms"
-                        lang={lang}
-                    />
-                </View>
-            )}
-
-            {data.type === "letter" && data.body ? (
-                <TextSection text={data.body} label="Message" lang={lang} />
-            ) : (
-                <View />
-            )}
-
-            {data.type === "social_media_report" && (
-                <View>
-                    <PerformanceMetrics
-                        metrics={data.performanceMetrics}
-                        lang={lang}
-                    />
-                    <TopPostsTable posts={data.topPosts} lang={lang} />
-                    <KeyInsightsPDF insights={data.keyInsights} lang={lang} />
-                    <TopPerformingContentPDF content={data.topPerformingContent} lang={lang} />
-                    <AudienceInsightsPDF insights={data.audienceInsights} lang={lang} />
-                </View>
-            )}
-
-            {data.type === "weekly_sales_report" && (
-                <View>
-                    <WeeklySalesPDF doc={data} lang={lang} />
-                </View>
-            )}
-
-            {data.type === "influencer_campaign" && (
-                <View>
-                    {data.campaignOverview ? (
-                        <TextSection
-                            text={data.campaignOverview}
-                            label="Campaign Overview"
-                            lang={lang}
-                        />
-                    ) : (
-                        <View />
-                    )}
-                    <KPIGrid kpis={data.influencerKPIs} lang={lang} />
-                    <InfluencerRoster
-                        influencers={data.influencers}
-                        lang={lang}
-                    />
-                </View>
-            )}
-
-            {data.customSections?.map((section: CustomSection) => {
-                if (section.type === "text") {
-                    return (
-                        <TextSection
-                            key={section.id}
-                            text={section.content || ""}
-                            label={section.header}
-                            lang={lang}
-                        />
-                    );
-                }
-                if (section.type === "terms") {
-                    return (
-                        <TermsList
-                            key={section.id}
-                            terms={section.termsRows ?? []}
-                            label={section.header}
-                            lang={lang}
-                        />
-                    );
-                }
-                if (section.type === "deliverables") {
-                    return (
-                        <DeliverablesTable
-                            key={section.id}
-                            rows={section.deliverablesRows ?? []}
-                            label={section.header}
-                            lang={lang}
-                        />
-                    );
-                }
-                if (section.type === "signature") {
-                    return (
-                        <SignatureBlock
-                            key={section.id}
-                            label={section.header}
-                            lang={lang}
-                        />
-                    );
-                }
-                return <View key={section.id} />;
-            })}
-
-            {data.additionalNotes ? (
-                <TextSection
-                    text={data.additionalNotes}
-                    label="Additional Notes"
-                    lang={lang}
-                />
-            ) : (
-                <View />
-            )}
-
-            <PageFooter lang={lang} />
-        </Page>
-    </Document>
-);
-
-export async function generatePDFBlob(
-    data: DocumentData,
-    lang: Lang = "en"
-): Promise<Blob> {
-    if (lang === "ar") ensureArabicFonts();
-    if (lang === "tr") ensureTurkishFonts();
-    return pdf(<PDFDocument data={data} lang={lang} />).toBlob();
+export async function generatePDFBlob(kind: DocKind, data: AnyPDFData): Promise<Blob> {
+	return pdf(<PDFDocument kind={kind} data={data} />).toBlob();
 }

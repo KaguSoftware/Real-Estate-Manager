@@ -1,0 +1,64 @@
+// Tenant CRUD. RLS on public.tenants enforces owner-scoping.
+
+import { createClient } from "@/src/lib/supabase/client";
+import type { Tenant } from "./types";
+
+export interface TenantInput {
+	full_name: string;
+	email?: string | null;
+	phone?: string | null;
+	national_id?: string | null;
+	notes?: string | null;
+}
+
+async function requireUser() {
+	const supabase = createClient();
+	const { data: { user }, error } = await supabase.auth.getUser();
+	if (error || !user) throw new Error("Not authenticated");
+	return { supabase, user };
+}
+
+export async function createTenant(input: TenantInput): Promise<Tenant> {
+	const { supabase, user } = await requireUser();
+	const { data, error } = await supabase
+		.from("tenants")
+		.insert({ ...input, owner_id: user.id })
+		.select()
+		.single();
+	if (error) throw error;
+	return data as Tenant;
+}
+
+export async function getTenant(id: string): Promise<Tenant> {
+	const { supabase } = await requireUser();
+	const { data, error } = await supabase
+		.from("tenants").select("*").eq("id", id).single();
+	if (error) throw error;
+	return data as Tenant;
+}
+
+export async function updateTenant(
+	id: string,
+	patch: Partial<TenantInput>,
+): Promise<Tenant> {
+	const { supabase } = await requireUser();
+	const { data, error } = await supabase
+		.from("tenants").update(patch).eq("id", id).select().single();
+	if (error) throw error;
+	return data as Tenant;
+}
+
+export async function deleteTenant(id: string): Promise<void> {
+	const { supabase } = await requireUser();
+	const { error } = await supabase.from("tenants").delete().eq("id", id);
+	if (error) throw error;
+}
+
+/** Soft dedupe for the wizard — case-insensitive exact match. */
+export async function findTenantByName(name: string): Promise<Tenant | null> {
+	const { supabase } = await requireUser();
+	const { data, error } = await supabase
+		.from("tenants").select("*").ilike("full_name", name.trim()).maybeSingle();
+	if (error) throw error;
+	return (data as Tenant) ?? null;
+}

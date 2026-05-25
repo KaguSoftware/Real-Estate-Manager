@@ -1,105 +1,98 @@
-// TypeScript types matching the Supabase schema defined in
-// supabase/migrations/0001_init.sql
+// Database row types for the real estate schema.
+// Matches the columns defined in supabase/migrations/0006_real_estate.sql.
 
-/** app_role CHECK constraint values on profiles.app_role */
-export type GlobalRole = 'admin' | 'member' | 'client'
+export type GlobalRole     = "admin" | "member" | "client";
+export type ListingType    = "for_rent" | "for_sale";
+export type PropertyStatus = "vacant" | "occupied" | "sold";
+export type LeaseTerm      = "1yr" | "2yr" | "undefined";
+export type LeaseStatus    = "active" | "ended" | "terminated";
 
-/** role CHECK constraint values on document_access.role */
-export type DocumentRole = 'editor' | 'viewer'
-
-/** Row shape for the public.profiles table */
 export interface Profile {
-  id: string
-  email: string
-  display_name: string | null
-  app_role: GlobalRole
-  created_at: string
-  updated_at: string
+	id: string;
+	email: string;
+	display_name: string | null;
+	app_role: GlobalRole;
+	created_at: string;
+	updated_at: string;
+}
+export type ProfileRow = Profile;
+
+export interface Property {
+	id: string;
+	owner_id: string;
+	homeowner_name: string;
+	address_line: string;
+	city: string | null;
+	size_sqm: number | null;
+	bedrooms: number | null;
+	bathrooms: number | null;
+	listing_type: ListingType;
+	status: PropertyStatus;
+	list_price: number | null;
+	currency: string;
+	notes: string | null;
+	created_at: string;
+	updated_at: string;
 }
 
-/** Row shape for the public.documents table */
-export interface SavedDocument {
-  id: string
-  owner_id: string
-  title: string
-  doc_type: string
-  /** Full DocumentData object serialised as JSONB */
-  content: Record<string, unknown>
-  created_at: string
-  updated_at: string
+export interface Tenant {
+	id: string;
+	owner_id: string;
+	full_name: string;
+	email: string | null;
+	phone: string | null;
+	national_id: string | null;
+	notes: string | null;
+	created_at: string;
+	updated_at: string;
 }
 
-/** Lightweight listing type — omits the heavy content blob */
-export type SavedDocumentMeta = Omit<SavedDocument, 'content'> & {
-  /** Populated only in the "shared with me" list — the role the current user was granted */
-  shared_role?: "editor" | "viewer"
+export interface Lease {
+	id: string;
+	owner_id: string;
+	property_id: string;
+	tenant_id: string;
+	term: LeaseTerm;
+	start_date: string;
+	end_date: string | null;
+	monthly_rent: number;
+	deposit: number;
+	currency: string;
+	status: LeaseStatus;
+	document_pdf_path: string | null;
+	created_at: string;
+	updated_at: string;
 }
 
-/** Row shape for the public.document_access table */
-export interface DocumentShare {
-  id: string
-  document_id: string
-  user_id: string
-  role: DocumentRole
-  granted_by: string | null
-  created_at: string
-  /** Populated by listSharesForDocument join — display name or email of the grantee */
-  display_name?: string
+export interface Payment {
+	id: string;
+	owner_id: string;
+	lease_id: string;
+	period_start: string;
+	period_end: string;
+	amount_due: number;
+	amount_paid: number;
+	paid_at: string | null;
+	method: string | null;
+	notes: string | null;
+	created_at: string;
+	updated_at: string;
 }
 
-/** Return type of the find_user_by_email() RPC */
-export interface UserLookup {
-  id: string
-  email: string
+export interface LeaseBalance {
+	totalDue: number;
+	totalPaid: number;
+	balance: number;
 }
 
-/** Return type of get_my_role() RPC */
-export type MyDocumentRole = "owner" | "editor" | "viewer" | null
-
-/** Row shape for public.profiles (admin use) */
-export interface ProfileRow {
-  id: string
-  email: string
-  display_name: string | null
-  app_role: "admin" | "member" | "client"
-  created_at: string
-  updated_at: string
+export interface PropertyWithActiveLease extends Property {
+	active_lease:
+		| (Lease & {
+				tenant: Tenant;
+				balance: LeaseBalance;
+		  })
+		| null;
 }
 
-/** Full document row including owner email (joined for admin panel) */
-export interface DocumentWithOwner extends SavedDocumentMeta {
-  owner_email?: string
-}
-
-/** Status of an access request */
-export type AccessRequestStatus = 'pending' | 'approved' | 'denied'
-
-/** Row shape for public.access_requests */
-export interface AccessRequest {
-  id: string
-  document_id: string
-  requester_id: string
-  status: AccessRequestStatus
-  message: string | null
-  reviewed_by: string | null
-  reviewed_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-/** Enriched request row returned by list_pending_requests_for_document RPC */
-export interface PendingAccessRequest {
-  id: string
-  document_id: string
-  requester_id: string
-  status: AccessRequestStatus
-  message: string | null
-  created_at: string
-  display_name: string
-  email: string
-}
-
-/** Enriched request row returned by list_all_pending_requests RPC — includes document title */
-export interface PendingAccessRequestWithDoc extends PendingAccessRequest {
-  document_title: string
-}
+/** What the document wizard generates. */
+export type DocKind = "rental" | "sales" | "receipt";
