@@ -9,6 +9,7 @@ import { AuthModal } from "@/src/components/auth/AuthModal";
 import { PropertyFilters } from "./PropertyFilters";
 import { PropertyTable } from "./PropertyTable";
 import { PropertyMap } from "./PropertyMap";
+import { Plus, FileText } from "lucide-react";
 
 export function PropertyDashboard() {
 	const user = useAppStore((s) => s.user);
@@ -57,14 +58,16 @@ export function PropertyDashboard() {
 							<>
 								<Link
 									href="/properties/new"
-									className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors whitespace-nowrap"
+									className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors whitespace-nowrap inline-flex items-center gap-1.5"
 								>
-									+ Add property
+									<Plus className="w-3.5 h-3.5" />
+									Add property
 								</Link>
 								<Link
 									href="/documents/new"
-									className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity whitespace-nowrap"
+									className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity whitespace-nowrap inline-flex items-center gap-1.5"
 								>
+									<FileText className="w-3.5 h-3.5" />
 									New document
 								</Link>
 							</>

@@ -6,6 +6,7 @@ import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import { ensureLeafletIcons } from "@/src/lib/leaflet-icons";
 import type { Property } from "@/src/lib/db/types";
+import { ArrowRight } from "lucide-react";
 
 ensureLeafletIcons();
 
@@ -99,9 +100,10 @@ export function PropertyMapInner({ properties }: { properties: Property[] }) {
 							<button
 								type="button"
 								onClick={() => router.push(`/properties/${p.id}`)}
-								className="mt-2 text-primary font-semibold hover:underline"
+								className="mt-2 text-primary font-semibold hover:underline inline-flex items-center gap-1"
 							>
-								Open property →
+								Open property
+								<ArrowRight className="w-3 h-3" />
 							</button>
 						</div>
 					</Popup>

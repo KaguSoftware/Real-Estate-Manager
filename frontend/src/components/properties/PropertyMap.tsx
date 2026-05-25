@@ -3,6 +3,7 @@
 import { Component, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useAppStore } from "@/src/store";
+import { MapPin, MapPinOff } from "lucide-react";
 
 // Defensive boundary: if Leaflet throws (e.g. StrictMode double-mount, bad
 // coords slipping through, tile-layer init race), we'd rather lose the map
@@ -18,7 +19,8 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: bool
 		if (this.state.failed) {
 			return (
 				<div className="h-80 w-full flex items-center justify-center text-center px-6">
-					<div>
+					<div className="flex flex-col items-center">
+						<MapPinOff className="w-7 h-7 text-slate-400 mb-2" />
 						<p className="text-sm font-semibold text-slate-700">Map unavailable</p>
 						<p className="text-xs text-slate-500 mt-1">
 							Refresh the page to retry. Other dashboard features still work.
@@ -60,7 +62,8 @@ export function PropertyMap() {
 		<section className="mb-4 bg-white rounded-2xl border border-slate-200 overflow-hidden">
 			{mappable.length === 0 ? (
 				<div className="h-80 w-full flex items-center justify-center text-center px-6">
-					<div>
+					<div className="flex flex-col items-center">
+						<MapPin className="w-7 h-7 text-slate-400 mb-2" />
 						<p className="text-sm font-semibold text-slate-700">No mapped properties yet</p>
 						<p className="text-xs text-slate-500 mt-1">
 							Addresses are geocoded on save. Create or edit a property to see it on the map.

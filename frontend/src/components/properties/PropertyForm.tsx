@@ -13,6 +13,7 @@ import type { Property, ListingType, PropertyStatus } from "@/src/lib/db/types";
 import { FormField, inputClass } from "@/src/components/ui/FormField";
 import { geocodeAddress } from "@/src/lib/geocode";
 import { resolveAndParseMapsUrl, splitPlaceName } from "@/src/lib/maps-url";
+import { MapPin, Loader2, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
 
 interface Props {
 	mode: "create" | "edit";
@@ -284,14 +285,24 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 							type="button"
 							onClick={handleParseMapsUrl}
 							disabled={mapsBusy || !mapsUrl.trim()}
-							className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors disabled:opacity-40 whitespace-nowrap"
+							className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors disabled:opacity-40 whitespace-nowrap inline-flex items-center gap-1.5"
 						>
-							{mapsBusy ? "…" : "Parse"}
+							{mapsBusy ? (
+								<Loader2 className="w-3.5 h-3.5 animate-spin" />
+							) : (
+								<MapPin className="w-3.5 h-3.5" />
+							)}
+							Parse
 						</button>
 					</div>
 					{mapsHint && (
-						<p className={`mt-1 text-[11px] ${parsedCoords ? "text-emerald-700" : "text-amber-700"}`}>
-							{mapsHint}
+						<p className={`mt-1 text-[11px] inline-flex items-center gap-1 ${parsedCoords ? "text-emerald-700" : "text-amber-700"}`}>
+							{parsedCoords ? (
+								<CheckCircle2 className="w-3 h-3 shrink-0" />
+							) : (
+								<AlertTriangle className="w-3 h-3 shrink-0" />
+							)}
+							<span>{mapsHint}</span>
 						</p>
 					)}
 				</FormField>
@@ -467,8 +478,9 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 						type="button"
 						onClick={handleDelete}
 						disabled={busy}
-						className="text-xs text-red-600 hover:text-red-700 transition-colors disabled:opacity-40"
+						className="text-xs text-red-600 hover:text-red-700 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5"
 					>
+						<Trash2 className="w-3.5 h-3.5" />
 						Delete property
 					</button>
 				) : <span />}

@@ -11,6 +11,7 @@ import type { PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
 import { PaymentList } from "@/src/components/payments/PaymentList";
 import { PropertyGallery } from "./PropertyGallery";
 import { PropertyForm } from "./PropertyForm";
+import { ArrowLeft, Pencil, TriangleAlert, Plus } from "lucide-react";
 
 function fmtMoney(n: number, ccy: string) { return `${n.toFixed(2)} ${ccy}`; }
 
@@ -75,7 +76,10 @@ export function PropertyDetail({ propertyId }: Props) {
 				<div className="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
 					{error}
 				</div>
-				<Link href="/" className="inline-block mt-4 text-xs text-slate-500 hover:text-slate-800">← Back to dashboard</Link>
+				<Link href="/" className="mt-4 text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1">
+					<ArrowLeft className="w-3.5 h-3.5" />
+					Back to dashboard
+				</Link>
 			</div>
 		);
 	}
@@ -96,9 +100,12 @@ export function PropertyDetail({ propertyId }: Props) {
 			<PropertyGallery propertyId={propertyId} />
 
 			{data.latitude == null && (
-				<div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
-					This property isn't on the map yet — we couldn't pin its address automatically.
-					Click <strong>Edit</strong> and paste a Google Maps link to add it.
+				<div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
+					<TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" />
+					<span>
+						This property isn't on the map yet — we couldn't pin its address automatically.
+						Click <strong>Edit</strong> and paste a Google Maps link to add it.
+					</span>
 				</div>
 			)}
 
@@ -115,8 +122,9 @@ export function PropertyDetail({ propertyId }: Props) {
 						{!editing && (
 							<button
 								onClick={() => setEditing(true)}
-								className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+								className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors inline-flex items-center gap-1"
 							>
+								<Pencil className="w-3 h-3" />
 								Edit
 							</button>
 						)}
@@ -203,9 +211,10 @@ export function PropertyDetail({ propertyId }: Props) {
 								<p className="text-xs text-slate-500 mb-4">No sales agreement for this property.</p>
 								<button
 									onClick={() => router.push("/documents/new")}
-									className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity"
+									className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
 								>
-									+ New sales agreement
+									<Plus className="w-3.5 h-3.5" />
+									New sales agreement
 								</button>
 							</div>
 						)
@@ -276,9 +285,10 @@ export function PropertyDetail({ propertyId }: Props) {
 							<p className="text-xs text-slate-500 mb-4">No active lease for this property.</p>
 							<button
 								onClick={() => router.push("/documents/new")}
-								className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity"
+								className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
 							>
-								+ New rental agreement
+								<Plus className="w-3.5 h-3.5" />
+								New rental agreement
 							</button>
 						</div>
 					)}
