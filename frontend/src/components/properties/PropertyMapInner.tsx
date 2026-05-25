@@ -7,10 +7,25 @@ import L from "leaflet";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import { ensureLeafletIcons } from "@/src/lib/leaflet-icons";
 import type { Property } from "@/src/lib/db/types";
 
-ensureLeafletIcons();
+// Black-and-white SVG pin, geometry copied verbatim from lucide-react MapPin
+// (createLucideIcon "map-pin"). Rendered crisp at any zoom — no PNGs.
+const PIN_SIZE = 30;
+const PIN_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="${PIN_SIZE}" height="${PIN_SIZE}" viewBox="0 0 24 24" fill="#0f172a" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35))">
+  <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>
+  <circle cx="12" cy="10" r="3" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+</svg>`;
+
+const pinIcon = L.divIcon({
+	html: PIN_SVG,
+	className: "property-pin-icon",
+	iconSize: L.point(PIN_SIZE, PIN_SIZE),
+	// Anchor at the tip of the pin (bottom-center of the SVG).
+	iconAnchor: L.point(PIN_SIZE / 2, PIN_SIZE),
+	tooltipAnchor: L.point(0, -PIN_SIZE),
+});
 
 interface MappedProperty {
 	id: string;
@@ -61,7 +76,30 @@ function ClusterLayer({
 			spiderfyOnMaxZoom: true,
 			disableClusteringAtZoom: 18,
 			maxClusterRadius: 40,
-			// Custom minimalist cluster bubble: dark slate fill, white number.
+			// Petal "leg" lines connecting the cluster center to each spiderfied
+			// marker. Default is bright blue; we want subtle slate.
+			spiderLegPolylineOptions: { weight: 1, color: "#94a3b8", opacity: 0.6 },
+			// Force a circular "flower petal" spiderfy layout regardless of
+			// child count. (Default switches to a radial-line "spider" shape
+			// when more than ~8 points overlap.)
+			spiderfyShapePositions: (count, centerPt) => {
+				const angleStep = (2 * Math.PI) / count;
+				const radius = 30 + count * 4; // grows slightly with cluster size
+				const positions: L.Point[] = [];
+				// Start at -90deg so the first petal points up.
+				const startAngle = -Math.PI / 2;
+				for (let i = 0; i < count; i++) {
+					const angle = startAngle + i * angleStep;
+					positions.push(
+						L.point(
+							centerPt.x + radius * Math.cos(angle),
+							centerPt.y + radius * Math.sin(angle),
+						),
+					);
+				}
+				return positions;
+			},
+			// Minimalist cluster bubble: dark slate fill, white number.
 			iconCreateFunction: (c) => {
 				const count = c.getChildCount();
 				return L.divIcon({
@@ -82,7 +120,7 @@ function ClusterLayer({
 		});
 
 		for (const p of points) {
-			const marker = L.marker([p.lat, p.lon]);
+			const marker = L.marker([p.lat, p.lon], { icon: pinIcon });
 
 			// Hover tooltip — non-blocking, dismisses when the cursor leaves.
 			marker.bindTooltip(
