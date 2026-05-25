@@ -37,6 +37,8 @@ export interface PropertyInput {
 	parsel_no?: string | null;
 	mahalle?: string | null;
 	mevkii?: string | null;
+	latitude?: number | null;
+	longitude?: number | null;
 }
 
 async function requireUser() {

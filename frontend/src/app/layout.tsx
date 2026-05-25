@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Noto_Sans_Arabic } from "next/font/google";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 import { AuthProvider } from "@/src/components/auth/AuthProvider";
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-latin" });

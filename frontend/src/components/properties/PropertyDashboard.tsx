@@ -8,6 +8,7 @@ import { UserMenu } from "@/src/components/auth/UserMenu";
 import { AuthModal } from "@/src/components/auth/AuthModal";
 import { PropertyFilters } from "./PropertyFilters";
 import { PropertyTable } from "./PropertyTable";
+import { PropertyMap } from "./PropertyMap";
 
 export function PropertyDashboard() {
 	const user = useAppStore((s) => s.user);
@@ -88,6 +89,7 @@ export function PropertyDashboard() {
 					</div>
 				) : (
 					<>
+						<PropertyMap />
 						<PropertyFilters />
 
 						{error && (

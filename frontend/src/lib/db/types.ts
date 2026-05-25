@@ -37,6 +37,8 @@ export interface Property {
 	parsel_no: string | null;
 	mahalle: string | null;
 	mevkii: string | null;
+	latitude: number | null;
+	longitude: number | null;
 	created_at: string;
 	updated_at: string;
 }

@@ -11,6 +11,7 @@ import {
 } from "@/src/lib/db/properties";
 import type { Property, ListingType, PropertyStatus } from "@/src/lib/db/types";
 import { FormField, inputClass } from "@/src/components/ui/FormField";
+import { geocodeAddress } from "@/src/lib/geocode";
 
 interface Props {
 	mode: "create" | "edit";
@@ -106,6 +107,23 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			mahalle:   tapuMahalle.trim()  || null,
 			mevkii:    mevkii.trim()       || null,
 		};
+
+		// Geocode the joined address via Nominatim. On failure, fall back to:
+		//  - create: leave coords null (the dashboard map just skips this pin)
+		//  - edit:   keep the previous coords on the row (don't blank them out)
+		const geo = await geocodeAddress({
+			address_line: joined,
+			mahalle: input.mahalle,
+			mevkii: input.mevkii,
+			city: input.city,
+		});
+		if (geo) {
+			input.latitude = geo.lat;
+			input.longitude = geo.lon;
+		} else if (mode === "create") {
+			input.latitude = null;
+			input.longitude = null;
+		}
 
 		try {
 			const row =

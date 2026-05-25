@@ -34,7 +34,9 @@
       "Bash(taskkill /PID 27040 /F)",
       "PowerShell(Stop-Process -Id 27040 -Force)",
       "Bash(awk -F= '{ if \\(length\\($0\\)==0\\) {print \"\\(blank line\\)\"} else {print NR\": \"$1\" = [\"length\\($2\\)\" chars]\"} }' \"c:/Users/MnS/Kagu/demo/RE/frontend/.env.local\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" install -D \"@types/leaflet@^1.9.12\" \"tsx@^4.19.0\")",
+      "Bash(npx --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" tsc --noEmit -p \"c:/Users/MnS/Kagu/demo/RE/frontend\")"
     ]
   }
 }
