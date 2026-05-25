@@ -12,6 +12,7 @@ import {
 import type { Property, ListingType, PropertyStatus } from "@/src/lib/db/types";
 import { FormField, inputClass } from "@/src/components/ui/FormField";
 import { geocodeAddress } from "@/src/lib/geocode";
+import { resolveAndParseMapsUrl, splitPlaceName } from "@/src/lib/maps-url";
 
 interface Props {
 	mode: "create" | "edit";
@@ -75,7 +76,52 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	// Google Maps URL paste path. When set, parsedCoords short-circuits the
+	// Nominatim fallback in handleSubmit.
+	const [mapsUrl, setMapsUrl] = useState("");
+	const [mapsBusy, setMapsBusy] = useState(false);
+	const [mapsHint, setMapsHint] = useState<string | null>(null);
+	const [parsedCoords, setParsedCoords] = useState<{ lat: number; lon: number } | null>(
+		initial?.latitude != null && initial?.longitude != null
+			? { lat: Number(initial.latitude), lon: Number(initial.longitude) }
+			: null,
+	);
+
 	const addressPreview = joinAddress({ mahalle, street, buildingNo, apartmentNo, district });
+
+	async function handleParseMapsUrl() {
+		const url = mapsUrl.trim();
+		if (!url) {
+			setMapsHint(null);
+			setParsedCoords(null);
+			return;
+		}
+		setMapsBusy(true);
+		setMapsHint("Parsing link…");
+		try {
+			const result = await resolveAndParseMapsUrl(url);
+			if (result.lat != null && result.lon != null) {
+				setParsedCoords({ lat: result.lat, lon: result.lon });
+				setMapsHint(
+					`Pinned at ${result.lat.toFixed(5)}, ${result.lon.toFixed(5)}` +
+						(result.placeName ? ` · ${result.placeName}` : ""),
+				);
+			} else {
+				setParsedCoords(null);
+				setMapsHint(result.error ?? "Could not read this link.");
+			}
+
+			// Autofill empty fields only.
+			if (result.placeName) {
+				const parts = splitPlaceName(result.placeName);
+				if (parts.street && !street.trim()) setStreet(parts.street);
+				if (parts.district && !district.trim()) setDistrict(parts.district);
+				if (parts.city && !city.trim()) setCity(parts.city);
+			}
+		} finally {
+			setMapsBusy(false);
+		}
+	}
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -108,21 +154,33 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			mevkii:    mevkii.trim()       || null,
 		};
 
-		// Geocode the joined address via Nominatim. On failure, fall back to:
-		//  - create: leave coords null (the dashboard map just skips this pin)
-		//  - edit:   keep the previous coords on the row (don't blank them out)
-		const geo = await geocodeAddress({
-			address_line: joined,
-			mahalle: input.mahalle,
-			mevkii: input.mevkii,
-			city: input.city,
-		});
-		if (geo) {
-			input.latitude = geo.lat;
-			input.longitude = geo.lon;
-		} else if (mode === "create") {
-			input.latitude = null;
-			input.longitude = null;
+		// Coordinates: prefer a pasted Google Maps URL (precise, user-confirmed).
+		// Otherwise fall back to Nominatim with the address-section mahalle —
+		// `tapuMahalle` is the title-deed value, often blank and not the one in
+		// the joined address.
+		let geocodeMissed = false;
+		if (parsedCoords) {
+			input.latitude = parsedCoords.lat;
+			input.longitude = parsedCoords.lon;
+		} else {
+			const geo = await geocodeAddress({
+				address_line: joined,
+				mahalle: mahalle.trim() || tapuMahalle.trim() || null,
+				mevkii: input.mevkii,
+				city: input.city,
+			});
+			if (geo) {
+				input.latitude = geo.lat;
+				input.longitude = geo.lon;
+			} else {
+				geocodeMissed = true;
+				if (mode === "create") {
+					input.latitude = null;
+					input.longitude = null;
+				}
+				// In edit mode, leave latitude/longitude unset on the input so
+				// the existing coords on the row are preserved.
+			}
 		}
 
 		try {
@@ -131,6 +189,14 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					? await createProperty(input)
 					: await updateProperty(initial!.id, input);
 			upsertProperty(row);
+			if (geocodeMissed && row.latitude == null) {
+				// Surface a hint in this form for edit mode (user is staying here);
+				// on create the user lands on the detail page where the banner shows.
+				setMapsHint(
+					"Saved without coordinates — Nominatim couldn't find this address. " +
+						"Paste a Google Maps link above and re-save to put this property on the map.",
+				);
+			}
 			if (mode === "create") {
 				router.push(`/properties/${row.id}`);
 			}
@@ -185,6 +251,47 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			{/* Address — Turkish parts */}
 			<div className="space-y-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
 				<p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Address</p>
+
+				{/* Google Maps link — paste to extract coords + autofill empty fields. */}
+				<FormField label="Google Maps link (optional)">
+					<div className="flex gap-2">
+						<input
+							type="url"
+							value={mapsUrl}
+							onChange={(e) => {
+								setMapsUrl(e.target.value);
+								// Editing the URL invalidates previously parsed coords until re-parse.
+								if (parsedCoords) setParsedCoords(null);
+								if (mapsHint) setMapsHint(null);
+							}}
+							onPaste={(e) => {
+								const pasted = e.clipboardData.getData("text");
+								if (pasted) {
+									setMapsUrl(pasted);
+									// Defer to next tick so state has applied before parse runs.
+									setTimeout(() => { void handleParseMapsUrl(); }, 0);
+									e.preventDefault();
+								}
+							}}
+							onBlur={() => { if (mapsUrl.trim() && !parsedCoords) void handleParseMapsUrl(); }}
+							className={inputClass}
+							placeholder="https://maps.app.goo.gl/… or https://www.google.com/maps/place/…"
+						/>
+						<button
+							type="button"
+							onClick={handleParseMapsUrl}
+							disabled={mapsBusy || !mapsUrl.trim()}
+							className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors disabled:opacity-40 whitespace-nowrap"
+						>
+							{mapsBusy ? "…" : "Parse"}
+						</button>
+					</div>
+					{mapsHint && (
+						<p className={`mt-1 text-[11px] ${parsedCoords ? "text-emerald-700" : "text-amber-700"}`}>
+							{mapsHint}
+						</p>
+					)}
+				</FormField>
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Mahalle (Neighborhood)">

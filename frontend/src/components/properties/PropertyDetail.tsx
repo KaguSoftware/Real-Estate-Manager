@@ -95,6 +95,13 @@ export function PropertyDetail({ propertyId }: Props) {
 			{/* Gallery */}
 			<PropertyGallery propertyId={propertyId} />
 
+			{data.latitude == null && (
+				<div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+					This property isn't on the map yet — we couldn't pin its address automatically.
+					Click <strong>Edit</strong> and paste a Google Maps link to add it.
+				</div>
+			)}
+
 			{error && (
 				<div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">{error}</div>
 			)}
