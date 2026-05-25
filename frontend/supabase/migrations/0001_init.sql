@@ -1,26 +1,25 @@
 -- =============================================================================
--- 0001_init.sql — Cloud Save & RBAC schema
+-- 0001_init.sql — Real Estate Manager schema
 --
--- Idempotent where possible (CREATE ... IF NOT EXISTS, CREATE OR REPLACE).
--- Run this once against your Supabase project via the SQL Editor or CLI.
+-- Single consolidated migration for a fresh Supabase project.
+-- Run this once via the Supabase SQL editor (or `supabase db push`).
+-- Idempotent: safe to re-run.
 -- =============================================================================
 
--- ============================================================
--- 1. EXTENSIONS
--- ============================================================
+-- ── EXTENSIONS ───────────────────────────────────────────────────────────────
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ============================================================
--- 2. PROFILES (mirrors auth.users, populated via trigger)
--- ============================================================
+-- =============================================================================
+-- 1. PROFILES (mirrors auth.users via trigger)
+-- =============================================================================
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email       TEXT NOT NULL,
+  id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email        TEXT NOT NULL,
   display_name TEXT,
-  app_role    TEXT NOT NULL DEFAULT 'member'
-              CHECK (app_role IN ('admin', 'member', 'client')),
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  app_role     TEXT NOT NULL DEFAULT 'member'
+               CHECK (app_role IN ('admin', 'member', 'client')),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Auto-create profile on signup
@@ -33,30 +32,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Drop and recreate trigger so this script stays idempotent
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- ============================================================
--- 3. DOCUMENTS (with 500 KB content CHECK)
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.documents (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  owner_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  title       TEXT NOT NULL DEFAULT 'Untitled',
-  doc_type    TEXT NOT NULL DEFAULT 'proposal',
-  -- Guard against accidental mega-documents (~500 KB limit).
-  -- content stores the full DocumentData object as JSON.
-  content     JSONB NOT NULL DEFAULT '{}' CHECK (pg_column_size(content) < 500000),
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- ============================================================
--- 4. set_updated_at function + triggers on profiles and documents
--- ============================================================
+-- updated_at trigger function (reused on every table below)
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -70,55 +51,13 @@ CREATE TRIGGER trg_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
-DROP TRIGGER IF EXISTS trg_documents_updated_at ON public.documents;
-CREATE TRIGGER trg_documents_updated_at
-  BEFORE UPDATE ON public.documents
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+-- =============================================================================
+-- 2. SECURITY DEFINER HELPERS
+-- =============================================================================
 
--- ============================================================
--- 5. DOCUMENT ACCESS (per-document sharing)
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.document_access (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  document_id UUID NOT NULL REFERENCES public.documents(id) ON DELETE CASCADE,
-  user_id     UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  -- No 'owner' role here — ownership is tracked solely via documents.owner_id.
-  -- This table is only for granted access (editor / viewer).
-  role        TEXT NOT NULL DEFAULT 'viewer'
-              CHECK (role IN ('editor', 'viewer')),
-  granted_by  UUID REFERENCES public.profiles(id),
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-  UNIQUE (document_id, user_id)
-);
-
--- ============================================================
--- 6. INDEXES
--- ============================================================
-CREATE INDEX IF NOT EXISTS idx_documents_owner ON public.documents(owner_id);
-CREATE INDEX IF NOT EXISTS idx_doc_access_user ON public.document_access(user_id);
-CREATE INDEX IF NOT EXISTS idx_doc_access_doc  ON public.document_access(document_id);
-
--- ============================================================
--- 7. ENABLE ROW LEVEL SECURITY on all three tables
--- ============================================================
-ALTER TABLE public.profiles        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.documents       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.document_access ENABLE ROW LEVEL SECURITY;
-
--- ============================================================
--- 8. SECURITY DEFINER helper functions
--- ============================================================
-
--- ── public.is_admin() ─────────────────────────────────────────────────────────
--- SECURITY DEFINER so it reads profiles with elevated privileges,
--- bypassing the restrictive profiles RLS policy below. Without this,
--- every RLS policy that needs an admin check would embed its own
--- EXISTS subquery against profiles — creating a circular RLS
--- dependency (profiles policies would fire during documents policy
--- evaluation) and duplicating logic in 7+ places. A single
--- SECURITY DEFINER function is the canonical Supabase pattern:
--- one place to audit, no circular evaluation, better plan caching.
+-- is_admin() — single source of truth for admin checks across all RLS policies.
+-- SECURITY DEFINER so it reads profiles without firing the restrictive
+-- profiles RLS policy (avoids circular evaluation).
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
   SELECT EXISTS (
@@ -127,12 +66,8 @@ RETURNS BOOLEAN AS $$
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
--- ── public.find_user_by_email(text) ──────────────────────────────────────────
--- Returns just {id, email} for a given email address.
--- SECURITY DEFINER so it bypasses profiles RLS — callers cannot
--- enumerate profiles or see display_name/app_role. The ShareModal
--- MUST call this function via supabase.rpc('find_user_by_email', { email })
--- instead of querying the profiles table directly.
+-- find_user_by_email() — exposes {id, email} for share-by-email flows
+-- without leaking the full profiles table.
 CREATE OR REPLACE FUNCTION public.find_user_by_email(lookup_email TEXT)
 RETURNS TABLE (id UUID, email TEXT) AS $$
   SELECT p.id, p.email
@@ -141,117 +76,215 @@ RETURNS TABLE (id UUID, email TEXT) AS $$
   LIMIT 1;
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
--- ============================================================
--- 9. RLS POLICIES
--- ============================================================
+-- admin_set_user_role() — only admins may call. Re-checks is_admin() inside
+-- the function so the anon key is sufficient for the client RPC.
+CREATE OR REPLACE FUNCTION public.admin_set_user_role(
+  target_user_id UUID,
+  new_role       TEXT
+)
+RETURNS VOID AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Permission denied: caller is not an admin';
+  END IF;
 
--- ── PROFILES ──────────────────────────────────────────────────
+  IF new_role NOT IN ('admin', 'member', 'client') THEN
+    RAISE EXCEPTION 'Invalid role: %. Must be admin, member, or client', new_role;
+  END IF;
 
--- Users can only read their own profile. Admins can read all.
--- Share-by-email lookups go through find_user_by_email() instead.
-DROP POLICY IF EXISTS "profiles_select_own_or_admin" ON public.profiles;
-CREATE POLICY "profiles_select_own_or_admin"
+  UPDATE public.profiles
+  SET app_role = new_role
+  WHERE id = target_user_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'User % not found', target_user_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =============================================================================
+-- 3. PROFILES RLS
+-- =============================================================================
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS profiles_select_own_or_admin ON public.profiles;
+CREATE POLICY profiles_select_own_or_admin
   ON public.profiles FOR SELECT
   USING (auth.uid() = id OR public.is_admin());
 
--- Users can only update their own profile
-DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles;
-CREATE POLICY "profiles_update_own"
+DROP POLICY IF EXISTS profiles_update_own ON public.profiles;
+CREATE POLICY profiles_update_own
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
 
--- ── DOCUMENTS ─────────────────────────────────────────────────
+-- =============================================================================
+-- 4. PROPERTIES
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.properties (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  owner_id        UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  homeowner_name  TEXT NOT NULL,
+  address_line    TEXT NOT NULL,
+  city            TEXT,
+  size_sqm        NUMERIC(10,2),
+  bedrooms        INT,
+  bathrooms       INT,
+  listing_type    TEXT NOT NULL CHECK (listing_type IN ('for_rent','for_sale')),
+  status          TEXT NOT NULL DEFAULT 'vacant'
+                  CHECK (status IN ('vacant','occupied','sold')),
+  list_price      NUMERIC(12,2),
+  currency        TEXT NOT NULL DEFAULT 'USD',
+  notes           TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_properties_owner  ON public.properties(owner_id);
+CREATE INDEX IF NOT EXISTS idx_properties_status ON public.properties(owner_id, status);
 
--- Admins see all documents.
--- Non-admins see documents they own OR have been granted access to.
-DROP POLICY IF EXISTS "documents_select" ON public.documents;
-CREATE POLICY "documents_select"
-  ON public.documents FOR SELECT
-  USING (
-    public.is_admin()
-    OR owner_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM public.document_access
-      WHERE document_id = documents.id AND user_id = auth.uid()
-    )
-  );
+-- =============================================================================
+-- 5. TENANTS
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.tenants (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  owner_id        UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  full_name       TEXT NOT NULL,
+  email           TEXT,
+  phone           TEXT,
+  national_id     TEXT,
+  notes           TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_tenants_owner ON public.tenants(owner_id);
 
--- Only the document owner can insert (enforced: owner_id must match auth.uid)
-DROP POLICY IF EXISTS "documents_insert" ON public.documents;
-CREATE POLICY "documents_insert"
-  ON public.documents FOR INSERT
+-- =============================================================================
+-- 6. LEASES
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.leases (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  owner_id          UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  property_id       UUID NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
+  tenant_id         UUID NOT NULL REFERENCES public.tenants(id)    ON DELETE CASCADE,
+  term              TEXT NOT NULL CHECK (term IN ('1yr','2yr','undefined')),
+  start_date        DATE NOT NULL,
+  end_date          DATE,
+  monthly_rent      NUMERIC(12,2) NOT NULL,
+  deposit           NUMERIC(12,2) NOT NULL DEFAULT 0,
+  currency          TEXT NOT NULL DEFAULT 'USD',
+  status            TEXT NOT NULL DEFAULT 'active'
+                    CHECK (status IN ('active','ended','terminated')),
+  document_pdf_path TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_leases_owner  ON public.leases(owner_id);
+CREATE INDEX IF NOT EXISTS idx_leases_prop   ON public.leases(property_id);
+CREATE INDEX IF NOT EXISTS idx_leases_tenant ON public.leases(tenant_id);
+-- DB-enforced: at most one active lease per property
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_lease_per_property
+  ON public.leases(property_id) WHERE status = 'active';
+
+-- =============================================================================
+-- 7. PAYMENTS
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.payments (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  owner_id      UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  lease_id      UUID NOT NULL REFERENCES public.leases(id)   ON DELETE CASCADE,
+  period_start  DATE NOT NULL,
+  period_end    DATE NOT NULL,
+  amount_due    NUMERIC(12,2) NOT NULL,
+  amount_paid   NUMERIC(12,2) NOT NULL DEFAULT 0,
+  paid_at       TIMESTAMPTZ,
+  method        TEXT,
+  notes         TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_payments_owner ON public.payments(owner_id);
+CREATE INDEX IF NOT EXISTS idx_payments_lease ON public.payments(lease_id);
+
+-- =============================================================================
+-- 8. updated_at TRIGGERS
+-- =============================================================================
+DROP TRIGGER IF EXISTS trg_properties_updated_at ON public.properties;
+CREATE TRIGGER trg_properties_updated_at BEFORE UPDATE ON public.properties
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_tenants_updated_at ON public.tenants;
+CREATE TRIGGER trg_tenants_updated_at BEFORE UPDATE ON public.tenants
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_leases_updated_at ON public.leases;
+CREATE TRIGGER trg_leases_updated_at BEFORE UPDATE ON public.leases
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_payments_updated_at ON public.payments;
+CREATE TRIGGER trg_payments_updated_at BEFORE UPDATE ON public.payments
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- =============================================================================
+-- 9. ROW LEVEL SECURITY
+-- =============================================================================
+ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tenants    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.leases     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payments   ENABLE ROW LEVEL SECURITY;
+
+-- Owner-only access + admin override, applied uniformly to all four tables.
+
+-- properties
+DROP POLICY IF EXISTS properties_select ON public.properties;
+CREATE POLICY properties_select ON public.properties FOR SELECT
+  USING (public.is_admin() OR owner_id = auth.uid());
+DROP POLICY IF EXISTS properties_insert ON public.properties;
+CREATE POLICY properties_insert ON public.properties FOR INSERT
   WITH CHECK (owner_id = auth.uid());
+DROP POLICY IF EXISTS properties_update ON public.properties;
+CREATE POLICY properties_update ON public.properties FOR UPDATE
+  USING (public.is_admin() OR owner_id = auth.uid());
+DROP POLICY IF EXISTS properties_delete ON public.properties;
+CREATE POLICY properties_delete ON public.properties FOR DELETE
+  USING (public.is_admin() OR owner_id = auth.uid());
 
--- Owner and editors can update a document.
--- Admins can also update any document.
-DROP POLICY IF EXISTS "documents_update" ON public.documents;
-CREATE POLICY "documents_update"
-  ON public.documents FOR UPDATE
-  USING (
-    public.is_admin()
-    OR owner_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM public.document_access
-      WHERE document_id = documents.id AND user_id = auth.uid() AND role = 'editor'
-    )
-  );
+-- tenants
+DROP POLICY IF EXISTS tenants_select ON public.tenants;
+CREATE POLICY tenants_select ON public.tenants FOR SELECT
+  USING (public.is_admin() OR owner_id = auth.uid());
+DROP POLICY IF EXISTS tenants_insert ON public.tenants;
+CREATE POLICY tenants_insert ON public.tenants FOR INSERT
+  WITH CHECK (owner_id = auth.uid());
+DROP POLICY IF EXISTS tenants_update ON public.tenants;
+CREATE POLICY tenants_update ON public.tenants FOR UPDATE
+  USING (public.is_admin() OR owner_id = auth.uid());
+DROP POLICY IF EXISTS tenants_delete ON public.tenants;
+CREATE POLICY tenants_delete ON public.tenants FOR DELETE
+  USING (public.is_admin() OR owner_id = auth.uid());
 
--- Only the owner (or admin) can delete a document
-DROP POLICY IF EXISTS "documents_delete" ON public.documents;
-CREATE POLICY "documents_delete"
-  ON public.documents FOR DELETE
-  USING (
-    public.is_admin()
-    OR owner_id = auth.uid()
-  );
+-- leases
+DROP POLICY IF EXISTS leases_select ON public.leases;
+CREATE POLICY leases_select ON public.leases FOR SELECT
+  USING (public.is_admin() OR owner_id = auth.uid());
+DROP POLICY IF EXISTS leases_insert ON public.leases;
+CREATE POLICY leases_insert ON public.leases FOR INSERT
+  WITH CHECK (owner_id = auth.uid());
+DROP POLICY IF EXISTS leases_update ON public.leases;
+CREATE POLICY leases_update ON public.leases FOR UPDATE
+  USING (public.is_admin() OR owner_id = auth.uid());
+DROP POLICY IF EXISTS leases_delete ON public.leases;
+CREATE POLICY leases_delete ON public.leases FOR DELETE
+  USING (public.is_admin() OR owner_id = auth.uid());
 
--- ── DOCUMENT ACCESS ───────────────────────────────────────────
-
--- Users can see access entries for documents they can already see
-DROP POLICY IF EXISTS "doc_access_select" ON public.document_access;
-CREATE POLICY "doc_access_select"
-  ON public.document_access FOR SELECT
-  USING (
-    public.is_admin()
-    OR user_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM public.documents
-      WHERE id = document_access.document_id AND owner_id = auth.uid()
-    )
-  );
-
--- Only the document owner (or admin) can grant access
-DROP POLICY IF EXISTS "doc_access_insert" ON public.document_access;
-CREATE POLICY "doc_access_insert"
-  ON public.document_access FOR INSERT
-  WITH CHECK (
-    public.is_admin()
-    OR EXISTS (
-      SELECT 1 FROM public.documents
-      WHERE id = document_access.document_id AND owner_id = auth.uid()
-    )
-  );
-
--- Only the document owner (or admin) can modify access grants
-DROP POLICY IF EXISTS "doc_access_update" ON public.document_access;
-CREATE POLICY "doc_access_update"
-  ON public.document_access FOR UPDATE
-  USING (
-    public.is_admin()
-    OR EXISTS (
-      SELECT 1 FROM public.documents
-      WHERE id = document_access.document_id AND owner_id = auth.uid()
-    )
-  );
-
--- Only the document owner (or admin) can revoke access
-DROP POLICY IF EXISTS "doc_access_delete" ON public.document_access;
-CREATE POLICY "doc_access_delete"
-  ON public.document_access FOR DELETE
-  USING (
-    public.is_admin()
-    OR EXISTS (
-      SELECT 1 FROM public.documents
-      WHERE id = document_access.document_id AND owner_id = auth.uid()
-    )
-  );
+-- payments
+DROP POLICY IF EXISTS payments_select ON public.payments;
+CREATE POLICY payments_select ON public.payments FOR SELECT
+  USING (public.is_admin() OR owner_id = auth.uid());
+DROP POLICY IF EXISTS payments_insert ON public.payments;
+CREATE POLICY payments_insert ON public.payments FOR INSERT
+  WITH CHECK (owner_id = auth.uid());
+DROP POLICY IF EXISTS payments_update ON public.payments;
+CREATE POLICY payments_update ON public.payments FOR UPDATE
+  USING (public.is_admin() OR owner_id = auth.uid());
+DROP POLICY IF EXISTS payments_delete ON public.payments;
+CREATE POLICY payments_delete ON public.payments FOR DELETE
+  USING (public.is_admin() OR owner_id = auth.uid());
