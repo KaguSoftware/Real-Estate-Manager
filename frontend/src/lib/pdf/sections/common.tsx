@@ -165,9 +165,13 @@ export const ClausesList = ({
 export const SignatureBlock = ({
 	label = "Signatures",
 	signers,
+	accentColor,
 }: {
 	label?: string;
 	signers: { role: string; name?: string }[];
+	/** When set, a thin bar of this color is rendered below each signature label
+	 *  (matches the Avera reference's navy bars). */
+	accentColor?: string;
 }) => (
 	<View style={styles.section} wrap={false}>
 		<SectionTitle title={label} />
@@ -177,6 +181,9 @@ export const SignatureBlock = ({
 					<View style={styles.signatureLine} />
 					<Text style={styles.signatureLabel}>{s.role}</Text>
 					{s.name ? <Text style={styles.signatureSubLabel}>{s.name}</Text> : null}
+					{accentColor ? (
+						<View style={[styles.signatureAccentBar, { backgroundColor: accentColor }]} />
+					) : null}
 				</View>
 			))}
 		</View>

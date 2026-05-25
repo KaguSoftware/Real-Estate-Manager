@@ -31,6 +31,12 @@ export interface PropertyInput {
 	list_price?: number | null;
 	currency?: string;
 	notes?: string | null;
+	// Turkish tapu (title-deed) fields — optional.
+	nitelik?: string | null;
+	ada_no?: string | null;
+	parsel_no?: string | null;
+	mahalle?: string | null;
+	mevkii?: string | null;
 }
 
 async function requireUser() {

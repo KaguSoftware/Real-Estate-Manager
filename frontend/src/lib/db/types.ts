@@ -31,6 +31,12 @@ export interface Property {
 	list_price: number | null;
 	currency: string;
 	notes: string | null;
+	// Turkish title-deed (tapu) fields — optional; only sales agreement uses them.
+	nitelik: string | null;
+	ada_no: string | null;
+	parsel_no: string | null;
+	mahalle: string | null;
+	mevkii: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -103,6 +109,31 @@ export interface PropertyImage {
 	created_at: string;
 	/** Populated client-side via supabase.storage.getPublicUrl(). */
 	url: string;
+}
+
+export type SaleStatus = "active" | "closed" | "cancelled";
+export type TaxResponsibility = "buyer" | "seller" | "legal";
+
+export interface Sale {
+	id: string;
+	owner_id: string;
+	property_id: string;
+	buyer_id: string;
+	sale_price: number;
+	currency: string;
+	sale_date: string;
+	target_close_date: string | null;
+	deposit_amount: number | null;
+	penalty_amount: number | null;
+	validity_days: number | null;
+	tax_responsibility: TaxResponsibility;
+	buyer_commission_rate: number | null;
+	seller_commission_rate: number | null;
+	special_conditions: string | null;
+	status: SaleStatus;
+	document_pdf_path: string | null;
+	created_at: string;
+	updated_at: string;
 }
 
 /** What the document wizard generates. */

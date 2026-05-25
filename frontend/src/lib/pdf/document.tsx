@@ -2,7 +2,7 @@ import { Document, Page, pdf } from "@react-pdf/renderer";
 import { styles } from "./styles";
 import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData } from "./types";
 import { RentalAgreement } from "./sections/rental";
-import { SalesAgreementStub } from "./sections/sales";
+import { SalesAgreement } from "./sections/sales";
 import { RentReceiptStub } from "./sections/receipt";
 
 type AnyPDFData = RentalPDFData | SalesPDFData | ReceiptPDFData;
@@ -17,7 +17,7 @@ export function PDFDocument({ kind, data }: { kind: DocKind; data: AnyPDFData })
 		<Document title={titleByKind[kind]} author="Real Estate Manager">
 			<Page size="A4" style={styles.page} wrap>
 				{kind === "rental"  && <RentalAgreement data={data as RentalPDFData} />}
-				{kind === "sales"   && <SalesAgreementStub />}
+				{kind === "sales"   && <SalesAgreement data={data as SalesPDFData} />}
 				{kind === "receipt" && <RentReceiptStub />}
 			</Page>
 		</Document>

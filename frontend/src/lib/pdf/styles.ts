@@ -21,6 +21,12 @@ export const colors = {
 	indigo500: "#6366f1",
 	indigo50:  "#eef2ff",
 	amber500: "#f59e0b",
+	// Avera brand palette — used by the sales agreement only.
+	navy_brand: "#051526",
+	gray_brand: "#9D9F9E",
+	red_brand:  "#B11211",
+	navy_brand_dark: "#020a13",
+	navy_brand_tint: "#e8ebef",
 } as const;
 
 export const styles = StyleSheet.create({
@@ -291,5 +297,251 @@ export const styles = StyleSheet.create({
 		fontSize: 7,
 		color: colors.slate400,
 		fontFamily: "Helvetica-Bold",
+	},
+
+	// ── Sales agreement — Avera branding ──────────────────────────────
+	// Hero title bar across the very top of page 1.
+	salesHero: {
+		backgroundColor: colors.navy_brand,
+		paddingVertical: 14,
+		paddingHorizontal: 18,
+		marginHorizontal: -48,    // bleed beyond the page padding
+		marginTop: -48,
+		marginBottom: 22,
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+	},
+	salesHeroTitle: {
+		fontSize: 14,
+		fontFamily: "Helvetica-Bold",
+		color: colors.white,
+		letterSpacing: 1.5,
+		textTransform: "uppercase",
+	},
+	salesHeroDate: {
+		fontSize: 7.5,
+		fontFamily: "Helvetica-Bold",
+		color: colors.gray_brand,
+		letterSpacing: 1.5,
+		textTransform: "uppercase",
+	},
+
+	// Navy chip used as the label for sections A, B, C, D, E.
+	salesSectionChip: {
+		alignSelf: "flex-start",
+		backgroundColor: colors.navy_brand,
+		paddingVertical: 4,
+		paddingHorizontal: 10,
+		marginBottom: 8,
+	},
+	salesSectionChipText: {
+		fontSize: 8,
+		fontFamily: "Helvetica-Bold",
+		color: colors.white,
+		letterSpacing: 1.5,
+		textTransform: "uppercase",
+	},
+
+	// Sales card — replaces the default gray Card on sales pages.
+	salesCard: {
+		flex: 1,
+		borderWidth: 0.75,
+		borderColor: colors.gray_brand,
+		borderLeftWidth: 3,
+		borderLeftColor: colors.navy_brand,
+		paddingVertical: 10,
+		paddingHorizontal: 12,
+	},
+	salesCardLabel: {
+		fontSize: 6.5,
+		fontFamily: "Helvetica-Bold",
+		color: colors.navy_brand,
+		textTransform: "uppercase",
+		letterSpacing: 1.5,
+		marginBottom: 2,
+	},
+	salesCardValue: {
+		fontSize: 9.5,
+		color: colors.slate900,
+		fontFamily: "Helvetica-Bold",
+		marginBottom: 6,
+	},
+	salesCardLine: {
+		fontSize: 8.5,
+		color: colors.slate700,
+		marginBottom: 2,
+	},
+
+	// Property "C" block — single full-width card with 4-col KV grid.
+	propBlock: {
+		borderWidth: 0.75,
+		borderColor: colors.gray_brand,
+		borderLeftWidth: 3,
+		borderLeftColor: colors.navy_brand,
+		padding: 12,
+	},
+	propAddressLabel: {
+		fontSize: 6.5,
+		fontFamily: "Helvetica-Bold",
+		color: colors.navy_brand,
+		textTransform: "uppercase",
+		letterSpacing: 1.5,
+		marginBottom: 2,
+	},
+	propAddressValue: {
+		fontSize: 10,
+		fontFamily: "Helvetica-Bold",
+		color: colors.slate900,
+		marginBottom: 10,
+	},
+	propGrid: {
+		flexDirection: "row",
+		flexWrap: "wrap",
+	},
+	propGridCell: {
+		width: "25%",          // 4 columns
+		paddingRight: 8,
+		marginBottom: 6,
+	},
+	propGridLabel: {
+		fontSize: 6,
+		fontFamily: "Helvetica-Bold",
+		color: colors.gray_brand,
+		textTransform: "uppercase",
+		letterSpacing: 1,
+		marginBottom: 1,
+	},
+	propGridValue: {
+		fontSize: 9,
+		color: colors.slate800,
+	},
+
+	// Commission table (E).
+	commissionTable: {
+		borderWidth: 0.5,
+		borderColor: colors.gray_brand,
+	},
+	commissionHeaderRow: {
+		flexDirection: "row",
+		backgroundColor: colors.navy_brand,
+	},
+	commissionHeaderCell: {
+		flex: 1,
+		paddingVertical: 6,
+		paddingHorizontal: 8,
+		fontSize: 7,
+		fontFamily: "Helvetica-Bold",
+		color: colors.white,
+		textTransform: "uppercase",
+		letterSpacing: 1,
+		borderRightWidth: 0.5,
+		borderRightColor: colors.navy_brand_dark,
+	},
+	commissionHeaderCellLeft: {
+		flex: 1.2,
+		paddingVertical: 6,
+		paddingHorizontal: 8,
+		fontSize: 7,
+		fontFamily: "Helvetica-Bold",
+		color: colors.white,
+		textTransform: "uppercase",
+		letterSpacing: 1,
+		borderRightWidth: 0.5,
+		borderRightColor: colors.navy_brand_dark,
+	},
+	commissionRow: {
+		flexDirection: "row",
+		borderTopWidth: 0.5,
+		borderTopColor: colors.gray_brand,
+	},
+	commissionRowAlt: {
+		flexDirection: "row",
+		borderTopWidth: 0.5,
+		borderTopColor: colors.gray_brand,
+		backgroundColor: colors.navy_brand_tint,
+	},
+	commissionLabelCell: {
+		flex: 1.2,
+		paddingVertical: 6,
+		paddingHorizontal: 8,
+		fontSize: 8,
+		fontFamily: "Helvetica-Bold",
+		color: colors.navy_brand,
+		borderRightWidth: 0.5,
+		borderRightColor: colors.gray_brand,
+	},
+	commissionDataCell: {
+		flex: 1,
+		paddingVertical: 6,
+		paddingHorizontal: 8,
+		fontSize: 8,
+		color: colors.slate800,
+		borderRightWidth: 0.5,
+		borderRightColor: colors.gray_brand,
+		textAlign: "right",
+	},
+
+	// Sale price / kapora pair — replaces HighlightPair on sales.
+	salesPriceBox: {
+		flex: 1,
+		backgroundColor: colors.navy_brand,
+		paddingVertical: 14,
+		paddingHorizontal: 16,
+	},
+	salesPriceLabel: {
+		fontSize: 7,
+		fontFamily: "Helvetica-Bold",
+		color: colors.gray_brand,
+		textTransform: "uppercase",
+		letterSpacing: 1.5,
+		marginBottom: 6,
+	},
+	salesPriceValue: {
+		fontSize: 18,
+		fontFamily: "Helvetica-Bold",
+		color: colors.white,
+	},
+	salesDepositBox: {
+		flex: 1,
+		borderWidth: 1,
+		borderColor: colors.red_brand,
+		paddingVertical: 14,
+		paddingHorizontal: 16,
+	},
+	salesDepositLabel: {
+		fontSize: 7,
+		fontFamily: "Helvetica-Bold",
+		color: colors.red_brand,
+		textTransform: "uppercase",
+		letterSpacing: 1.5,
+		marginBottom: 6,
+	},
+	salesDepositValue: {
+		fontSize: 18,
+		fontFamily: "Helvetica-Bold",
+		color: colors.navy_brand,
+	},
+	salesCurrencyTag: {
+		fontSize: 9,
+		fontFamily: "Helvetica-Bold",
+		marginLeft: 4,
+	},
+
+	// Tax responsibility tag below the price boxes.
+	avaraLine: {
+		fontSize: 8,
+		fontFamily: "Helvetica-Oblique",
+		color: colors.slate600,
+		textAlign: "center",
+		marginTop: 12,
+		marginBottom: 4,
+	},
+
+	// Signature accent bar (rendered below each signature label when SignatureBlock
+	// receives an accentColor prop).
+	signatureAccentBar: {
+		height: 5,
+		marginTop: 4,
 	},
 });

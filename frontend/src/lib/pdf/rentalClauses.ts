@@ -1,7 +1,9 @@
 // Standard rental-agreement clauses.
-// Use {placeholder} tokens; interpolate() in sections/rental.tsx resolves them
+// Use {placeholder} tokens; interpolate() (../interpolate) resolves them
 // against the lease values at render time. Editing this file is the single
 // source of truth for the boilerplate legal copy.
+
+export { interpolate } from "./interpolate";
 
 export const RENTAL_STANDARD_CLAUSES = [
 	"Rent of {monthly_rent} {currency} is due on the 1st of each calendar month. Payments more than 5 days late incur a 5% late fee.",
@@ -13,10 +15,3 @@ export const RENTAL_STANDARD_CLAUSES = [
 	"Either party may terminate this agreement with 30 days' written notice in the case of an undefined-term tenancy. Fixed-term leases may only be terminated early by mutual written agreement or for cause permitted by local law.",
 	"This agreement shall be governed by the laws of the jurisdiction in which the property is located. Any disputes shall be resolved in the local courts of that jurisdiction.",
 ];
-
-export function interpolate(template: string, vars: Record<string, string | number>): string {
-	return template.replace(/\{(\w+)\}/g, (_m, key) => {
-		const v = vars[key];
-		return v === undefined || v === null ? `{${key}}` : String(v);
-	});
-}

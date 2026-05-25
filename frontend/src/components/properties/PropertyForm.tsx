@@ -64,6 +64,13 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const [currency,     setCurrency]    = useState(initial?.currency ?? "TRY");
 	const [notes,        setNotes]       = useState(initial?.notes ?? "");
 
+	// Turkish title-deed (tapu) fields — used by the sales agreement.
+	const [nitelik,   setNitelik]   = useState(initial?.nitelik   ?? "");
+	const [adaNo,     setAdaNo]     = useState(initial?.ada_no    ?? "");
+	const [parselNo,  setParselNo]  = useState(initial?.parsel_no ?? "");
+	const [tapuMahalle, setTapuMahalle] = useState(initial?.mahalle ?? "");
+	const [mevkii,    setMevkii]    = useState(initial?.mevkii    ?? "");
+
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +100,11 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			list_price: list_price.trim() ? Number(list_price) : null,
 			currency,
 			notes: notes.trim() || null,
+			nitelik:   nitelik.trim()      || null,
+			ada_no:    adaNo.trim()        || null,
+			parsel_no: parselNo.trim()     || null,
+			mahalle:   tapuMahalle.trim()  || null,
+			mevkii:    mevkii.trim()       || null,
 		};
 
 		try {
@@ -291,6 +303,31 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					className={inputClass}
 				/>
 			</FormField>
+
+			{/* Tapu Bilgileri (title deed) — used by the sales agreement PDF. */}
+			<div className="space-y-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+				<div>
+					<p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tapu Bilgileri</p>
+					<p className="text-[11px] text-slate-400 mt-0.5">Title deed details — populated into the Sales Agreement PDF (optional).</p>
+				</div>
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+					<FormField label="Niteliği (Type/Kind)">
+						<input value={nitelik} onChange={(e) => setNitelik(e.target.value)} className={inputClass} placeholder="Mesken" />
+					</FormField>
+					<FormField label="Ada No">
+						<input value={adaNo} onChange={(e) => setAdaNo(e.target.value)} className={inputClass} />
+					</FormField>
+					<FormField label="Parsel No">
+						<input value={parselNo} onChange={(e) => setParselNo(e.target.value)} className={inputClass} />
+					</FormField>
+					<FormField label="Mevkii">
+						<input value={mevkii} onChange={(e) => setMevkii(e.target.value)} className={inputClass} />
+					</FormField>
+				</div>
+				<FormField label="Mahalle (per tapu)">
+					<input value={tapuMahalle} onChange={(e) => setTapuMahalle(e.target.value)} className={inputClass} placeholder="As written on the title deed" />
+				</FormField>
+			</div>
 
 			{error && (
 				<div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">{error}</div>
