@@ -1,5 +1,4 @@
 // Small primitive components shared across PDF templates.
-// English-only after the real-estate rehaul.
 
 import { View, Text } from "@react-pdf/renderer";
 import { styles, colors } from "../styles";
@@ -30,37 +29,135 @@ export const DocHeader = ({
 				<Text style={styles.refLine}>{formatDate()}</Text>
 			</View>
 		</View>
-		<View style={styles.dividerThick} />
+		<View style={styles.dividerThin} />
+	</View>
+);
+
+/** Hero block at the top of the document with the property address. */
+export const HeroAddress = ({
+	address,
+	meta,
+}: {
+	address: string;
+	meta?: string;
+}) => (
+	<View style={styles.hero}>
+		<Text style={styles.heroLabel}>Property</Text>
+		<Text style={styles.heroAddress}>{address}</Text>
+		{meta ? <Text style={styles.heroMeta}>{meta}</Text> : null}
+	</View>
+);
+
+/** Section title with a horizontal rule on the right. */
+export const SectionTitle = ({ title }: { title: string }) => (
+	<View style={styles.sectionHeader}>
+		<Text style={styles.sectionTitle}>{title}</Text>
+		<View style={styles.sectionRule} />
 	</View>
 );
 
 export const TextSection = ({ label, text }: { label: string; text: string }) => (
 	<View style={styles.section}>
-		<Text style={styles.sectionTitle}>{label}</Text>
+		<SectionTitle title={label} />
 		<Text style={styles.bodyText}>{text}</Text>
 	</View>
 );
 
-export const TermsList = ({
+/**
+ * A two-column row of info cards.
+ * Pass any number of cards; they share the row equally via flex:1.
+ */
+export const CardGrid = ({ children }: { children: React.ReactNode }) => (
+	<View style={styles.cardGrid}>{children}</View>
+);
+
+export const Card = ({
+	title,
+	primary,
+	lines,
+}: {
+	title: string;
+	primary?: string;
+	lines?: (string | null | undefined)[];
+}) => (
+	<View style={styles.card}>
+		<Text style={styles.cardTitle}>{title}</Text>
+		{primary ? <Text style={styles.cardPrimary}>{primary}</Text> : null}
+		{(lines ?? [])
+			.filter((l): l is string => !!l && l.trim().length > 0)
+			.map((line, i) => (
+				<Text key={i} style={styles.cardLine}>{line}</Text>
+			))}
+	</View>
+);
+
+/** Inline label/value list — used for term and lease facts. */
+export const KVList = ({
+	items,
+}: {
+	items: { label: string; value: string }[];
+}) => (
+	<View>
+		{items.map((it, i) => (
+			<View key={i} style={i === items.length - 1 ? styles.kvRowLast : styles.kvRow}>
+				<Text style={styles.kvLabel}>{it.label}</Text>
+				<Text style={styles.kvValue}>{it.value}</Text>
+			</View>
+		))}
+	</View>
+);
+
+/** Two side-by-side highlight boxes — used for monthly rent + deposit. */
+export const HighlightPair = ({
+	left,
+	right,
+}: {
+	left: { label: string; value: string; currency: string };
+	right: { label: string; value: string; currency: string };
+}) => (
+	<View style={styles.highlightRow}>
+		<View style={styles.highlightBox}>
+			<Text style={styles.highlightLabel}>{left.label}</Text>
+			<View style={{ flexDirection: "row", alignItems: "baseline" }}>
+				<Text style={styles.highlightValue}>{left.value}</Text>
+				<Text style={styles.highlightCurrency}>{left.currency}</Text>
+			</View>
+		</View>
+		<View style={styles.highlightBox}>
+			<Text style={styles.highlightLabel}>{right.label}</Text>
+			<View style={{ flexDirection: "row", alignItems: "baseline" }}>
+				<Text style={styles.highlightValue}>{right.value}</Text>
+				<Text style={styles.highlightCurrency}>{right.currency}</Text>
+			</View>
+		</View>
+	</View>
+);
+
+/** Banded clauses list with proper page-break behavior. */
+export const ClausesList = ({
 	label,
-	terms,
+	clauses,
 }: {
 	label: string;
-	terms: string[];
+	clauses: string[];
 }) => {
-	const filtered = terms.filter((t) => t && t.trim());
+	const filtered = clauses.filter((c) => c && c.trim());
 	if (filtered.length === 0) return <View />;
 	return (
 		<View style={styles.section}>
-			<Text style={styles.sectionTitle}>{label}</Text>
-			{filtered.map((clause, idx) => (
-				<View key={idx} style={styles.termRow} wrap={false}>
-					<View style={styles.termBadge}>
-						<Text style={styles.termNumber}>{idx + 1}</Text>
+			<SectionTitle title={label} />
+			<View>
+				{filtered.map((clause, idx) => (
+					<View
+						key={idx}
+						style={idx % 2 === 1 ? styles.clauseRowAlt : styles.clauseRow}
+						wrap={false}
+					>
+						<Text style={styles.clauseNumber}>{String(idx + 1).padStart(2, "0")}</Text>
+						<Text style={styles.clauseText}>{clause}</Text>
 					</View>
-					<Text style={styles.termText}>{clause}</Text>
-				</View>
-			))}
+				))}
+			</View>
 		</View>
 	);
 };
@@ -70,15 +167,16 @@ export const SignatureBlock = ({
 	signers,
 }: {
 	label?: string;
-	signers: string[];
+	signers: { role: string; name?: string }[];
 }) => (
 	<View style={styles.section} wrap={false}>
-		<Text style={styles.sectionTitle}>{label}</Text>
+		<SectionTitle title={label} />
 		<View style={styles.signatureRow}>
-			{signers.map((signer, i) => (
-				<View key={i} style={{ flex: 1 }}>
+			{signers.map((s, i) => (
+				<View key={i} style={styles.signatureBox}>
 					<View style={styles.signatureLine} />
-					<Text style={styles.labelSmall}>{signer}</Text>
+					<Text style={styles.signatureLabel}>{s.role}</Text>
+					{s.name ? <Text style={styles.signatureSubLabel}>{s.name}</Text> : null}
 				</View>
 			))}
 		</View>
@@ -95,13 +193,6 @@ export const PageFooter = () => (
 		<Text style={styles.footerText}>
 			Confidential {"•"} {new Date().getFullYear()}
 		</Text>
-	</View>
-);
-
-export const KVRow = ({ label, value }: { label: string; value: string }) => (
-	<View>
-		<Text style={styles.fieldLabel}>{label}</Text>
-		<Text style={styles.fieldValue}>{value || "—"}</Text>
 	</View>
 );
 

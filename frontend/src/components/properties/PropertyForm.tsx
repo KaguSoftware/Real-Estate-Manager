@@ -19,6 +19,26 @@ interface Props {
 	onCancel?: () => void;
 }
 
+/** Combine Turkish address parts into a single address_line string. */
+function joinAddress(parts: {
+	mahalle: string;
+	street: string;
+	buildingNo: string;
+	apartmentNo: string;
+	district: string;
+}): string {
+	const { mahalle, street, buildingNo, apartmentNo, district } = parts;
+	const left: string[] = [];
+	if (mahalle.trim())   left.push(`${mahalle.trim()} Mah.`);
+	if (street.trim())    left.push(street.trim());
+	const door: string[] = [];
+	if (buildingNo.trim())   door.push(`No: ${buildingNo.trim()}`);
+	if (apartmentNo.trim())  door.push(`Daire: ${apartmentNo.trim()}`);
+	if (door.length) left.push(door.join(" "));
+	if (district.trim()) left.push(district.trim());
+	return left.join(", ");
+}
+
 export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const router = useRouter();
 	const upsertProperty = useAppStore((s) => s.upsertProperty);
@@ -26,28 +46,45 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const selectProperty = useAppStore((s) => s.selectProperty);
 
 	const [homeowner_name, setHomeownerName] = useState(initial?.homeowner_name ?? "");
-	const [address_line,   setAddressLine]   = useState(initial?.address_line ?? "");
-	const [city,           setCity]          = useState(initial?.city ?? "");
-	const [size_sqm,       setSizeSqm]       = useState(initial?.size_sqm?.toString() ?? "");
-	const [bedrooms,       setBedrooms]      = useState(initial?.bedrooms?.toString() ?? "");
-	const [bathrooms,      setBathrooms]     = useState(initial?.bathrooms?.toString() ?? "");
-	const [listing_type,   setListingType]   = useState<ListingType>(initial?.listing_type ?? "for_rent");
-	const [status,         setStatus]        = useState<PropertyStatus>(initial?.status ?? "vacant");
-	const [list_price,     setListPrice]     = useState(initial?.list_price?.toString() ?? "");
-	const [currency,       setCurrency]      = useState(initial?.currency ?? "USD");
-	const [notes,          setNotes]         = useState(initial?.notes ?? "");
+
+	// Turkish-style address fields. In edit mode we drop the existing joined
+	// address into the "street" field so the user can re-fill or keep it.
+	const [mahalle,     setMahalle]     = useState("");
+	const [street,      setStreet]      = useState(initial?.address_line ?? "");
+	const [buildingNo,  setBuildingNo]  = useState("");
+	const [apartmentNo, setApartmentNo] = useState("");
+	const [district,    setDistrict]    = useState("");
+	const [city,        setCity]        = useState(initial?.city ?? "");
+
+	const [size_sqm,     setSizeSqm]     = useState(initial?.size_sqm?.toString() ?? "");
+	const [bedrooms,     setBedrooms]    = useState(initial?.bedrooms?.toString() ?? "");
+	const [bathrooms,    setBathrooms]   = useState(initial?.bathrooms?.toString() ?? "");
+	const [listing_type, setListingType] = useState<ListingType>(initial?.listing_type ?? "for_rent");
+	const [status,       setStatus]      = useState<PropertyStatus>(initial?.status ?? "vacant");
+	const [list_price,   setListPrice]   = useState(initial?.list_price?.toString() ?? "");
+	const [currency,     setCurrency]    = useState(initial?.currency ?? "TRY");
+	const [notes,        setNotes]       = useState(initial?.notes ?? "");
 
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const addressPreview = joinAddress({ mahalle, street, buildingNo, apartmentNo, district });
+
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		setError(null);
+
+		const joined = addressPreview;
+		if (!joined) {
+			setError("Address is required — fill in at least one of the address fields.");
+			return;
+		}
+
 		setBusy(true);
 
 		const input: PropertyInput = {
 			homeowner_name: homeowner_name.trim(),
-			address_line: address_line.trim(),
+			address_line: joined,
 			city: city.trim() || null,
 			size_sqm: size_sqm.trim() ? Number(size_sqm) : null,
 			bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
@@ -102,7 +139,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 						value={homeowner_name}
 						onChange={(e) => setHomeownerName(e.target.value)}
 						className={inputClass}
-						placeholder="Jane Doe"
+						placeholder="Ahmet Yılmaz"
 					/>
 				</FormField>
 				<FormField label="Listing Type">
@@ -111,26 +148,79 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 						onChange={(e) => setListingType(e.target.value as ListingType)}
 						className={inputClass}
 					>
-						<option value="for_rent">For Rent</option>
-						<option value="for_sale">For Sale</option>
+						<option value="for_rent">For Rent (Kiralık)</option>
+						<option value="for_sale">For Sale (Satılık)</option>
 					</select>
 				</FormField>
 			</div>
 
-			<FormField label="Address">
-				<input
-					required
-					value={address_line}
-					onChange={(e) => setAddressLine(e.target.value)}
-					className={inputClass}
-					placeholder="123 Main Street, Apt 4B"
-				/>
-			</FormField>
+			{/* Address — Turkish parts */}
+			<div className="space-y-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+				<p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Address</p>
 
-			<div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-				<FormField label="City">
-					<input value={city} onChange={(e) => setCity(e.target.value)} className={inputClass} />
-				</FormField>
+				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<FormField label="Mahalle (Neighborhood)">
+						<input
+							value={mahalle}
+							onChange={(e) => setMahalle(e.target.value)}
+							className={inputClass}
+							placeholder="Atatürk"
+						/>
+					</FormField>
+					<FormField label="Sokak / Cadde (Street)">
+						<input
+							value={street}
+							onChange={(e) => setStreet(e.target.value)}
+							className={inputClass}
+							placeholder="Cumhuriyet Cd."
+						/>
+					</FormField>
+				</div>
+
+				<div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+					<FormField label="Bina No">
+						<input
+							value={buildingNo}
+							onChange={(e) => setBuildingNo(e.target.value)}
+							className={inputClass}
+							placeholder="42"
+						/>
+					</FormField>
+					<FormField label="Daire">
+						<input
+							value={apartmentNo}
+							onChange={(e) => setApartmentNo(e.target.value)}
+							className={inputClass}
+							placeholder="8"
+						/>
+					</FormField>
+					<FormField label="İlçe (District)">
+						<input
+							value={district}
+							onChange={(e) => setDistrict(e.target.value)}
+							className={inputClass}
+							placeholder="Kadıköy"
+						/>
+					</FormField>
+					<FormField label="İl (City)">
+						<input
+							value={city}
+							onChange={(e) => setCity(e.target.value)}
+							className={inputClass}
+							placeholder="İstanbul"
+						/>
+					</FormField>
+				</div>
+
+				{addressPreview && (
+					<p className="text-[11px] text-slate-500">
+						<span className="font-bold uppercase tracking-wider text-[9px] text-slate-400 mr-2">Preview</span>
+						{addressPreview}{city ? `, ${city}` : ""}
+					</p>
+				)}
+			</div>
+
+			<div className="grid grid-cols-3 gap-4">
 				<FormField label="Size (m²)">
 					<input
 						type="number"
@@ -183,12 +273,15 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					/>
 				</FormField>
 				<FormField label="Currency">
-					<input
+					<select
 						value={currency}
-						onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+						onChange={(e) => setCurrency(e.target.value)}
 						className={inputClass}
-						maxLength={4}
-					/>
+					>
+						<option value="TRY">TRY (₺)</option>
+						<option value="USD">USD ($)</option>
+						<option value="EUR">EUR (€)</option>
+					</select>
 				</FormField>
 			</div>
 

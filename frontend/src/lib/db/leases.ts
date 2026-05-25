@@ -31,7 +31,7 @@ export async function createLease(input: LeaseInput): Promise<Lease> {
 			...input,
 			owner_id: user.id,
 			deposit: input.deposit ?? 0,
-			currency: input.currency ?? "USD",
+			currency: input.currency ?? "TRY",
 		})
 		.select()
 		.single();

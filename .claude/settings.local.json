@@ -30,7 +30,10 @@
       "Bash(ls \"c:\\\\Users\\\\MnS\\\\Kagu\\\\demo\\\\RE\\\\frontend\\\\src\\\\lib\\\\permissions.ts\")",
       "Bash(curl -s -o nul -w \"HTTP %{http_code}\\\\n\" http://localhost:3217/)",
       "Bash(curl -s -o nul -w \"HTTP %{http_code}\\\\n\" http://localhost:3217/properties/new)",
-      "Bash(curl -s -o nul -w \"HTTP %{http_code}\\\\n\" http://localhost:3217/documents/new)"
+      "Bash(curl -s -o nul -w \"HTTP %{http_code}\\\\n\" http://localhost:3217/documents/new)",
+      "Bash(taskkill /PID 27040 /F)",
+      "PowerShell(Stop-Process -Id 27040 -Force)",
+      "Bash(awk -F= '{ if \\(length\\($0\\)==0\\) {print \"\\(blank line\\)\"} else {print NR\": \"$1\" = [\"length\\($2\\)\" chars]\"} }' \"c:/Users/MnS/Kagu/demo/RE/frontend/.env.local\")"
     ]
   }
 }

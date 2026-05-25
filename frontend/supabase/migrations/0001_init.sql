@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS public.properties (
   status          TEXT NOT NULL DEFAULT 'vacant'
                   CHECK (status IN ('vacant','occupied','sold')),
   list_price      NUMERIC(12,2),
-  currency        TEXT NOT NULL DEFAULT 'USD',
+  currency        TEXT NOT NULL DEFAULT 'TRY',
   notes           TEXT,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS public.leases (
   end_date          DATE,
   monthly_rent      NUMERIC(12,2) NOT NULL,
   deposit           NUMERIC(12,2) NOT NULL DEFAULT 0,
-  currency          TEXT NOT NULL DEFAULT 'USD',
+  currency          TEXT NOT NULL DEFAULT 'TRY',
   status            TEXT NOT NULL DEFAULT 'active'
                     CHECK (status IN ('active','ended','terminated')),
   document_pdf_path TEXT,

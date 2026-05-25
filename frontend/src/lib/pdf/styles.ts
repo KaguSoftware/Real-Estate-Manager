@@ -19,132 +19,263 @@ export const colors = {
 	emerald600: "#059669",
 	red500:   "#ef4444",
 	indigo500: "#6366f1",
+	indigo50:  "#eef2ff",
 	amber500: "#f59e0b",
 } as const;
 
 export const styles = StyleSheet.create({
 	page: {
-		paddingTop: 50,
-		paddingBottom: 65,
-		paddingHorizontal: 50,
+		paddingTop: 48,
+		paddingBottom: 60,
+		paddingHorizontal: 48,
 		fontFamily: "Helvetica",
 		fontSize: 10,
 		color: colors.slate800,
 		backgroundColor: colors.white,
 	},
+
+	// ── Header ─────────────────────────────────────────────────────────
 	headerRow: {
 		flexDirection: "row",
 		justifyContent: "space-between",
-		alignItems: "flex-start",
-		marginBottom: 12,
+		alignItems: "flex-end",
+		marginBottom: 10,
 	},
 	docType: {
-		fontSize: 22,
+		fontSize: 20,
 		fontFamily: "Helvetica-Bold",
 		color: colors.slate900,
-		letterSpacing: 2,
-		textTransform: "uppercase",
-		marginBottom: 4,
+		letterSpacing: 1.2,
+		marginBottom: 2,
 	},
 	refLine: {
-		fontSize: 8,
+		fontSize: 7.5,
 		color: colors.slate500,
-		letterSpacing: 1.5,
+		letterSpacing: 1.2,
 		textTransform: "uppercase",
+		fontFamily: "Helvetica-Bold",
 	},
-	dividerThick: {
+	dividerThin: {
 		width: "100%",
-		height: 3,
+		height: 1,
 		backgroundColor: colors.slate900,
-		marginBottom: 28,
+		marginBottom: 22,
 	},
-	labelSmall: {
+
+	// ── Hero card (property address up top) ────────────────────────────
+	hero: {
+		backgroundColor: colors.slate50,
+		borderLeftWidth: 3,
+		borderLeftColor: colors.slate900,
+		paddingVertical: 12,
+		paddingHorizontal: 16,
+		marginBottom: 22,
+	},
+	heroLabel: {
 		fontSize: 7,
 		color: colors.slate400,
 		textTransform: "uppercase",
-		letterSpacing: 2,
+		letterSpacing: 1.5,
 		fontFamily: "Helvetica-Bold",
-		marginBottom: 5,
+		marginBottom: 4,
 	},
+	heroAddress: {
+		fontSize: 13,
+		fontFamily: "Helvetica-Bold",
+		color: colors.slate900,
+		lineHeight: 1.35,
+	},
+	heroMeta: {
+		fontSize: 9,
+		color: colors.slate600,
+		marginTop: 4,
+	},
+
+	// ── Section primitives ─────────────────────────────────────────────
 	section: {
-		marginBottom: 22,
+		marginBottom: 18,
+	},
+	sectionHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 10,
 	},
 	sectionTitle: {
 		fontSize: 8,
-		color: colors.slate400,
+		color: colors.slate500,
 		textTransform: "uppercase",
-		letterSpacing: 1,
+		letterSpacing: 1.5,
 		fontFamily: "Helvetica-Bold",
-		marginBottom: 10,
+	},
+	sectionRule: {
+		flex: 1,
+		height: 0.5,
+		backgroundColor: colors.slate200,
+		marginLeft: 10,
 	},
 	bodyText: {
-		fontSize: 10,
+		fontSize: 9.5,
 		color: colors.slate700,
-		lineHeight: 1.6,
+		lineHeight: 1.55,
 	},
-	twoCol: {
+
+	// ── Info card grid ─────────────────────────────────────────────────
+	cardGrid: {
 		flexDirection: "row",
-		gap: 24,
+		gap: 12,
 	},
-	col: { flex: 1 },
-	fieldLabel: {
+	card: {
+		flex: 1,
+		backgroundColor: colors.slate50,
+		borderRadius: 4,
+		paddingVertical: 12,
+		paddingHorizontal: 14,
+	},
+	cardTitle: {
 		fontSize: 7,
 		color: colors.slate400,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
 		fontFamily: "Helvetica-Bold",
-		marginBottom: 3,
-	},
-	fieldValue: {
-		fontSize: 11,
-		fontFamily: "Helvetica-Bold",
-		color: colors.slate900,
-		marginBottom: 12,
-	},
-	termRow: {
-		flexDirection: "row",
 		marginBottom: 8,
 	},
-	termBadge: {
-		width: 16,
-		height: 16,
-		borderRadius: 8,
-		backgroundColor: colors.slate100,
-		alignItems: "center",
-		justifyContent: "center",
-		marginRight: 10,
-		marginTop: 1,
+	cardPrimary: {
+		fontSize: 12,
+		fontFamily: "Helvetica-Bold",
+		color: colors.slate900,
+		marginBottom: 6,
+		lineHeight: 1.3,
 	},
-	termNumber: {
+	cardLine: {
+		fontSize: 9,
+		color: colors.slate600,
+		lineHeight: 1.45,
+	},
+
+	// ── KV pairs (compact, inline) ─────────────────────────────────────
+	kvRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		paddingVertical: 5,
+		borderBottomWidth: 0.5,
+		borderBottomColor: colors.slate100,
+	},
+	kvRowLast: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		paddingVertical: 5,
+	},
+	kvLabel: {
+		fontSize: 8.5,
+		color: colors.slate500,
+		fontFamily: "Helvetica-Bold",
+		textTransform: "uppercase",
+		letterSpacing: 0.5,
+	},
+	kvValue: {
+		fontSize: 9.5,
+		color: colors.slate900,
+		fontFamily: "Helvetica-Bold",
+	},
+
+	// ── Highlight box (rent + deposit) ─────────────────────────────────
+	highlightRow: {
+		flexDirection: "row",
+		gap: 12,
+		marginBottom: 6,
+	},
+	highlightBox: {
+		flex: 1,
+		backgroundColor: colors.indigo50,
+		borderRadius: 4,
+		paddingVertical: 14,
+		paddingHorizontal: 16,
+		alignItems: "flex-start",
+	},
+	highlightLabel: {
 		fontSize: 7,
+		color: colors.indigo500,
+		textTransform: "uppercase",
+		letterSpacing: 1.5,
+		fontFamily: "Helvetica-Bold",
+		marginBottom: 6,
+	},
+	highlightValue: {
+		fontSize: 18,
+		fontFamily: "Helvetica-Bold",
+		color: colors.slate900,
+	},
+	highlightCurrency: {
+		fontSize: 9,
 		fontFamily: "Helvetica-Bold",
 		color: colors.slate500,
+		marginLeft: 4,
 	},
-	termText: {
-		fontSize: 9.5,
-		color: colors.slate600,
-		lineHeight: 1.55,
+
+	// ── Clauses list ───────────────────────────────────────────────────
+	clauseRow: {
+		flexDirection: "row",
+		paddingVertical: 7,
+		paddingHorizontal: 12,
+		alignItems: "flex-start",
+	},
+	clauseRowAlt: {
+		flexDirection: "row",
+		paddingVertical: 7,
+		paddingHorizontal: 12,
+		alignItems: "flex-start",
+		backgroundColor: colors.slate50,
+	},
+	clauseNumber: {
+		width: 22,
+		fontSize: 9,
+		fontFamily: "Helvetica-Bold",
+		color: colors.slate400,
+	},
+	clauseText: {
 		flex: 1,
+		fontSize: 9,
+		color: colors.slate700,
+		lineHeight: 1.5,
 	},
+
+	// ── Signatures ─────────────────────────────────────────────────────
 	signatureRow: {
 		flexDirection: "row",
-		gap: 40,
-		marginTop: 8,
+		gap: 32,
+		marginTop: 12,
+	},
+	signatureBox: {
+		flex: 1,
+		paddingTop: 30,
 	},
 	signatureLine: {
 		borderBottomWidth: 1,
-		borderBottomColor: colors.slate400,
+		borderBottomColor: colors.slate800,
 		marginBottom: 6,
-		height: 36,
 	},
+	signatureLabel: {
+		fontSize: 7,
+		color: colors.slate500,
+		textTransform: "uppercase",
+		letterSpacing: 1.5,
+		fontFamily: "Helvetica-Bold",
+	},
+	signatureSubLabel: {
+		fontSize: 7,
+		color: colors.slate400,
+		marginTop: 2,
+	},
+
+	// ── Footer ─────────────────────────────────────────────────────────
 	footer: {
 		position: "absolute",
-		bottom: 28,
-		left: 50,
-		right: 50,
+		bottom: 24,
+		left: 48,
+		right: 48,
 		borderTopWidth: 0.5,
 		borderTopColor: colors.slate200,
-		paddingTop: 10,
+		paddingTop: 8,
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
@@ -153,7 +284,7 @@ export const styles = StyleSheet.create({
 		fontSize: 6.5,
 		color: colors.slate400,
 		textTransform: "uppercase",
-		letterSpacing: 2,
+		letterSpacing: 1.5,
 		fontFamily: "Helvetica-Bold",
 	},
 	pageNumber: {

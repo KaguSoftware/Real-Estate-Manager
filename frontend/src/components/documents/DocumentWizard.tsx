@@ -14,10 +14,12 @@ import type { Property, LeaseTerm } from "@/src/lib/db/types";
 import { PropertyPickerCardList } from "./PropertyPickerCardList";
 import { FormField, inputClass } from "@/src/components/ui/FormField";
 
-// Lazy import the heavy PDFViewer so it's only loaded on the preview step.
-const PDFViewer = dynamic(
-	() => import("@react-pdf/renderer").then((m) => m.PDFViewer),
-	{ ssr: false, loading: () => <div className="text-xs text-slate-400">Loading preview…</div> },
+// Lazy-loaded BlobProvider from @react-pdf/renderer. We embed the blob URL
+// in an iframe — more reliable across browsers than PDFViewer's built-in
+// canvas renderer, which can fall back to the "PDF attachment" download UI.
+const PDFBlobProvider = dynamic(
+	() => import("@react-pdf/renderer").then((m) => m.BlobProvider),
+	{ ssr: false, loading: () => <div className="text-xs text-slate-400 p-6">Loading preview…</div> },
 );
 
 type Step = "type" | "property" | "details" | "preview";
@@ -85,7 +87,7 @@ export function DocumentWizard() {
 	const [startDate, setStartDate] = useState(todayISO());
 	const [monthlyRent, setMonthlyRent] = useState("");
 	const [deposit, setDeposit] = useState("0");
-	const [currency, setCurrency] = useState("USD");
+	const [currency, setCurrency] = useState("TRY");
 	const [additionalClauses, setAdditionalClauses] = useState("");
 
 	const [submitting, setSubmitting] = useState(false);
@@ -327,10 +329,32 @@ export function DocumentWizard() {
 			{step === "preview" && rentalData && (
 				<div className="space-y-4">
 					<h2 className="text-base font-bold text-slate-900">Review & generate</h2>
-					<div className="h-[70vh] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
-						<PDFViewer width="100%" height="100%" showToolbar={false}>
-							<PDFDocument kind="rental" data={rentalData} />
-						</PDFViewer>
+					<div className="h-[75vh] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
+						<PDFBlobProvider document={<PDFDocument kind="rental" data={rentalData} />}>
+							{({ url, loading, error: blobError }) => {
+								if (loading || !url) {
+									return (
+										<div className="h-full flex items-center justify-center">
+											<span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+										</div>
+									);
+								}
+								if (blobError) {
+									return (
+										<div className="h-full flex items-center justify-center text-xs text-red-600 p-6">
+											Preview failed to render: {String(blobError)}
+										</div>
+									);
+								}
+								return (
+									<iframe
+										src={`${url}#toolbar=0&navpanes=0`}
+										className="w-full h-full border-0"
+										title="Rental agreement preview"
+									/>
+								);
+							}}
+						</PDFBlobProvider>
 					</div>
 					<div className="flex justify-between pt-2">
 						<button
