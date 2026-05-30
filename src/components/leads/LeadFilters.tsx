@@ -5,9 +5,9 @@ import { useAppStore } from "@/src/store";
 import type { LeadStatus } from "@/src/lib/db/types";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "./leadStatus";
 import { Input, Select, Button } from "@/src/components/ui";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 
-export function LeadFilters() {
+export function LeadFilters({ onAdd }: { onAdd?: () => void }) {
 	const leadFilters = useAppStore((s) => s.leadFilters);
 	const setLeadFilter = useAppStore((s) => s.setLeadFilter);
 	const resetLeadFilters = useAppStore((s) => s.resetLeadFilters);
@@ -49,6 +49,13 @@ export function LeadFilters() {
 			{hasActiveFilter && (
 				<Button variant="ghost" size="sm" onClick={() => { setQ(""); resetLeadFilters(); }}>
 					Clear
+				</Button>
+			)}
+
+			{onAdd && (
+				<Button size="sm" onClick={onAdd} className="hidden sm:inline-flex sm:ml-auto shrink-0">
+					<Plus className="w-4 h-4" />
+					Add client
 				</Button>
 			)}
 		</div>

@@ -6,6 +6,7 @@ import { useAppStore } from "@/src/store";
 import { AuthModal } from "@/src/components/auth/AuthModal";
 import { NavDrawer } from "./NavDrawer";
 import { Button } from "./Button";
+import { AddMenu } from "./AddMenu";
 import { cn } from "./cn";
 
 interface AppShellProps {
@@ -50,6 +51,7 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 
 					<div className="flex items-center gap-2">
 						{actions}
+						{user && <AddMenu />}
 						{user ? (
 							<button
 								onClick={() => setDrawerOpen(true)}

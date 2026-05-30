@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { listLeads } from "@/src/lib/db/leads";
-import { AppShell, Button, Card } from "@/src/components/ui";
+import { AppShell, Card } from "@/src/components/ui";
 import { LeadFilters } from "./LeadFilters";
 import { LeadTable } from "./LeadTable";
 import { LeadForm } from "./LeadForm";
@@ -11,13 +12,26 @@ import type { Lead } from "@/src/lib/db/types";
 import { Plus } from "lucide-react";
 
 export function LeadDashboard() {
+	const router = useRouter();
+	const searchParams = useSearchParams();
 	const user = useAppStore((s) => s.user);
 	const leadFilters = useAppStore((s) => s.leadFilters);
 	const setLeads = useAppStore((s) => s.setLeads);
 	const setIsLoadingLeads = useAppStore((s) => s.setIsLoadingLeads);
 
+	// Open the create-client modal when arriving via the global Add menu (/leads?new=1).
+	// Read the flag once at mount via a lazy initializer (no setState-in-effect)…
+	const openNew = searchParams.get("new") === "1";
 	const [error, setError] = useState<string | null>(null);
-	const [editing, setEditing] = useState<{ mode: "create" } | { mode: "edit"; lead: Lead } | null>(null);
+	const [editing, setEditing] = useState<{ mode: "create" } | { mode: "edit"; lead: Lead } | null>(
+		() => (openNew ? { mode: "create" } : null),
+	);
+
+	// …then strip the flag from the URL so a refresh / back doesn't reopen it.
+	// router.replace is an external-system call, not a setState, so this is effect-safe.
+	useEffect(() => {
+		if (openNew) router.replace("/leads");
+	}, [openNew, router]);
 
 	useEffect(() => {
 		if (!user) return;
@@ -39,18 +53,6 @@ export function LeadDashboard() {
 			title="Clients"
 			subtitle="Leads, follow-ups & interests"
 			width="7xl"
-			actions={
-				user && (
-					<Button
-						size="sm"
-						onClick={() => setEditing({ mode: "create" })}
-						className="hidden sm:inline-flex"
-					>
-						<Plus className="w-4 h-4" />
-						Add
-					</Button>
-				)
-			}
 		>
 			{!user ? (
 				<Card className="p-10 text-center">
@@ -59,7 +61,7 @@ export function LeadDashboard() {
 				</Card>
 			) : (
 				<>
-					<LeadFilters />
+					<LeadFilters onAdd={() => setEditing({ mode: "create" })} />
 
 					{error && (
 						<div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">

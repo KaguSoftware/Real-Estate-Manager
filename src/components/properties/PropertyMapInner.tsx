@@ -12,6 +12,8 @@ interface MappedProperty {
 	lon: number;
 	address_line: string;
 	homeowner_name: string;
+	price: string | null;
+	listingLabel: string;
 }
 
 // ── Pin geometry (lucide MapPin path) ───────────────────────────────────────
@@ -127,10 +129,12 @@ function CellMarkers({
 			//   - N properties: "N properties — click to choose".
 			if (cell.items.length === 1) {
 				const p = cell.items[0];
+				const meta = [p.listingLabel, p.price].filter(Boolean).join(" · ");
 				marker.bindTooltip(
 					`<div style="font-size:11px;line-height:1.35">` +
 						`<div style="font-weight:600;color:#0f172a">${escapeHtml(p.homeowner_name)}</div>` +
 						`<div style="color:#475569;margin-top:2px">${escapeHtml(p.address_line)}</div>` +
+						(meta ? `<div style="color:#64748b;margin-top:2px">${escapeHtml(meta)}</div>` : "") +
 						`</div>`,
 					{ direction: "top", offset: L.point(0, -PIN_SIZE + 4), opacity: 1 },
 				);
@@ -321,6 +325,8 @@ export function PropertyMapInner({ properties }: { properties: Property[] }) {
 					lon: Number(p.longitude),
 					address_line: p.address_line,
 					homeowner_name: p.homeowner_name,
+					price: p.list_price != null ? `${p.list_price.toLocaleString()} ${p.currency}` : null,
+					listingLabel: p.listing_type === "for_rent" ? "For Rent" : "For Sale",
 				}))
 				.filter(
 					(p) =>

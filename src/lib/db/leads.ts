@@ -25,12 +25,13 @@ export interface LeadInput {
 
 async function requireUser() {
 	const supabase = createClient();
+	// getSession() is local (no auth-server round-trip); RLS enforces authorization.
 	const {
-		data: { user },
+		data: { session },
 		error,
-	} = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
+	} = await supabase.auth.getSession();
+	if (error || !session?.user) throw new Error("Not authenticated");
+	return { supabase, user: session.user };
 }
 
 export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {

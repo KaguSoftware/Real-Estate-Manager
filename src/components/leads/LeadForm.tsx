@@ -99,9 +99,9 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 	function findMatches() {
 		setFilters({
 			listing_type: pref_listing_type || "all",
-			nitelik: pref_nitelik.trim(),
-			min_bedrooms: pref_min_bedrooms ? Number(pref_min_bedrooms) : null,
-			location: pref_location.trim(),
+			nitelik: pref_nitelik.trim() ? [pref_nitelik.trim()] : [],
+			furnished: "all",
+			location: pref_location.trim() ? [pref_location.trim()] : [],
 			status: "all",
 			q: "",
 		});

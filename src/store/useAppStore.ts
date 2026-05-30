@@ -7,22 +7,24 @@ export interface UserProfile {
 	app_role?: "admin" | "member" | "client";
 }
 
+export type FurnishedFilter = "all" | "yes" | "no";
+
 interface Filters {
 	listing_type: ListingType | "all";
 	status: PropertyStatus | "all";
 	q: string;
-	nitelik: string;
-	min_bedrooms: number | null;
-	location: string;
+	nitelik: string[];
+	furnished: FurnishedFilter;
+	location: string[];
 }
 
 const EMPTY_FILTERS: Filters = {
 	listing_type: "all",
 	status: "all",
 	q: "",
-	nitelik: "",
-	min_bedrooms: null,
-	location: "",
+	nitelik: [],
+	furnished: "all",
+	location: [],
 };
 
 interface LeadFilters {

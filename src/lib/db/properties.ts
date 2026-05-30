@@ -17,12 +17,12 @@ export interface PropertyFilter {
 	listing_type?: ListingType;
 	status?: PropertyStatus;
 	q?: string;
-	/** Property type / nitelik notation, e.g. "3+1". Substring match. */
-	nitelik?: string;
-	/** Minimum bedroom count. */
-	min_bedrooms?: number;
-	/** Free-text location — matches city, mahalle, or mevkii. */
-	location?: string;
+	/** Property types / nitelik notation, e.g. ["3+1", "2+1"]. Substring match, OR-combined. */
+	nitelik?: string[];
+	/** Furnished flag — true = furnished only, false = unfurnished only, undefined = any. */
+	furnished?: boolean;
+	/** Locations — each matches city, mahalle, or mevkii. OR-combined across all values. */
+	location?: string[];
 }
 
 export interface PropertyInput {
@@ -37,6 +37,7 @@ export interface PropertyInput {
 	list_price?: number | null;
 	currency?: string;
 	notes?: string | null;
+	furnished?: boolean | null;
 	// Turkish tapu (title-deed) fields — optional.
 	nitelik?: string | null;
 	ada_no?: string | null;
@@ -49,12 +50,15 @@ export interface PropertyInput {
 
 async function requireUser() {
 	const supabase = createClient();
+	// getSession() reads the locally-cached session (no auth-server round-trip),
+	// so list/CRUD calls don't pay network latency just to confirm a session.
+	// RLS still enforces authorization on every query.
 	const {
-		data: { user },
+		data: { session },
 		error,
-	} = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
+	} = await supabase.auth.getSession();
+	if (error || !session?.user) throw new Error("Not authenticated");
+	return { supabase, user: session.user };
 }
 
 export async function listProperties(filter: PropertyFilter = {}): Promise<Property[]> {
@@ -67,17 +71,24 @@ export async function listProperties(filter: PropertyFilter = {}): Promise<Prope
 		const needle = `%${filter.q.trim()}%`;
 		q = q.or(`homeowner_name.ilike.${needle},address_line.ilike.${needle},city.ilike.${needle}`);
 	}
-	if (filter.nitelik && filter.nitelik.trim()) {
-		q = q.ilike("nitelik", `%${filter.nitelik.trim()}%`);
+	const niteliks = (filter.nitelik ?? []).map((n) => n.trim()).filter(Boolean);
+	if (niteliks.length > 0) {
+		// Any of the selected types (OR), each a case-insensitive substring match.
+		q = q.or(niteliks.map((n) => `nitelik.ilike.%${n}%`).join(","));
 	}
-	if (filter.min_bedrooms != null) {
-		q = q.gte("bedrooms", filter.min_bedrooms);
+	if (filter.furnished != null) {
+		q = q.eq("furnished", filter.furnished);
 	}
-	if (filter.location && filter.location.trim()) {
-		const loc = `%${filter.location.trim()}%`;
-		// Multiple .or() groups are AND-combined by PostgREST, so this matches
-		// the location term across city/mahalle/mevkii independently of `q`.
-		q = q.or(`city.ilike.${loc},mahalle.ilike.${loc},mevkii.ilike.${loc}`);
+	const locations = (filter.location ?? []).map((l) => l.trim()).filter(Boolean);
+	if (locations.length > 0) {
+		// Each location may match city / mahalle / mevkii; all values are OR-combined.
+		// Multiple .or() groups are AND-combined by PostgREST, so this is independent of `q`.
+		const clauses = locations.flatMap((loc) => [
+			`city.ilike.%${loc}%`,
+			`mahalle.ilike.%${loc}%`,
+			`mevkii.ilike.%${loc}%`,
+		]);
+		q = q.or(clauses.join(","));
 	}
 
 	const { data, error } = await q;

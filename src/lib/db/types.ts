@@ -27,6 +27,8 @@ export interface Property {
 	size_sqm: number | null;
 	bedrooms: number | null;
 	bathrooms: number | null;
+	/** NULL = unknown; true = furnished; false = unfurnished. */
+	furnished: boolean | null;
 	listing_type: ListingType;
 	status: PropertyStatus;
 	list_price: number | null;

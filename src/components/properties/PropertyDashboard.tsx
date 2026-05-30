@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { listProperties } from "@/src/lib/db/properties";
-import { AppShell, Button, Card } from "@/src/components/ui";
+import { AppShell, Card } from "@/src/components/ui";
 import { PropertyFilters } from "./PropertyFilters";
 import { PropertyTable } from "./PropertyTable";
 import { PropertyMap } from "./PropertyMap";
@@ -28,9 +28,9 @@ export function PropertyDashboard() {
 			listing_type: filters.listing_type === "all" ? undefined : filters.listing_type,
 			status: filters.status === "all" ? undefined : filters.status,
 			q: filters.q || undefined,
-			nitelik: filters.nitelik || undefined,
-			min_bedrooms: filters.min_bedrooms ?? undefined,
-			location: filters.location || undefined,
+			nitelik: filters.nitelik.length ? filters.nitelik : undefined,
+			furnished: filters.furnished === "all" ? undefined : filters.furnished === "yes",
+			location: filters.location.length ? filters.location : undefined,
 		})
 			.then((rows) => {
 				if (!cancelled) setProperties(rows);
@@ -44,25 +44,16 @@ export function PropertyDashboard() {
 		return () => {
 			cancelled = true;
 		};
-	}, [user, filters.listing_type, filters.status, filters.q, filters.nitelik, filters.min_bedrooms, filters.location, setProperties, setIsLoadingProperties]);
+		// Depend on serialized array values so the query only refires on real changes
+		// (a new [] reference with the same contents won't trigger a refetch).
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [user, filters.listing_type, filters.status, filters.q, filters.nitelik.join("|"), filters.furnished, filters.location.join("|"), setProperties, setIsLoadingProperties]);
 
 	return (
 		<AppShell
 			title="Properties"
 			subtitle="Listings, tenants & contracts"
 			width="7xl"
-			actions={
-				user && (
-					<Button
-						size="sm"
-						onClick={() => router.push("/properties/new")}
-						className="hidden sm:inline-flex"
-					>
-						<Plus className="w-4 h-4" />
-						Add
-					</Button>
-				)
-			}
 		>
 			{!user ? (
 				<Card className="p-10 text-center">

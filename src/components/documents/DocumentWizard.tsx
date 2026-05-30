@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAppStore } from "@/src/store";
 import { listEligiblePropertiesForDocType, updateProperty } from "@/src/lib/db/properties";
+import { listLeads } from "@/src/lib/db/leads";
 import { createTenant } from "@/src/lib/db/tenants";
 import { createLease, computeLeaseEndDate } from "@/src/lib/db/leases";
 import { createSale } from "@/src/lib/db/sales";
 import { exportToPDF } from "@/src/lib/pdf";
 import type { DocKind, RentalPDFData, SalesPDFData } from "@/src/lib/pdf";
 import { PDFDocument } from "@/src/lib/pdf";
-import type { Property, LeaseTerm } from "@/src/lib/db/types";
+import type { Property, LeaseTerm, Lead } from "@/src/lib/db/types";
 import { PropertyPickerCardList } from "./PropertyPickerCardList";
+import { ClientPickerCardList } from "./ClientPickerCardList";
 import { FormField, Input, Textarea, Select, Button, cn } from "@/src/components/ui";
 import {
 	SalesDetailsForm,
@@ -26,7 +28,9 @@ const PDFBlobProvider = dynamic(
 	{ ssr: false, loading: () => <div className="text-sm text-slate-400 p-6">Loading preview…</div> },
 );
 
-type Step = "type" | "property" | "details" | "preview";
+type Step = "type" | "property" | "client" | "details" | "preview";
+
+const STEPS: Step[] = ["type", "property", "client", "details", "preview"];
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -131,6 +135,11 @@ export function DocumentWizard() {
 		[properties, propertyId],
 	);
 
+	// Step "client" state — optional. Picking a client prefills the tenant/buyer fields.
+	const [clients, setClients] = useState<Lead[]>([]);
+	const [loadingClients, setLoadingClients] = useState(false);
+	const [clientId, setClientId] = useState<string | null>(null);
+
 	// Step 3 — rental state
 	const [tenantName, setTenantName] = useState("");
 	const [tenantEmail, setTenantEmail] = useState("");
@@ -162,6 +171,40 @@ export function DocumentWizard() {
 			.catch((e) => setError(e instanceof Error ? e.message : String(e)))
 			.finally(() => setLoadingProperties(false));
 	}, [step, kind]);
+
+	// Load clients whenever we enter the client step.
+	useEffect(() => {
+		if (step !== "client") return;
+		setLoadingClients(true);
+		setError(null);
+		listLeads()
+			.then(setClients)
+			.catch((e) => setError(e instanceof Error ? e.message : String(e)))
+			.finally(() => setLoadingClients(false));
+	}, [step]);
+
+	// Prefill the tenant (rental) / buyer (sales) party from a picked client.
+	// Only fills empty fields so it never clobbers values the user already typed.
+	function applyClient(id: string | null) {
+		setClientId(id);
+		if (!id) return;
+		const lead = clients.find((c) => c.id === id);
+		if (!lead) return;
+		const phone = lead.phone ?? "";
+		const email = lead.email ?? "";
+		if (kind === "rental") {
+			if (!tenantName.trim()) setTenantName(lead.full_name);
+			if (!tenantPhone.trim() && phone) setTenantPhone(phone);
+			if (!tenantEmail.trim() && email) setTenantEmail(email);
+		} else if (kind === "sales") {
+			setSalesState((s) => ({
+				...s,
+				buyerName: s.buyerName.trim() ? s.buyerName : lead.full_name,
+				buyerPhone: s.buyerPhone.trim() ? s.buyerPhone : phone,
+				buyerEmail: s.buyerEmail.trim() ? s.buyerEmail : email,
+			}));
+		}
+	}
 
 	// When property is chosen, prefill rental-specific fields…
 	useEffect(() => {
@@ -300,13 +343,13 @@ export function DocumentWizard() {
 		kind === "rental" ? rentalData : salesData;
 	const previewLabel = kind === "rental" ? "Rental agreement preview" : "Sales agreement preview";
 
-	const stepIndex = (["type", "property", "details", "preview"] as Step[]).indexOf(step);
+	const stepIndex = STEPS.indexOf(step);
 
 	return (
-		<div className="max-w-3xl mx-auto">
+		<div>
 			{/* Stepper */}
 			<ol className="flex items-center gap-1.5 mb-6 text-xs font-semibold">
-				{(["type", "property", "details", "preview"] as Step[]).map((s, i) => (
+				{STEPS.map((s, i) => (
 					<li key={s} className="flex items-center gap-1.5 min-w-0">
 						<span
 							className={cn(
@@ -319,7 +362,7 @@ export function DocumentWizard() {
 							)}
 						>{i + 1}</span>
 						<span className={cn("capitalize hidden sm:inline", step === s ? "text-slate-900" : "text-slate-400")}>{s}</span>
-						{i < 3 && <span className="text-slate-300">›</span>}
+						{i < STEPS.length - 1 && <span className="text-slate-300">›</span>}
 					</li>
 				))}
 			</ol>
@@ -334,14 +377,14 @@ export function DocumentWizard() {
 					<h2 className="text-lg font-bold text-slate-900">Choose a document type</h2>
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 						<button
-							onClick={() => { setKind("rental"); setPropertyId(null); setStep("property"); }}
+							onClick={() => { setKind("rental"); setPropertyId(null); setClientId(null); setStep("property"); }}
 							className="text-left p-5 rounded-2xl border-2 border-slate-200 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
 							<p className="text-base font-bold text-slate-900">Rental Agreement</p>
 							<p className="text-sm text-slate-500 mt-1">Lease a vacant for-rent property to a new tenant.</p>
 						</button>
 						<button
-							onClick={() => { setKind("sales"); setPropertyId(null); setStep("property"); }}
+							onClick={() => { setKind("sales"); setPropertyId(null); setClientId(null); setStep("property"); }}
 							className="text-left p-5 rounded-2xl border-2 border-slate-200 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
 							<p className="text-base font-bold text-slate-900">Sales Agreement</p>
@@ -377,12 +420,44 @@ export function DocumentWizard() {
 					)}
 					<div className="flex justify-between gap-2 pt-4">
 						<Button variant="ghost" onClick={() => setStep("type")}>← Back</Button>
-						<Button onClick={() => setStep("details")} disabled={!propertyId}>Continue →</Button>
+						<Button onClick={() => setStep("client")} disabled={!propertyId}>Continue →</Button>
 					</div>
 				</div>
 			)}
 
-			{/* Step 3: details */}
+			{/* Step 3: client (optional prefill of the tenant/buyer party) */}
+			{step === "client" && (
+				<div className="space-y-4">
+					<div>
+						<h2 className="text-lg font-bold text-slate-900">Pick a client</h2>
+						<p className="text-sm text-slate-500 mt-1">
+							Optional — selecting a client prefills the {kind === "rental" ? "tenant" : "buyer"} details.
+							You can also skip and enter them manually.
+						</p>
+					</div>
+					{loadingClients ? (
+						<div className="flex justify-center py-8">
+							<span className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+						</div>
+					) : (
+						<ClientPickerCardList
+							clients={clients}
+							selectedId={clientId}
+							onSelect={applyClient}
+							emptyHint="Add clients from the Clients page to prefill documents from them."
+						/>
+					)}
+					<div className="flex justify-between gap-2 pt-4">
+						<Button variant="ghost" onClick={() => setStep("property")}>← Back</Button>
+						<div className="flex gap-2">
+							<Button variant="ghost" onClick={() => { applyClient(null); setStep("details"); }}>Skip</Button>
+							<Button onClick={() => setStep("details")}>Continue →</Button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Step 4: details */}
 			{step === "details" && property && kind === "rental" && (
 				<div className="space-y-5">
 					<div>
@@ -436,7 +511,7 @@ export function DocumentWizard() {
 					</FormField>
 
 					<div className="flex justify-between gap-2 pt-4">
-						<Button variant="ghost" onClick={() => setStep("property")}>← Back</Button>
+						<Button variant="ghost" onClick={() => setStep("client")}>← Back</Button>
 						<Button onClick={() => setStep("preview")} disabled={!detailsValid}>Preview →</Button>
 					</div>
 				</div>
@@ -452,7 +527,7 @@ export function DocumentWizard() {
 					<SalesDetailsForm state={salesState} onChange={patchSales} />
 
 					<div className="flex justify-between gap-2 pt-4">
-						<Button variant="ghost" onClick={() => setStep("property")}>← Back</Button>
+						<Button variant="ghost" onClick={() => setStep("client")}>← Back</Button>
 						<Button onClick={() => setStep("preview")} disabled={!detailsValid}>Preview →</Button>
 					</div>
 				</div>

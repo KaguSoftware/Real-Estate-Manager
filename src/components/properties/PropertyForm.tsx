@@ -61,6 +61,8 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const [size_sqm,     setSizeSqm]     = useState(initial?.size_sqm?.toString() ?? "");
 	const [bedrooms,     setBedrooms]    = useState(initial?.bedrooms?.toString() ?? "");
 	const [bathrooms,    setBathrooms]   = useState(initial?.bathrooms?.toString() ?? "");
+	// "" = unknown, "yes" = furnished, "no" = unfurnished.
+	const [furnished,    setFurnished]   = useState(initial?.furnished == null ? "" : initial.furnished ? "yes" : "no");
 	const [listing_type, setListingType] = useState<ListingType>(initial?.listing_type ?? "for_rent");
 	const [status,       setStatus]      = useState<PropertyStatus>(initial?.status ?? "vacant");
 	const [list_price,   setListPrice]   = useState(initial?.list_price?.toString() ?? "");
@@ -146,6 +148,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			size_sqm: size_sqm.trim() ? Number(size_sqm) : null,
 			bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
 			bathrooms: bathrooms.trim() ? Number(bathrooms) : null,
+			furnished: furnished === "" ? null : furnished === "yes",
 			listing_type,
 			status,
 			list_price: list_price.trim() ? Number(list_price) : null,
@@ -319,7 +322,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 				)}
 			</div>
 
-			<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+			<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
 				<FormField label="Size (m²)">
 					<Input type="number" inputMode="numeric" min="0" value={size_sqm} onChange={(e) => setSizeSqm(e.target.value)} />
 				</FormField>
@@ -328,6 +331,13 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 				</FormField>
 				<FormField label="Bathrooms">
 					<Input type="number" inputMode="numeric" min="0" value={bathrooms} onChange={(e) => setBathrooms(e.target.value)} />
+				</FormField>
+				<FormField label="Furnished">
+					<Select value={furnished} onChange={(e) => setFurnished(e.target.value)}>
+						<option value="">Not specified</option>
+						<option value="yes">Furnished</option>
+						<option value="no">Unfurnished</option>
+					</Select>
 				</FormField>
 			</div>
 

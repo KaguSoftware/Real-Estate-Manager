@@ -1,77 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
-import { Input, Select, Button, Sheet, FormField, cn } from "@/src/components/ui";
-import { SlidersHorizontal, Search } from "lucide-react";
+import { Input, Select, Button, Sheet, FormField, MultiSelect, cn } from "@/src/components/ui";
+import { SlidersHorizontal, Search, Plus } from "lucide-react";
 
 export function PropertyFilters() {
+	const router = useRouter();
 	const filters = useAppStore((s) => s.filters);
+	const properties = useAppStore((s) => s.properties);
 	const setFilter = useAppStore((s) => s.setFilter);
 	const resetFilters = useAppStore((s) => s.resetFilters);
 
 	// Local input state so we can debounce the text writes into the store.
 	const [q, setQ] = useState(filters.q);
-	const [nitelik, setNitelik] = useState(filters.nitelik);
-	const [location, setLocation] = useState(filters.location);
 	const [sheetOpen, setSheetOpen] = useState(false);
 
-	// Keep local inputs in sync when filters are set externally
+	// Keep local input in sync when filters are set externally
 	// (e.g. a lead's "Find matches" pre-fills them before navigation).
 	useEffect(() => { setQ(filters.q); }, [filters.q]);
-	useEffect(() => { setNitelik(filters.nitelik); }, [filters.nitelik]);
-	useEffect(() => { setLocation(filters.location); }, [filters.location]);
 
 	useEffect(() => {
 		const id = setTimeout(() => { if (q !== filters.q) setFilter("q", q); }, 250);
 		return () => clearTimeout(id);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [q]);
-	useEffect(() => {
-		const id = setTimeout(() => { if (nitelik !== filters.nitelik) setFilter("nitelik", nitelik); }, 250);
-		return () => clearTimeout(id);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [nitelik]);
-	useEffect(() => {
-		const id = setTimeout(() => { if (location !== filters.location) setFilter("location", location); }, 250);
-		return () => clearTimeout(id);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [location]);
+
+	// Dropdown options derived from the properties currently loaded — the list
+	// self-populates and grows as more properties are added.
+	const typeOptions = useMemo(
+		() => uniqueSorted(properties.map((p) => p.nitelik)),
+		[properties],
+	);
+	const locationOptions = useMemo(
+		() => uniqueSorted(properties.flatMap((p) => [p.mahalle, p.mevkii, p.city])),
+		[properties],
+	);
 
 	const activeCount =
 		(filters.listing_type !== "all" ? 1 : 0) +
 		(filters.status !== "all" ? 1 : 0) +
-		(filters.nitelik !== "" ? 1 : 0) +
-		(filters.min_bedrooms != null ? 1 : 0) +
-		(filters.location !== "" ? 1 : 0);
+		(filters.nitelik.length > 0 ? 1 : 0) +
+		(filters.furnished !== "all" ? 1 : 0) +
+		(filters.location.length > 0 ? 1 : 0);
 	const hasActiveFilter = activeCount > 0 || filters.q !== "";
 
 	function clearAll() {
-		setQ(""); setNitelik(""); setLocation(""); resetFilters();
+		setQ(""); resetFilters();
 	}
 
 	// The secondary controls — reused inline on desktop and inside the sheet on mobile.
 	const controls = (stacked: boolean) => (
 		<div className={cn(stacked ? "space-y-4" : "contents")}>
 			<FieldWrap stacked={stacked} label="Type">
-				<Input placeholder="e.g. 3+1" value={nitelik} onChange={(e) => setNitelik(e.target.value)}
-					className={stacked ? "" : "sm:w-28"} />
+				<MultiSelect
+					label="Any type"
+					options={typeOptions}
+					selected={filters.nitelik}
+					onChange={(next) => setFilter("nitelik", next)}
+					className={stacked ? "" : "sm:w-36"}
+				/>
 			</FieldWrap>
 			<FieldWrap stacked={stacked} label="Location / site">
-				<Input placeholder="Neighborhood or site" value={location} onChange={(e) => setLocation(e.target.value)}
-					className={stacked ? "" : "sm:w-44"} />
+				<MultiSelect
+					label="Any location"
+					options={locationOptions}
+					selected={filters.location}
+					onChange={(next) => setFilter("location", next)}
+					className={stacked ? "" : "sm:w-48"}
+				/>
 			</FieldWrap>
-			<FieldWrap stacked={stacked} label="Bedrooms">
+			<FieldWrap stacked={stacked} label="Furnished">
 				<Select
-					value={filters.min_bedrooms ?? "all"}
-					onChange={(e) => setFilter("min_bedrooms", e.target.value === "all" ? null : Number(e.target.value))}
+					value={filters.furnished}
+					onChange={(e) => setFilter("furnished", e.target.value as typeof filters.furnished)}
 					className={stacked ? "" : "sm:w-auto"}
 				>
-					<option value="all">Any beds</option>
-					<option value="1">1+ beds</option>
-					<option value="2">2+ beds</option>
-					<option value="3">3+ beds</option>
-					<option value="4">4+ beds</option>
+					<option value="all">Any</option>
+					<option value="yes">Furnished</option>
+					<option value="no">Unfurnished</option>
 				</Select>
 			</FieldWrap>
 			<FieldWrap stacked={stacked} label="Listing">
@@ -133,6 +141,10 @@ export function PropertyFilters() {
 				{hasActiveFilter && (
 					<Button variant="ghost" size="sm" onClick={clearAll}>Clear</Button>
 				)}
+				<Button size="sm" onClick={() => router.push("/properties/new")} className="ml-auto shrink-0">
+					<Plus className="w-4 h-4" />
+					Add property
+				</Button>
 			</div>
 
 			{/* Mobile: filters sheet */}
@@ -151,6 +163,16 @@ export function PropertyFilters() {
 			</Sheet>
 		</div>
 	);
+}
+
+/** Distinct, trimmed, sorted non-empty values from a list that may contain nulls. */
+function uniqueSorted(values: (string | null | undefined)[]): string[] {
+	const set = new Set<string>();
+	for (const v of values) {
+		const t = v?.trim();
+		if (t) set.add(t);
+	}
+	return [...set].sort((a, b) => a.localeCompare(b));
 }
 
 /** On mobile (stacked) wrap each control in a labeled FormField; inline on desktop render bare. */
