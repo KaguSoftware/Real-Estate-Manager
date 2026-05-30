@@ -1,17 +1,19 @@
 import { Document, Page, pdf } from "@react-pdf/renderer";
 import { styles } from "./styles";
-import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData } from "./types";
+import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData } from "./types";
 import { RentalAgreement } from "./sections/rental";
 import { SalesAgreement } from "./sections/sales";
 import { RentReceiptStub } from "./sections/receipt";
+import { PropertyListing } from "./sections/listing";
 
-type AnyPDFData = RentalPDFData | SalesPDFData | ReceiptPDFData;
+type AnyPDFData = RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData;
 
 export function PDFDocument({ kind, data }: { kind: DocKind; data: AnyPDFData }) {
 	const titleByKind: Record<DocKind, string> = {
 		rental: "Rental Agreement",
 		sales: "Sales Agreement",
 		receipt: "Rent Receipt",
+		listing: "Property Listing",
 	};
 	return (
 		<Document title={titleByKind[kind]} author="Real Estate Manager">
@@ -19,6 +21,7 @@ export function PDFDocument({ kind, data }: { kind: DocKind; data: AnyPDFData })
 				{kind === "rental"  && <RentalAgreement data={data as RentalPDFData} />}
 				{kind === "sales"   && <SalesAgreement data={data as SalesPDFData} />}
 				{kind === "receipt" && <RentReceiptStub />}
+				{kind === "listing" && <PropertyListing data={data as ListingPDFData} />}
 			</Page>
 		</Document>
 	);

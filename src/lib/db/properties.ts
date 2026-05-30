@@ -17,6 +17,12 @@ export interface PropertyFilter {
 	listing_type?: ListingType;
 	status?: PropertyStatus;
 	q?: string;
+	/** Property type / nitelik notation, e.g. "3+1". Substring match. */
+	nitelik?: string;
+	/** Minimum bedroom count. */
+	min_bedrooms?: number;
+	/** Free-text location — matches city, mahalle, or mevkii. */
+	location?: string;
 }
 
 export interface PropertyInput {
@@ -60,6 +66,18 @@ export async function listProperties(filter: PropertyFilter = {}): Promise<Prope
 	if (filter.q && filter.q.trim()) {
 		const needle = `%${filter.q.trim()}%`;
 		q = q.or(`homeowner_name.ilike.${needle},address_line.ilike.${needle},city.ilike.${needle}`);
+	}
+	if (filter.nitelik && filter.nitelik.trim()) {
+		q = q.ilike("nitelik", `%${filter.nitelik.trim()}%`);
+	}
+	if (filter.min_bedrooms != null) {
+		q = q.gte("bedrooms", filter.min_bedrooms);
+	}
+	if (filter.location && filter.location.trim()) {
+		const loc = `%${filter.location.trim()}%`;
+		// Multiple .or() groups are AND-combined by PostgREST, so this matches
+		// the location term across city/mahalle/mevkii independently of `q`.
+		q = q.or(`city.ilike.${loc},mahalle.ilike.${loc},mevkii.ilike.${loc}`);
 	}
 
 	const { data, error } = await q;

@@ -9,7 +9,7 @@ import { AuthModal } from "@/src/components/auth/AuthModal";
 import { PropertyFilters } from "./PropertyFilters";
 import { PropertyTable } from "./PropertyTable";
 import { PropertyMap } from "./PropertyMap";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, Users } from "lucide-react";
 
 export function PropertyDashboard() {
 	const user = useAppStore((s) => s.user);
@@ -29,6 +29,9 @@ export function PropertyDashboard() {
 			listing_type: filters.listing_type === "all" ? undefined : filters.listing_type,
 			status: filters.status === "all" ? undefined : filters.status,
 			q: filters.q || undefined,
+			nitelik: filters.nitelik || undefined,
+			min_bedrooms: filters.min_bedrooms ?? undefined,
+			location: filters.location || undefined,
 		})
 			.then((rows) => {
 				if (!cancelled) setProperties(rows);
@@ -42,7 +45,7 @@ export function PropertyDashboard() {
 		return () => {
 			cancelled = true;
 		};
-	}, [user, filters.listing_type, filters.status, filters.q, setProperties, setIsLoadingProperties]);
+	}, [user, filters.listing_type, filters.status, filters.q, filters.nitelik, filters.min_bedrooms, filters.location, setProperties, setIsLoadingProperties]);
 
 	return (
 		<div className="min-h-screen bg-slate-50">
@@ -56,6 +59,13 @@ export function PropertyDashboard() {
 					<div className="flex flex-wrap items-center gap-2 justify-end">
 						{user && (
 							<>
+								<Link
+									href="/leads"
+									className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors whitespace-nowrap inline-flex items-center gap-1.5"
+								>
+									<Users className="w-3.5 h-3.5" />
+									Clients
+								</Link>
 								<Link
 									href="/properties/new"
 									className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors whitespace-nowrap inline-flex items-center gap-1.5"

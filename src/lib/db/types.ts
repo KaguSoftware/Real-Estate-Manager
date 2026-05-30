@@ -6,6 +6,7 @@ export type ListingType    = "for_rent" | "for_sale";
 export type PropertyStatus = "vacant" | "occupied" | "sold";
 export type LeaseTerm      = "1yr" | "2yr" | "undefined";
 export type LeaseStatus    = "active" | "ended" | "terminated";
+export type LeadStatus     = "new" | "called_rejected" | "follow_up" | "interested" | "closed";
 
 export interface Profile {
 	id: string;
@@ -51,6 +52,25 @@ export interface Tenant {
 	phone: string | null;
 	national_id: string | null;
 	notes: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface Lead {
+	id: string;
+	owner_id: string;
+	full_name: string;
+	phone: string | null;
+	email: string | null;
+	interested_in: string | null;
+	// Optional structured prefs — power the "Find matches" link into property filters.
+	pref_listing_type: ListingType | null;
+	pref_nitelik: string | null;
+	pref_min_bedrooms: number | null;
+	pref_location: string | null;
+	status: LeadStatus;
+	notes: string | null;
+	last_call_at: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -138,5 +158,5 @@ export interface Sale {
 	updated_at: string;
 }
 
-/** What the document wizard generates. */
-export type DocKind = "rental" | "sales" | "receipt";
+/** What the document wizard generates, plus the shareable property listing. */
+export type DocKind = "rental" | "sales" | "receipt" | "listing";

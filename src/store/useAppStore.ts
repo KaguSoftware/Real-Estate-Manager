@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Property, PropertyStatus, ListingType } from "@/src/lib/db/types";
+import type { Property, PropertyStatus, ListingType, Lead, LeadStatus } from "@/src/lib/db/types";
 
 export interface UserProfile {
 	id: string;
@@ -11,7 +11,26 @@ interface Filters {
 	listing_type: ListingType | "all";
 	status: PropertyStatus | "all";
 	q: string;
+	nitelik: string;
+	min_bedrooms: number | null;
+	location: string;
 }
+
+const EMPTY_FILTERS: Filters = {
+	listing_type: "all",
+	status: "all",
+	q: "",
+	nitelik: "",
+	min_bedrooms: null,
+	location: "",
+};
+
+interface LeadFilters {
+	status: LeadStatus | "all";
+	q: string;
+}
+
+const EMPTY_LEAD_FILTERS: LeadFilters = { status: "all", q: "" };
 
 interface AppState {
 	user: UserProfile | null;
@@ -26,7 +45,20 @@ interface AppState {
 
 	filters: Filters;
 	setFilter: <K extends keyof Filters>(k: K, v: Filters[K]) => void;
+	/** Replace several filter values at once (e.g. lead "Find matches"). */
+	setFilters: (patch: Partial<Filters>) => void;
 	resetFilters: () => void;
+
+	leads: Lead[];
+	setLeads: (l: Lead[]) => void;
+	upsertLead: (l: Lead) => void;
+	removeLead: (id: string) => void;
+	isLoadingLeads: boolean;
+	setIsLoadingLeads: (v: boolean) => void;
+
+	leadFilters: LeadFilters;
+	setLeadFilter: <K extends keyof LeadFilters>(k: K, v: LeadFilters[K]) => void;
+	resetLeadFilters: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -50,7 +82,29 @@ export const useAppStore = create<AppState>((set) => ({
 	isLoadingProperties: false,
 	setIsLoadingProperties: (v) => set({ isLoadingProperties: v }),
 
-	filters: { listing_type: "all", status: "all", q: "" },
+	filters: { ...EMPTY_FILTERS },
 	setFilter: (k, v) => set((s) => ({ filters: { ...s.filters, [k]: v } })),
-	resetFilters: () => set({ filters: { listing_type: "all", status: "all", q: "" } }),
+	setFilters: (patch) => set((s) => ({ filters: { ...s.filters, ...patch } })),
+	resetFilters: () => set({ filters: { ...EMPTY_FILTERS } }),
+
+	leads: [],
+	setLeads: (leads) => set({ leads }),
+	upsertLead: (l) =>
+		set((s) => {
+			const idx = s.leads.findIndex((x) => x.id === l.id);
+			return {
+				leads:
+					idx === -1
+						? [l, ...s.leads]
+						: s.leads.map((x) => (x.id === l.id ? l : x)),
+			};
+		}),
+	removeLead: (id) =>
+		set((s) => ({ leads: s.leads.filter((l) => l.id !== id) })),
+	isLoadingLeads: false,
+	setIsLoadingLeads: (v) => set({ isLoadingLeads: v }),
+
+	leadFilters: { ...EMPTY_LEAD_FILTERS },
+	setLeadFilter: (k, v) => set((s) => ({ leadFilters: { ...s.leadFilters, [k]: v } })),
+	resetLeadFilters: () => set({ leadFilters: { ...EMPTY_LEAD_FILTERS } }),
 }));

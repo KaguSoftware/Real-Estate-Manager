@@ -40,7 +40,8 @@
       "Bash(npm view *)",
       "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" install leaflet.markercluster@^1.5.3)",
       "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" install -D @types/leaflet.markercluster@^1.5.5)",
-      "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" uninstall leaflet.markercluster @types/leaflet.markercluster)"
+      "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" uninstall leaflet.markercluster @types/leaflet.markercluster)",
+      "PowerShell(npm run build)"
     ]
   }
 }

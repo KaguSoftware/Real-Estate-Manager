@@ -1,11 +1,11 @@
-import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData } from "./types";
+import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData } from "./types";
 
-export type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData };
+export type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData };
 export { PDFDocument } from "./document";
 
 export async function exportToPDF(
 	kind: DocKind,
-	data: RentalPDFData | SalesPDFData | ReceiptPDFData,
+	data: RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData,
 	filename: string,
 ) {
 	// Dynamic import keeps @react-pdf/renderer out of the SSR bundle

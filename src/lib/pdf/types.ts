@@ -78,8 +78,29 @@ export interface SalesPDFData {
 // Stubbed for v2.
 export interface ReceiptPDFData { _stub?: true }
 
+/**
+ * Client-facing property listing — shared over WhatsApp instead of typing
+ * out details. Photos first, then the public-facing summary. Deliberately
+ * omits homeowner name and title-deed (tapu) fields.
+ */
+export interface ListingPDFData {
+	address_line: string;
+	city: string | null;
+	listing_type: "for_rent" | "for_sale";
+	nitelik: string | null;      // e.g. "3+1"
+	bedrooms: number | null;
+	bathrooms: number | null;
+	size_sqm: number | null;
+	list_price: number | null;
+	currency: string;
+	notes: string | null;        // shown as the description
+	images: string[];            // public CDN URLs, hero first
+	generatedAt: string;         // ISO timestamp
+}
+
 export type PDFDataByKind = {
 	rental:  RentalPDFData;
 	sales:   SalesPDFData;
 	receipt: ReceiptPDFData;
+	listing: ListingPDFData;
 };

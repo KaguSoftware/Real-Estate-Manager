@@ -7,11 +7,31 @@ import { useAppStore } from "@/src/store";
 import { getProperty, updateProperty } from "@/src/lib/db/properties";
 import { endLease } from "@/src/lib/db/leases";
 import { getActiveSaleForProperty } from "@/src/lib/db/sales";
+import { listPropertyImages } from "@/src/lib/db/propertyImages";
+import { exportToPDF, type ListingPDFData } from "@/src/lib/pdf";
 import type { PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
 import { PaymentList } from "@/src/components/payments/PaymentList";
 import { PropertyGallery } from "./PropertyGallery";
 import { PropertyForm } from "./PropertyForm";
-import { ArrowLeft, Pencil, TriangleAlert, Plus } from "lucide-react";
+import { ArrowLeft, Pencil, TriangleAlert, Plus, Share2 } from "lucide-react";
+
+/** Fetch a public image URL and return it as a data URL so @react-pdf embeds
+ *  it reliably (avoids intermittent remote-fetch/CORS failures during render). */
+async function toDataUrl(url: string): Promise<string | null> {
+	try {
+		const res = await fetch(url);
+		if (!res.ok) return null;
+		const blob = await res.blob();
+		return await new Promise((resolve) => {
+			const reader = new FileReader();
+			reader.onloadend = () => resolve(reader.result as string);
+			reader.onerror = () => resolve(null);
+			reader.readAsDataURL(blob);
+		});
+	} catch {
+		return null;
+	}
+}
 
 function fmtMoney(n: number, ccy: string) { return `${n.toFixed(2)} ${ccy}`; }
 
@@ -29,6 +49,7 @@ export function PropertyDetail({ propertyId }: Props) {
 	const [error, setError] = useState<string | null>(null);
 	const [editing, setEditing] = useState(false);
 	const [endingLease, setEndingLease] = useState(false);
+	const [sharing, setSharing] = useState(false);
 
 	const reload = useCallback(async () => {
 		setLoading(true);
@@ -47,6 +68,39 @@ export function PropertyDetail({ propertyId }: Props) {
 	}, [propertyId]);
 
 	useEffect(() => { reload(); }, [reload]);
+
+	async function handleShare() {
+		if (!data) return;
+		setSharing(true);
+		setError(null);
+		try {
+			const imgs = await listPropertyImages(data.id);
+			const dataUrls = (await Promise.all(imgs.map((i) => toDataUrl(i.url))))
+				.filter((u): u is string => !!u);
+
+			const listing: ListingPDFData = {
+				address_line: data.address_line,
+				city: data.city,
+				listing_type: data.listing_type,
+				nitelik: data.nitelik,
+				bedrooms: data.bedrooms,
+				bathrooms: data.bathrooms,
+				size_sqm: data.size_sqm,
+				list_price: data.list_price,
+				currency: data.currency,
+				notes: data.notes,
+				images: dataUrls,
+				generatedAt: new Date().toISOString(),
+			};
+
+			const safeName = data.address_line.replace(/[^\w\s-]/g, "").trim().slice(0, 60) || "listing";
+			await exportToPDF("listing", listing, safeName);
+		} catch (e) {
+			setError(e instanceof Error ? e.message : String(e));
+		} finally {
+			setSharing(false);
+		}
+	}
 
 	async function handleEndLease() {
 		if (!data?.active_lease) return;
@@ -120,13 +174,28 @@ export function PropertyDetail({ propertyId }: Props) {
 					<div className="flex items-center justify-between mb-4">
 						<h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Property</h2>
 						{!editing && (
-							<button
-								onClick={() => setEditing(true)}
-								className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors inline-flex items-center gap-1"
-							>
-								<Pencil className="w-3 h-3" />
-								Edit
-							</button>
+							<div className="flex items-center gap-1.5">
+								<button
+									onClick={handleShare}
+									disabled={sharing}
+									title="Generate a client-ready PDF with photos & details"
+									className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity inline-flex items-center gap-1 disabled:opacity-50"
+								>
+									{sharing ? (
+										<span className="w-3 h-3 border-2 border-primary-content/40 border-t-primary-content rounded-full animate-spin" />
+									) : (
+										<Share2 className="w-3 h-3" />
+									)}
+									{sharing ? "Preparing…" : "Share"}
+								</button>
+								<button
+									onClick={() => setEditing(true)}
+									className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors inline-flex items-center gap-1"
+								>
+									<Pencil className="w-3 h-3" />
+									Edit
+								</button>
+							</div>
 						)}
 					</div>
 
