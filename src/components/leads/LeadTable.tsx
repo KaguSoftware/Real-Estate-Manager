@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useAppStore } from "@/src/store";
 import type { Lead } from "@/src/lib/db/types";
 import { LEAD_STATUS_META } from "./leadStatus";
+import { Badge, Card } from "@/src/components/ui";
 import { PhoneCall } from "lucide-react";
 
 function isToday(dateStr: string | null): boolean {
@@ -19,20 +20,16 @@ function fmtCallDate(dateStr: string | null): string {
 
 function StatusBadge({ status }: { status: Lead["status"] }) {
 	const meta = LEAD_STATUS_META[status];
-	return (
-		<span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${meta.badge}`}>
-			{meta.label}
-		</span>
-	);
+	return <Badge tone={meta.tone}>{meta.label}</Badge>;
 }
 
 /** Small "called today" flag so agents don't double-call the same lead. */
 function CalledTodayPill() {
 	return (
-		<span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded border bg-blue-50 text-blue-700 border-blue-200">
-			<PhoneCall className="w-3 h-3" />
+		<Badge tone="blue">
+			<PhoneCall className="w-3.5 h-3.5" />
 			Today
-		</span>
+		</Badge>
 	);
 }
 
@@ -44,7 +41,6 @@ export function LeadTable({ onEdit }: Props) {
 	const leads     = useAppStore((s) => s.leads);
 	const isLoading = useAppStore((s) => s.isLoadingLeads);
 
-	// Newest-updated first (the list query already orders this way; keep it stable).
 	const sorted = useMemo(
 		() => [...leads].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
 		[leads],
@@ -60,38 +56,38 @@ export function LeadTable({ onEdit }: Props) {
 
 	if (leads.length === 0) {
 		return (
-			<div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center">
+			<Card className="p-8 sm:p-12 text-center">
 				<p className="text-sm text-slate-500">No leads yet.</p>
-				<p className="text-xs text-slate-400 mt-1">Click <span className="font-semibold">+ Add lead</span> to add your first client.</p>
-			</div>
+				<p className="text-xs text-slate-400 mt-1">Tap <span className="font-semibold">Add</span> to add your first client.</p>
+			</Card>
 		);
 	}
 
-	const headerCls = "text-left px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400";
+	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400";
 
 	return (
 		<>
 			{/* Mobile: card list */}
-			<div className="block sm:hidden space-y-2">
+			<div className="block sm:hidden space-y-3">
 				{sorted.map((l) => (
 					<button
 						key={l.id}
 						type="button"
 						onClick={() => onEdit(l)}
-						className="w-full text-left bg-white border border-slate-200 rounded-2xl p-4 hover:border-slate-400 active:bg-slate-50 transition-all"
+						className="w-full text-left bg-white border border-slate-200/80 rounded-2xl shadow-card p-4 active:bg-slate-50 transition-colors"
 					>
 						<div className="flex items-start justify-between gap-3">
 							<div className="min-w-0 flex-1">
-								<p className="text-sm font-bold text-slate-900 truncate">{l.full_name}</p>
-								{l.phone && <p className="text-xs text-slate-500 mt-0.5 truncate">{l.phone}</p>}
+								<p className="text-base font-bold text-slate-900 truncate">{l.full_name}</p>
+								{l.phone && <p className="text-sm text-slate-500 mt-0.5 truncate">{l.phone}</p>}
 							</div>
 							<StatusBadge status={l.status} />
 						</div>
 						{l.interested_in && (
-							<p className="text-xs text-slate-600 mt-2 line-clamp-2">{l.interested_in}</p>
+							<p className="text-sm text-slate-600 mt-2 line-clamp-2">{l.interested_in}</p>
 						)}
 						<div className="mt-3 flex items-center justify-between gap-2">
-							<span className="text-[10px] text-slate-400">Last call: {fmtCallDate(l.last_call_at)}</span>
+							<span className="text-xs text-slate-400">Last call: {fmtCallDate(l.last_call_at)}</span>
 							{isToday(l.last_call_at) && <CalledTodayPill />}
 						</div>
 					</button>
@@ -99,10 +95,10 @@ export function LeadTable({ onEdit }: Props) {
 			</div>
 
 			{/* Desktop: table */}
-			<div className="hidden sm:block bg-white rounded-2xl border border-slate-200 overflow-hidden">
+			<Card padded={false} className="hidden sm:block overflow-hidden">
 				<div className="overflow-x-auto">
 					<table className="w-full text-sm">
-						<thead className="bg-slate-50/50 border-b border-slate-100">
+						<thead className="bg-slate-50/60 border-b border-slate-100">
 							<tr>
 								<th className={headerCls}>Name</th>
 								<th className={headerCls}>Phone</th>
@@ -118,11 +114,11 @@ export function LeadTable({ onEdit }: Props) {
 									onClick={() => onEdit(l)}
 									className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
 								>
-									<td className="px-4 py-2.5 text-xs font-medium text-slate-800">{l.full_name}</td>
-									<td className="px-4 py-2.5 text-xs text-slate-600 whitespace-nowrap">{l.phone ?? "—"}</td>
-									<td className="px-4 py-2.5 text-xs text-slate-600 max-w-xs truncate">{l.interested_in ?? "—"}</td>
-									<td className="px-4 py-2.5"><StatusBadge status={l.status} /></td>
-									<td className="px-4 py-2.5 text-xs whitespace-nowrap">
+									<td className="px-4 py-3 text-sm font-medium text-slate-800">{l.full_name}</td>
+									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{l.phone ?? "—"}</td>
+									<td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{l.interested_in ?? "—"}</td>
+									<td className="px-4 py-3"><StatusBadge status={l.status} /></td>
+									<td className="px-4 py-3 text-sm whitespace-nowrap">
 										<span className="inline-flex items-center gap-2">
 											<span className="text-slate-500">{fmtCallDate(l.last_call_at)}</span>
 											{isToday(l.last_call_at) && <CalledTodayPill />}
@@ -133,7 +129,7 @@ export function LeadTable({ onEdit }: Props) {
 						</tbody>
 					</table>
 				</div>
-			</div>
+			</Card>
 		</>
 	);
 }

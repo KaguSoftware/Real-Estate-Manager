@@ -1,6 +1,59 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Fresh modern theme — a refined indigo/violet accent on a clean neutral
+   surface ramp, softer radii and a real shadow scale. Built on top of
+   DaisyUI's "lofi" base (kept for component defaults); we override the
+   accent + shape tokens so the whole app feels modern and cohesive.
+   ───────────────────────────────────────────────────────────────────────── */
+@plugin "daisyui/theme" {
+	name: "estate";
+	default: true;
+	prefersdark: false;
+	color-scheme: light;
+
+	--color-base-100: oklch(100% 0 0);
+	--color-base-200: oklch(98.4% 0.002 247.8);
+	--color-base-300: oklch(96.3% 0.004 247.8);
+	--color-base-content: oklch(21% 0.034 264.4);
+
+	/* Indigo accent */
+	--color-primary: oklch(54% 0.21 277);
+	--color-primary-content: oklch(98% 0.01 277);
+	--color-secondary: oklch(60% 0.13 250);
+	--color-secondary-content: oklch(98% 0.01 250);
+	--color-accent: oklch(72% 0.15 195);
+	--color-accent-content: oklch(25% 0.05 195);
+	--color-neutral: oklch(28% 0.03 264);
+	--color-neutral-content: oklch(98% 0.003 264);
+
+	--color-info: oklch(70% 0.14 233);
+	--color-info-content: oklch(28% 0.07 233);
+	--color-success: oklch(72% 0.17 163);
+	--color-success-content: oklch(33% 0.08 163);
+	--color-warning: oklch(80% 0.16 80);
+	--color-warning-content: oklch(34% 0.09 60);
+	--color-error: oklch(64% 0.21 18);
+	--color-error-content: oklch(98% 0.02 18);
+
+	--radius-selector: 0.75rem;
+	--radius-field: 0.75rem;
+	--radius-box: 1rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.28125rem;
+	--border: 1px;
+	--depth: 1;
+	--noise: 0;
+}
+
+/* Design tokens used by the shared UI primitives. */
+@theme {
+	--shadow-soft: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+	--shadow-card: 0 1px 3px 0 rgb(15 23 42 / 0.06), 0 4px 16px -4px rgb(15 23 42 / 0.08);
+	--shadow-pop: 0 8px 30px -6px rgb(15 23 42 / 0.18);
+}
+
 @font-face {
 	font-family: "NotoSansArabic";
 	src: url("/fonts/NotoSansArabic-Regular.ttf") format("truetype");
@@ -16,9 +69,28 @@
 	font-display: swap;
 }
 
+/* ─── Mobile chrome ──────────────────────────────────────────────────────── */
+/* Honour iOS notch / home-indicator insets on sticky bars and bottom actions. */
+@layer utilities {
+	.safe-top    { padding-top: env(safe-area-inset-top); }
+	.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+	.safe-x {
+		padding-left: env(safe-area-inset-left);
+		padding-right: env(safe-area-inset-right);
+	}
+	/* Hide scrollbars on horizontal scroll strips (thumbnails, chips). */
+	.no-scrollbar { scrollbar-width: none; }
+	.no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+/* Prevent iOS from zooming when focusing inputs: keep font ≥16px on small screens. */
+@media (max-width: 640px) {
+	input, select, textarea { font-size: 16px; }
+}
+
 @layer components {
 	.pdf-safe-mode {
-		/* Restores your brand colors using safe Hex */
+		/* Restores brand colors using safe Hex */
 		--color-primary: #7c3aed;
 		--color-slate-200: #e2e8f0;
 		--color-slate-900: #0f172a;
@@ -42,12 +114,10 @@
 		border-width: 0px !important;
 		border-style: none !important;
 		border-color: transparent !important;
-		/* Ensure standard color math */
 		color-interpolation: sRGB !important;
 	}
 
 	/* 2. RE-ENABLE ONLY THE BORDERS WE WANT */
-	/* If an element has 'border', 'border-b', etc., give it back its life */
 	.pdf-safe-mode .border {
 		border-width: 1px !important;
 		border-style: solid !important;
@@ -64,8 +134,7 @@
 		border-color: #e2e8f0 !important;
 	}
 
-	/* 3. PROTECT THE GENBUZZ LOGO / DIVIDERS */
-	/* These use background colors, not borders, so we keep them clean */
+	/* 3. PROTECT THE LOGO / DIVIDERS */
 	.pdf-safe-mode .bg-slate-900 {
 		background-color: #0f172a !important;
 		border: none !important;
@@ -96,25 +165,4 @@
 }
 .print-only {
 	display: none;
-}
-
-:root {
-	--background: #ffffff;
-	--foreground: #171717;
-}
-
-@theme inline {
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--font-sans: var(--font-geist-sans);
-	--font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-}
-
-body {
-	background: var(--background);
-	color: var(--foreground);
-	font-family: Arial, Helvetica, sans-serif;
 }

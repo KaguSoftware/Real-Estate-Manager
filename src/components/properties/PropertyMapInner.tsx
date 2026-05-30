@@ -370,16 +370,16 @@ export function PropertyMapInner({ properties }: { properties: Property[] }) {
 	const [mounted, setMounted] = useState(false);
 	useEffect(() => { setMounted(true); }, []);
 	if (!mounted) {
-		return <div className="h-80 w-full rounded-2xl bg-slate-100 animate-pulse" />;
+		return <div className="h-56 sm:h-80 w-full rounded-2xl bg-slate-100 animate-pulse" />;
 	}
 
 	return (
-		<div ref={containerRef} className="relative h-80 w-full">
+		<div ref={containerRef} className="relative h-56 sm:h-80 w-full">
 			<MapContainer
 				center={initialCenterRef.current}
 				zoom={initialZoomRef.current}
 				scrollWheelZoom
-				className="h-80 w-full rounded-2xl"
+				className="h-56 sm:h-80 w-full rounded-2xl"
 				style={{ zIndex: 0 }}
 			>
 				{/* CartoDB Positron — light, near-monochrome tiles. No key needed. */}

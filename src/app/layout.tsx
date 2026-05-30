@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Noto_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
@@ -12,13 +12,20 @@ export const metadata: Metadata = {
 	description: "Property management and document generation",
 };
 
+export const viewport: Viewport = {
+	width: "device-width",
+	initialScale: 1,
+	viewportFit: "cover",
+	themeColor: "#ffffff",
+};
+
 export default function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" data-theme="lofi">
+		<html lang="en" data-theme="estate">
 			<body
 				className={`${jakarta.variable} ${notoArabic.variable} bg-base-200 text-base-content antialiased overflow-x-hidden`}
 				style={{ fontFamily: "var(--font-latin), var(--font-arabic), sans-serif" }}

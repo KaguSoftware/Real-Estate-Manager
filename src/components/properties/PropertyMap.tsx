@@ -18,7 +18,7 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: bool
 	render() {
 		if (this.state.failed) {
 			return (
-				<div className="h-80 w-full flex items-center justify-center text-center px-6">
+				<div className="h-56 sm:h-80 w-full flex items-center justify-center text-center px-6">
 					<div className="flex flex-col items-center">
 						<MapPinOff className="w-7 h-7 text-slate-400 mb-2" />
 						<p className="text-sm font-semibold text-slate-700">Map unavailable</p>
@@ -38,7 +38,7 @@ const PropertyMapInner = dynamic(
 	{
 		ssr: false,
 		loading: () => (
-			<div className="h-80 w-full rounded-2xl bg-slate-100 animate-pulse" />
+			<div className="h-56 sm:h-80 w-full rounded-2xl bg-slate-100 animate-pulse" />
 		),
 	},
 );
@@ -59,9 +59,9 @@ export function PropertyMap() {
 	);
 
 	return (
-		<section className="mb-4 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+		<section className="mb-4 bg-white rounded-2xl border border-slate-200/80 shadow-card overflow-hidden">
 			{mappable.length === 0 ? (
-				<div className="h-80 w-full flex items-center justify-center text-center px-6">
+				<div className="h-56 sm:h-80 w-full flex items-center justify-center text-center px-6">
 					<div className="flex flex-col items-center">
 						<MapPin className="w-7 h-7 text-slate-400 mb-2" />
 						<p className="text-sm font-semibold text-slate-700">No mapped properties yet</p>

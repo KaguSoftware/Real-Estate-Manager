@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "@/src/store";
 import type { LeadStatus } from "@/src/lib/db/types";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "./leadStatus";
+import { Input, Select, Button } from "@/src/components/ui";
+import { Search } from "lucide-react";
 
 export function LeadFilters() {
 	const leadFilters = useAppStore((s) => s.leadFilters);
@@ -22,33 +24,32 @@ export function LeadFilters() {
 	const hasActiveFilter = leadFilters.status !== "all" || leadFilters.q !== "";
 
 	return (
-		<div className="mb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-			<input
-				type="text"
-				placeholder="Search name, phone, interest…"
-				value={q}
-				onChange={(e) => setQ(e.target.value)}
-				className="flex-1 min-w-0 w-full sm:w-auto px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
-			/>
+		<div className="mb-4 flex flex-col sm:flex-row gap-2 sm:items-center">
+			<div className="relative flex-1 min-w-0">
+				<Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+				<Input
+					placeholder="Search name, phone, interest…"
+					value={q}
+					onChange={(e) => setQ(e.target.value)}
+					className="pl-9"
+				/>
+			</div>
 
-			<select
+			<Select
 				value={leadFilters.status}
 				onChange={(e) => setLeadFilter("status", e.target.value as LeadStatus | "all")}
-				className="px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/40"
+				className="sm:w-52"
 			>
 				<option value="all">All statuses</option>
 				{LEAD_STATUS_ORDER.map((s) => (
 					<option key={s} value={s}>{LEAD_STATUS_META[s].label}</option>
 				))}
-			</select>
+			</Select>
 
 			{hasActiveFilter && (
-				<button
-					onClick={() => { setQ(""); resetLeadFilters(); }}
-					className="text-xs text-slate-500 hover:text-slate-800 transition-colors underline underline-offset-2"
-				>
+				<Button variant="ghost" size="sm" onClick={() => { setQ(""); resetLeadFilters(); }}>
 					Clear
-				</button>
+				</Button>
 			)}
 		</div>
 	);

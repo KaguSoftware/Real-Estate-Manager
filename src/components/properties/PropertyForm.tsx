@@ -10,7 +10,7 @@ import {
 	type PropertyInput,
 } from "@/src/lib/db/properties";
 import type { Property, ListingType, PropertyStatus } from "@/src/lib/db/types";
-import { FormField, inputClass } from "@/src/components/ui/FormField";
+import { FormField, Input, Textarea, Select, Button } from "@/src/components/ui";
 import { geocodeAddress } from "@/src/lib/geocode";
 import { resolveAndParseMapsUrl, splitPlaceName } from "@/src/lib/maps-url";
 import { MapPin, Loader2, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
@@ -232,39 +232,28 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 		<form onSubmit={handleSubmit} className="space-y-5">
 			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				<FormField label="Homeowner Name">
-					<input
-						required
-						value={homeowner_name}
-						onChange={(e) => setHomeownerName(e.target.value)}
-						className={inputClass}
-						placeholder="Ahmet Yılmaz"
-					/>
+					<Input required value={homeowner_name} onChange={(e) => setHomeownerName(e.target.value)} placeholder="Ahmet Yılmaz" />
 				</FormField>
 				<FormField label="Listing Type">
-					<select
-						value={listing_type}
-						onChange={(e) => setListingType(e.target.value as ListingType)}
-						className={inputClass}
-					>
+					<Select value={listing_type} onChange={(e) => setListingType(e.target.value as ListingType)}>
 						<option value="for_rent">For Rent (Kiralık)</option>
 						<option value="for_sale">For Sale (Satılık)</option>
-					</select>
+					</Select>
 				</FormField>
 			</div>
 
 			{/* Address — Turkish parts */}
-			<div className="space-y-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
-				<p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Address</p>
+			<div className="space-y-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+				<p className="text-xs font-bold uppercase tracking-wider text-slate-500">Address</p>
 
 				{/* Google Maps link — paste to extract coords + autofill empty fields. */}
 				<FormField label="Google Maps link (optional)">
-					<div className="flex gap-2">
-						<input
+					<div className="flex flex-col sm:flex-row gap-2">
+						<Input
 							type="url"
 							value={mapsUrl}
 							onChange={(e) => {
 								setMapsUrl(e.target.value);
-								// Editing the URL invalidates previously parsed coords until re-parse.
 								if (parsedCoords) setParsedCoords(null);
 								if (mapsHint) setMapsHint(null);
 							}}
@@ -272,36 +261,27 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 								const pasted = e.clipboardData.getData("text");
 								if (pasted) {
 									setMapsUrl(pasted);
-									// Defer to next tick so state has applied before parse runs.
 									setTimeout(() => { void handleParseMapsUrl(); }, 0);
 									e.preventDefault();
 								}
 							}}
 							onBlur={() => { if (mapsUrl.trim() && !parsedCoords) void handleParseMapsUrl(); }}
-							className={inputClass}
-							placeholder="https://maps.app.goo.gl/… or https://www.google.com/maps/place/…"
+							placeholder="https://maps.app.goo.gl/…"
 						/>
-						<button
+						<Button
 							type="button"
+							variant="secondary"
 							onClick={handleParseMapsUrl}
 							disabled={mapsBusy || !mapsUrl.trim()}
-							className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors disabled:opacity-40 whitespace-nowrap inline-flex items-center gap-1.5"
+							className="shrink-0"
 						>
-							{mapsBusy ? (
-								<Loader2 className="w-3.5 h-3.5 animate-spin" />
-							) : (
-								<MapPin className="w-3.5 h-3.5" />
-							)}
+							{mapsBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
 							Parse
-						</button>
+						</Button>
 					</div>
 					{mapsHint && (
-						<p className={`mt-1 text-[11px] inline-flex items-center gap-1 ${parsedCoords ? "text-emerald-700" : "text-amber-700"}`}>
-							{parsedCoords ? (
-								<CheckCircle2 className="w-3 h-3 shrink-0" />
-							) : (
-								<AlertTriangle className="w-3 h-3 shrink-0" />
-							)}
+						<p className={`mt-1.5 text-xs inline-flex items-center gap-1 ${parsedCoords ? "text-emerald-700" : "text-amber-700"}`}>
+							{parsedCoords ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
 							<span>{mapsHint}</span>
 						</p>
 					)}
@@ -309,61 +289,31 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Mahalle (Neighborhood)">
-						<input
-							value={mahalle}
-							onChange={(e) => setMahalle(e.target.value)}
-							className={inputClass}
-							placeholder="Atatürk"
-						/>
+						<Input value={mahalle} onChange={(e) => setMahalle(e.target.value)} placeholder="Atatürk" />
 					</FormField>
 					<FormField label="Sokak / Cadde (Street)">
-						<input
-							value={street}
-							onChange={(e) => setStreet(e.target.value)}
-							className={inputClass}
-							placeholder="Cumhuriyet Cd."
-						/>
+						<Input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Cumhuriyet Cd." />
 					</FormField>
 				</div>
 
-				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+				<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
 					<FormField label="Bina No">
-						<input
-							value={buildingNo}
-							onChange={(e) => setBuildingNo(e.target.value)}
-							className={inputClass}
-							placeholder="42"
-						/>
+						<Input value={buildingNo} onChange={(e) => setBuildingNo(e.target.value)} placeholder="42" />
 					</FormField>
 					<FormField label="Daire">
-						<input
-							value={apartmentNo}
-							onChange={(e) => setApartmentNo(e.target.value)}
-							className={inputClass}
-							placeholder="8"
-						/>
+						<Input value={apartmentNo} onChange={(e) => setApartmentNo(e.target.value)} placeholder="8" />
 					</FormField>
 					<FormField label="İlçe (District)">
-						<input
-							value={district}
-							onChange={(e) => setDistrict(e.target.value)}
-							className={inputClass}
-							placeholder="Kadıköy"
-						/>
+						<Input value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="Kadıköy" />
 					</FormField>
 					<FormField label="İl (City)">
-						<input
-							value={city}
-							onChange={(e) => setCity(e.target.value)}
-							className={inputClass}
-							placeholder="İstanbul"
-						/>
+						<Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="İstanbul" />
 					</FormField>
 				</div>
 
 				{addressPreview && (
-					<p className="text-[11px] text-slate-500">
-						<span className="font-bold uppercase tracking-wider text-[9px] text-slate-400 mr-2">Preview</span>
+					<p className="text-xs text-slate-500">
+						<span className="font-bold uppercase tracking-wider text-slate-400 mr-2">Preview</span>
 						{addressPreview}{city ? `, ${city}` : ""}
 					</p>
 				)}
@@ -371,137 +321,84 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 
 			<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 				<FormField label="Size (m²)">
-					<input
-						type="number"
-						min="0"
-						value={size_sqm}
-						onChange={(e) => setSizeSqm(e.target.value)}
-						className={inputClass}
-					/>
+					<Input type="number" inputMode="numeric" min="0" value={size_sqm} onChange={(e) => setSizeSqm(e.target.value)} />
 				</FormField>
 				<FormField label="Bedrooms">
-					<input
-						type="number"
-						min="0"
-						value={bedrooms}
-						onChange={(e) => setBedrooms(e.target.value)}
-						className={inputClass}
-					/>
+					<Input type="number" inputMode="numeric" min="0" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} />
 				</FormField>
 				<FormField label="Bathrooms">
-					<input
-						type="number"
-						min="0"
-						value={bathrooms}
-						onChange={(e) => setBathrooms(e.target.value)}
-						className={inputClass}
-					/>
+					<Input type="number" inputMode="numeric" min="0" value={bathrooms} onChange={(e) => setBathrooms(e.target.value)} />
 				</FormField>
 			</div>
 
 			<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 				<FormField label="Status">
-					<select
-						value={status}
-						onChange={(e) => setStatus(e.target.value as PropertyStatus)}
-						className={inputClass}
-					>
+					<Select value={status} onChange={(e) => setStatus(e.target.value as PropertyStatus)}>
 						<option value="vacant">Vacant</option>
 						<option value="occupied">Occupied</option>
 						<option value="sold">Sold</option>
-					</select>
+					</Select>
 				</FormField>
 				<FormField label={listing_type === "for_rent" ? "Monthly Rent" : "Sale Price"}>
-					<input
-						type="number"
-						min="0"
-						value={list_price}
-						onChange={(e) => setListPrice(e.target.value)}
-						className={inputClass}
-						placeholder="0.00"
-					/>
+					<Input type="number" inputMode="decimal" min="0" value={list_price} onChange={(e) => setListPrice(e.target.value)} placeholder="0.00" />
 				</FormField>
 				<FormField label="Currency">
-					<select
-						value={currency}
-						onChange={(e) => setCurrency(e.target.value)}
-						className={inputClass}
-					>
+					<Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
 						<option value="TRY">TRY (₺)</option>
 						<option value="USD">USD ($)</option>
 						<option value="EUR">EUR (€)</option>
-					</select>
+					</Select>
 				</FormField>
 			</div>
 
 			<FormField label="Notes">
-				<textarea
-					value={notes}
-					onChange={(e) => setNotes(e.target.value)}
-					rows={3}
-					className={inputClass}
-				/>
+				<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
 			</FormField>
 
 			{/* Tapu Bilgileri (title deed) — used by the sales agreement PDF. */}
-			<div className="space-y-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+			<div className="space-y-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
 				<div>
-					<p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tapu Bilgileri</p>
-					<p className="text-[11px] text-slate-400 mt-0.5">Title deed details — populated into the Sales Agreement PDF (optional).</p>
+					<p className="text-xs font-bold uppercase tracking-wider text-slate-500">Tapu Bilgileri</p>
+					<p className="text-xs text-slate-400 mt-0.5">Title deed details — populated into the Sales Agreement PDF (optional).</p>
 				</div>
-				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+				<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
 					<FormField label="Niteliği (Type/Kind)">
-						<input value={nitelik} onChange={(e) => setNitelik(e.target.value)} className={inputClass} placeholder="Mesken" />
+						<Input value={nitelik} onChange={(e) => setNitelik(e.target.value)} placeholder="Mesken" />
 					</FormField>
 					<FormField label="Ada No">
-						<input value={adaNo} onChange={(e) => setAdaNo(e.target.value)} className={inputClass} />
+						<Input value={adaNo} onChange={(e) => setAdaNo(e.target.value)} />
 					</FormField>
 					<FormField label="Parsel No">
-						<input value={parselNo} onChange={(e) => setParselNo(e.target.value)} className={inputClass} />
+						<Input value={parselNo} onChange={(e) => setParselNo(e.target.value)} />
 					</FormField>
 					<FormField label="Mevkii">
-						<input value={mevkii} onChange={(e) => setMevkii(e.target.value)} className={inputClass} />
+						<Input value={mevkii} onChange={(e) => setMevkii(e.target.value)} />
 					</FormField>
 				</div>
 				<FormField label="Mahalle (per tapu)">
-					<input value={tapuMahalle} onChange={(e) => setTapuMahalle(e.target.value)} className={inputClass} placeholder="As written on the title deed" />
+					<Input value={tapuMahalle} onChange={(e) => setTapuMahalle(e.target.value)} placeholder="As written on the title deed" />
 				</FormField>
 			</div>
 
 			{error && (
-				<div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">{error}</div>
+				<div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
 			)}
 
-			<div className="flex items-center justify-between pt-2">
+			<div className="flex items-center justify-between gap-2 pt-2">
 				{mode === "edit" ? (
-					<button
-						type="button"
-						onClick={handleDelete}
-						disabled={busy}
-						className="text-xs text-red-600 hover:text-red-700 transition-colors disabled:opacity-40 inline-flex items-center gap-1.5"
-					>
-						<Trash2 className="w-3.5 h-3.5" />
-						Delete property
-					</button>
+					<Button type="button" variant="danger" size="md" onClick={handleDelete} disabled={busy} aria-label="Delete property">
+						<Trash2 className="w-4 h-4" />
+						<span className="hidden sm:inline">Delete</span>
+					</Button>
 				) : <span />}
 
 				<div className="flex gap-2">
 					{onCancel && (
-						<button
-							type="button"
-							onClick={onCancel}
-							className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
-						>
-							Cancel
-						</button>
+						<Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
 					)}
-					<button
-						type="submit"
-						disabled={busy}
-						className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity disabled:opacity-50"
-					>
-						{busy ? "Saving…" : mode === "create" ? "Create property" : "Save changes"}
-					</button>
+					<Button type="submit" loading={busy}>
+						{mode === "create" ? "Create property" : "Save changes"}
+					</Button>
 				</div>
 			</div>
 		</form>

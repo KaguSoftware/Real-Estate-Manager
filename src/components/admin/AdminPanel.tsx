@@ -9,9 +9,9 @@
  */
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { adminListUsers, adminSetUserRole } from "@/src/lib/db/profiles";
 import type { ProfileRow, GlobalRole } from "@/src/lib/db/types";
+import { AppShell, Card, CardLabel, Select, cn } from "@/src/components/ui";
 
 export function AdminPanel() {
 	const [users, setUsers] = useState<ProfileRow[]>([]);
@@ -44,85 +44,71 @@ export function AdminPanel() {
 		return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 	}
 
+	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400";
+
 	return (
-		<div className="min-h-screen bg-slate-50 p-6 lg:p-10">
-			<div className="max-w-4xl mx-auto">
-				<div className="flex items-center justify-between mb-8">
-					<div>
-						<h1 className="text-xl font-bold text-slate-900">Admin · Users</h1>
-						<p className="text-xs text-slate-500 mt-0.5">Change roles for any user in the system.</p>
-					</div>
-					<Link href="/" className="text-xs text-slate-500 hover:text-slate-800 transition-colors">
-						← Back to dashboard
-					</Link>
+		<AppShell title="Admin · Users" subtitle="Change roles for any user">
+			<Card padded={false}>
+				<div className="px-4 sm:px-6 py-4 border-b border-slate-100">
+					<CardLabel>All Users ({users.length})</CardLabel>
 				</div>
 
-				<div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-					<div className="px-6 py-4 border-b border-slate-100">
-						<p className="text-xs font-black uppercase tracking-widest text-slate-400">
-							All Users ({users.length})
-						</p>
+				{loading ? (
+					<div className="flex justify-center py-12">
+						<span className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
 					</div>
-
-					{loading ? (
-						<div className="flex justify-center py-12">
-							<span className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-						</div>
-					) : error ? (
-						<p className="text-xs text-red-600 px-6 py-4">{error}</p>
-					) : (
-						<>
-							{roleError && (
-								<div className="mx-6 mt-4 p-3 rounded-xl bg-red-50 border border-red-200">
-									<p className="text-xs text-red-700">{roleError}</p>
-								</div>
-							)}
+				) : error ? (
+					<p className="text-sm text-red-600 px-6 py-4">{error}</p>
+				) : (
+					<>
+						{roleError && (
+							<div className="mx-4 sm:mx-6 mt-4 p-3 rounded-xl bg-red-50 border border-red-200">
+								<p className="text-sm text-red-700">{roleError}</p>
+							</div>
+						)}
+						<div className="overflow-x-auto">
 							<table className="w-full text-sm">
 								<thead>
-									<tr className="border-b border-slate-100 bg-slate-50/50">
-										<th className="text-left px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Email</th>
-										<th className="text-left px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hidden sm:table-cell">Name</th>
-										<th className="text-left px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Role</th>
-										<th className="text-left px-6 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hidden md:table-cell">Joined</th>
+									<tr className="border-b border-slate-100 bg-slate-50/60">
+										<th className={headerCls}>Email</th>
+										<th className={cn(headerCls, "hidden sm:table-cell")}>Name</th>
+										<th className={headerCls}>Role</th>
+										<th className={cn(headerCls, "hidden md:table-cell")}>Joined</th>
 									</tr>
 								</thead>
 								<tbody>
 									{users.map((user) => (
 										<tr key={user.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-											<td className="px-6 py-3 text-xs text-slate-700 truncate max-w-[180px]">{user.email}</td>
-											<td className="px-6 py-3 text-xs text-slate-500 hidden sm:table-cell">{user.display_name ?? "—"}</td>
-											<td className="px-6 py-3">
-												<select
-													value={user.app_role}
-													disabled={updatingRole === user.id}
-													onChange={(e) => handleRoleChange(user.id, e.target.value as GlobalRole)}
-													className={`text-xs border rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white ${
-														user.app_role === "admin"
-															? "border-amber-300 text-amber-700"
-															: user.app_role === "client"
-																? "border-blue-200 text-blue-700"
-																: "border-slate-200 text-slate-700"
-													} ${updatingRole === user.id ? "opacity-50" : ""}`}
-												>
-													<option value="member">Member</option>
-													<option value="admin">Admin</option>
-													<option value="client">Client</option>
-												</select>
-												{updatingRole === user.id && (
-													<span className="ml-2 w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin inline-block align-middle" />
-												)}
+											<td className="px-4 py-3 text-sm text-slate-700 max-w-50 truncate">{user.email}</td>
+											<td className="px-4 py-3 text-sm text-slate-500 hidden sm:table-cell">{user.display_name ?? "—"}</td>
+											<td className="px-4 py-3">
+												<div className="flex items-center gap-2">
+													<Select
+														value={user.app_role}
+														disabled={updatingRole === user.id}
+														onChange={(e) => handleRoleChange(user.id, e.target.value as GlobalRole)}
+														className="h-10 w-auto"
+													>
+														<option value="member">Member</option>
+														<option value="admin">Admin</option>
+														<option value="client">Client</option>
+													</Select>
+													{updatingRole === user.id && (
+														<span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin inline-block" />
+													)}
+												</div>
 											</td>
-											<td className="px-6 py-3 text-xs text-slate-400 hidden md:table-cell">
+											<td className="px-4 py-3 text-sm text-slate-400 hidden md:table-cell whitespace-nowrap">
 												{formatDate(user.created_at)}
 											</td>
 										</tr>
 									))}
 								</tbody>
 							</table>
-						</>
-					)}
-				</div>
-			</div>
-		</div>
+						</div>
+					</>
+				)}
+			</Card>
+		</AppShell>
 	);
 }

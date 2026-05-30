@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
@@ -11,9 +10,10 @@ import { listPropertyImages } from "@/src/lib/db/propertyImages";
 import { exportToPDF, type ListingPDFData } from "@/src/lib/pdf";
 import type { PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
 import { PaymentList } from "@/src/components/payments/PaymentList";
+import { AppShell, Button, Card, CardLabel, Badge, type BadgeTone } from "@/src/components/ui";
 import { PropertyGallery } from "./PropertyGallery";
 import { PropertyForm } from "./PropertyForm";
-import { ArrowLeft, Pencil, TriangleAlert, Plus, Share2 } from "lucide-react";
+import { Pencil, TriangleAlert, Plus, Share2 } from "lucide-react";
 
 /** Fetch a public image URL and return it as a data URL so @react-pdf embeds
  *  it reliably (avoids intermittent remote-fetch/CORS failures during render). */
@@ -118,33 +118,33 @@ export function PropertyDetail({ propertyId }: Props) {
 
 	if (loading && !data) {
 		return (
-			<div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 flex justify-center">
-				<span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-			</div>
+			<AppShell title="Property">
+				<div className="py-16 flex justify-center">
+					<span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+				</div>
+			</AppShell>
 		);
 	}
 
 	if (error && !data) {
 		return (
-			<div className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
-				<div className="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
-					{error}
-				</div>
-				<Link href="/" className="mt-4 text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1">
-					<ArrowLeft className="w-3.5 h-3.5" />
-					Back to dashboard
-				</Link>
-			</div>
+			<AppShell title="Property">
+				<div className="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
+				<Button variant="ghost" size="sm" className="mt-4" onClick={() => router.push("/")}>← Back to properties</Button>
+			</AppShell>
 		);
 	}
 
 	if (!data) return null;
 
+	const saleTone: BadgeTone =
+		sale?.status === "active" ? "amber" : sale?.status === "closed" ? "emerald" : "slate";
+
 	return (
-		<div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+		<AppShell title="Property" subtitle={data.city ?? undefined}>
 			{/* Address header */}
 			<div className="mb-5">
-				<h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight break-words">
+				<h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight wrap-break-word">
 					{data.address_line}
 				</h1>
 				{data.city && <p className="text-sm text-slate-500 mt-1">{data.city}</p>}
@@ -154,47 +154,36 @@ export function PropertyDetail({ propertyId }: Props) {
 			<PropertyGallery propertyId={propertyId} />
 
 			{data.latitude == null && (
-				<div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
+				<div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800 flex items-start gap-2">
 					<TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" />
 					<span>
-						This property isn't on the map yet — we couldn't pin its address automatically.
-						Click <strong>Edit</strong> and paste a Google Maps link to add it.
+						This property isn&apos;t on the map yet — we couldn&apos;t pin its address automatically.
+						Tap <strong>Edit</strong> and paste a Google Maps link to add it.
 					</span>
 				</div>
 			)}
 
 			{error && (
-				<div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">{error}</div>
+				<div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
 			)}
 
 			{/* Two-column on lg+, stacked below */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
 				{/* Property info */}
-				<section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
-					<div className="flex items-center justify-between mb-4">
-						<h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Property</h2>
+				<Card>
+					<div className="flex items-center justify-between gap-2 mb-4">
+						<CardLabel>Property</CardLabel>
 						{!editing && (
-							<div className="flex items-center gap-1.5">
-								<button
-									onClick={handleShare}
-									disabled={sharing}
-									title="Generate a client-ready PDF with photos & details"
-									className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity inline-flex items-center gap-1 disabled:opacity-50"
-								>
-									{sharing ? (
-										<span className="w-3 h-3 border-2 border-primary-content/40 border-t-primary-content rounded-full animate-spin" />
-									) : (
-										<Share2 className="w-3 h-3" />
-									)}
+							<div className="flex items-center gap-2">
+								<Button size="sm" onClick={handleShare} loading={sharing}
+									title="Generate a client-ready PDF with photos & details">
+									{!sharing && <Share2 className="w-4 h-4" />}
 									{sharing ? "Preparing…" : "Share"}
-								</button>
-								<button
-									onClick={() => setEditing(true)}
-									className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors inline-flex items-center gap-1"
-								>
-									<Pencil className="w-3 h-3" />
+								</Button>
+								<Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+									<Pencil className="w-4 h-4" />
 									Edit
-								</button>
+								</Button>
 							</div>
 						)}
 					</div>
@@ -207,56 +196,42 @@ export function PropertyDetail({ propertyId }: Props) {
 							onDone={() => { setEditing(false); reload(); }}
 						/>
 					) : (
-						<dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-xs">
+						<dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
 							<Field label="Homeowner" value={data.homeowner_name} />
 							<Field label="City" value={data.city ?? "—"} />
 							<Field label="Size" value={data.size_sqm != null ? `${data.size_sqm} m²` : "—"} />
 							<Field label="Bedrooms / Baths" value={`${data.bedrooms ?? "—"} / ${data.bathrooms ?? "—"}`} />
 							<Field label="Type" value={data.listing_type === "for_rent" ? "For Rent" : "For Sale"} />
 							<Field label="Status" value={data.status[0].toUpperCase() + data.status.slice(1)} />
-							<Field
-								label="Listed price"
-								value={data.list_price != null ? fmtMoney(data.list_price, data.currency) : "—"}
-								wide
-							/>
-							{data.notes && (
-								<Field label="Notes" value={data.notes} wide multiline />
-							)}
+							<Field label="Listed price" value={data.list_price != null ? fmtMoney(data.list_price, data.currency) : "—"} wide />
+							{data.notes && <Field label="Notes" value={data.notes} wide multiline />}
 						</dl>
 					)}
-				</section>
+				</Card>
 
 				{/* Active lease / sale */}
-				<section className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
-					<h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">
+				<Card>
+					<CardLabel className="mb-4 block">
 						{data.listing_type === "for_sale"
 							? (sale ? "Sale" : "Sales agreement")
 							: (data.active_lease ? "Active lease" : "Lease")}
-					</h2>
+					</CardLabel>
 
 					{data.listing_type === "for_sale" ? (
 						sale ? (
 							<div className="space-y-4">
 								<div className="flex flex-wrap items-center justify-between gap-2">
 									<div>
-										<p className="text-sm font-bold text-slate-900">{sale.buyer.full_name}</p>
+										<p className="text-base font-bold text-slate-900">{sale.buyer.full_name}</p>
 										{(sale.buyer.phone || sale.buyer.email) && (
-											<p className="text-xs text-slate-500 mt-0.5">
+											<p className="text-sm text-slate-500 mt-0.5">
 												{sale.buyer.phone ?? ""}
 												{sale.buyer.phone && sale.buyer.email ? " · " : ""}
 												{sale.buyer.email ?? ""}
 											</p>
 										)}
 									</div>
-									<span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border ${
-										sale.status === "active"
-											? "bg-amber-50 text-amber-700 border-amber-200"
-											: sale.status === "closed"
-												? "bg-emerald-50 text-emerald-700 border-emerald-200"
-												: "bg-slate-50 text-slate-600 border-slate-200"
-									}`}>
-										{sale.status}
-									</span>
+									<Badge tone={saleTone}>{sale.status}</Badge>
 								</div>
 
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -266,124 +241,99 @@ export function PropertyDetail({ propertyId }: Props) {
 									)}
 								</div>
 
-								<dl className="grid grid-cols-2 gap-4 text-xs pt-1">
+								<dl className="grid grid-cols-2 gap-4 text-sm pt-1">
 									<Field label="Sale date" value={sale.sale_date} />
 									<Field label="Target close" value={sale.target_close_date ?? "—"} />
 								</dl>
 							</div>
 						) : data.status === "sold" ? (
 							<div className="text-center py-6">
-								<p className="text-xs text-slate-500">This property is sold.</p>
+								<p className="text-sm text-slate-500">This property is sold.</p>
 							</div>
 						) : (
 							<div className="text-center py-6">
-								<p className="text-xs text-slate-500 mb-4">No sales agreement for this property.</p>
-								<button
-									onClick={() => router.push("/documents/new")}
-									className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
-								>
-									<Plus className="w-3.5 h-3.5" />
+								<p className="text-sm text-slate-500 mb-4">No sales agreement for this property.</p>
+								<Button onClick={() => router.push("/documents/new")}>
+									<Plus className="w-4 h-4" />
 									New sales agreement
-								</button>
+								</Button>
 							</div>
 						)
 					) : data.active_lease ? (
 						<div className="space-y-4">
 							<div className="flex flex-wrap items-center justify-between gap-2">
 								<div>
-									<p className="text-sm font-bold text-slate-900">{data.active_lease.tenant.full_name}</p>
+									<p className="text-base font-bold text-slate-900">{data.active_lease.tenant.full_name}</p>
 									{(data.active_lease.tenant.phone || data.active_lease.tenant.email) && (
-										<p className="text-xs text-slate-500 mt-0.5">
+										<p className="text-sm text-slate-500 mt-0.5">
 											{data.active_lease.tenant.phone ?? ""}
 											{data.active_lease.tenant.phone && data.active_lease.tenant.email ? " · " : ""}
 											{data.active_lease.tenant.email ?? ""}
 										</p>
 									)}
 								</div>
-								<span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded border bg-emerald-50 text-emerald-700 border-emerald-200">
+								<Badge tone="emerald">
 									{data.active_lease.term === "undefined" ? "Open" : data.active_lease.term}
-								</span>
+								</Badge>
 							</div>
 
-							{/* Rent + Deposit highlight pair */}
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-								<Highlight
-									label="Monthly rent"
-									value={fmtMoney(Number(data.active_lease.monthly_rent), data.active_lease.currency)}
-								/>
-								<Highlight
-									label="Security deposit"
-									value={fmtMoney(Number(data.active_lease.deposit), data.active_lease.currency)}
-								/>
+								<Highlight label="Monthly rent" value={fmtMoney(Number(data.active_lease.monthly_rent), data.active_lease.currency)} />
+								<Highlight label="Security deposit" value={fmtMoney(Number(data.active_lease.deposit), data.active_lease.currency)} />
 							</div>
 
-							{/* Dates */}
-							<dl className="grid grid-cols-2 gap-4 text-xs pt-1">
+							<dl className="grid grid-cols-2 gap-4 text-sm pt-1">
 								<Field label="Start" value={data.active_lease.start_date} />
 								<Field label="End" value={data.active_lease.end_date ?? "—"} />
 							</dl>
 
-							{/* Balance */}
-							<div className="border-t border-slate-100 pt-4 grid grid-cols-3 gap-2 text-xs">
-								<div>
-									<p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Paid</p>
-									<p className="text-slate-800 font-semibold mt-0.5">{fmtMoney(data.active_lease.balance.totalPaid, data.active_lease.currency)}</p>
-								</div>
-								<div>
-									<p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Due</p>
-									<p className="text-slate-800 font-semibold mt-0.5">{fmtMoney(data.active_lease.balance.totalDue, data.active_lease.currency)}</p>
-								</div>
-								<div>
-									<p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Balance</p>
-									<p className={`font-semibold mt-0.5 ${data.active_lease.balance.balance > 0 ? "text-red-600" : "text-slate-800"}`}>
-										{fmtMoney(data.active_lease.balance.balance, data.active_lease.currency)}
-									</p>
-								</div>
+							{/* Balance — 3 columns on sm+, stacked on phones */}
+							<div className="border-t border-slate-100 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+								<BalanceCell label="Paid" value={fmtMoney(data.active_lease.balance.totalPaid, data.active_lease.currency)} />
+								<BalanceCell label="Due" value={fmtMoney(data.active_lease.balance.totalDue, data.active_lease.currency)} />
+								<BalanceCell
+									label="Balance"
+									value={fmtMoney(data.active_lease.balance.balance, data.active_lease.currency)}
+									danger={data.active_lease.balance.balance > 0}
+								/>
 							</div>
 
-							<button
-								onClick={handleEndLease}
-								disabled={endingLease}
-								className="w-full mt-2 px-3 py-2 text-xs font-semibold rounded-lg bg-white text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
-							>
+							<Button variant="danger" block onClick={handleEndLease} loading={endingLease}>
 								{endingLease ? "Ending…" : "End lease"}
-							</button>
+							</Button>
 						</div>
 					) : (
 						<div className="text-center py-6">
-							<p className="text-xs text-slate-500 mb-4">No active lease for this property.</p>
-							<button
-								onClick={() => router.push("/documents/new")}
-								className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
-							>
-								<Plus className="w-3.5 h-3.5" />
+							<p className="text-sm text-slate-500 mb-4">No active lease for this property.</p>
+							<Button onClick={() => router.push("/documents/new")}>
+								<Plus className="w-4 h-4" />
 								New rental agreement
-							</button>
+							</Button>
 						</div>
 					)}
-				</section>
+				</Card>
 			</div>
 
 			{/* Payments — full width */}
 			{data.active_lease && (
-				<section className="mt-5 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
-					<h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">Payments</h2>
+				<Card className="mt-4 sm:mt-5">
+					<CardLabel className="mb-4 block">Payments</CardLabel>
 					<PaymentList
 						leaseId={data.active_lease.id}
 						currency={data.active_lease.currency}
 						monthlyRent={Number(data.active_lease.monthly_rent)}
 						onChanged={reload}
 					/>
-				</section>
+				</Card>
 			)}
-		</div>
+		</AppShell>
 	);
 }
 
 function Field({ label, value, wide, multiline }: { label: string; value: string; wide?: boolean; multiline?: boolean }) {
 	return (
 		<div className={wide ? "sm:col-span-2" : ""}>
-			<dt className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{label}</dt>
+			<dt className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{label}</dt>
 			<dd className={`text-slate-800 ${multiline ? "whitespace-pre-wrap" : ""}`}>{value}</dd>
 		</div>
 	);
@@ -391,9 +341,18 @@ function Field({ label, value, wide, multiline }: { label: string; value: string
 
 function Highlight({ label, value }: { label: string; value: string }) {
 	return (
-		<div className="bg-indigo-50 rounded-xl px-4 py-3">
-			<p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 mb-1">{label}</p>
+		<div className="bg-primary/5 rounded-xl px-4 py-3">
+			<p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1">{label}</p>
 			<p className="text-base font-bold text-slate-900">{value}</p>
+		</div>
+	);
+}
+
+function BalanceCell({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+	return (
+		<div className="bg-slate-50 rounded-xl px-4 py-3">
+			<p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+			<p className={`font-semibold mt-0.5 ${danger ? "text-red-600" : "text-slate-800"}`}>{value}</p>
 		</div>
 	);
 }

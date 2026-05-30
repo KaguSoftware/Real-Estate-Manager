@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Property, TaxResponsibility } from "@/src/lib/db/types";
-import { FormField, inputClass } from "@/src/components/ui/FormField";
+import { FormField, Input, Textarea, Select } from "@/src/components/ui";
 
 /**
  * State container for the sales wizard step 3.
@@ -105,135 +105,129 @@ export function SalesDetailsForm({ state, onChange }: Props) {
 		<div className="space-y-8">
 			{/* A — Seller */}
 			<section className="space-y-4">
-				<h3 className="text-[11px] font-black uppercase tracking-widest text-slate-700">
+				<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
 					A — Mal Sahibi (Seller)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Adı Soyadı / Firma (Full name)">
-						<input required value={state.sellerName} onChange={set("sellerName")} className={inputClass} />
+						<Input required value={state.sellerName} onChange={set("sellerName")} />
 					</FormField>
 					<FormField label="Telefon (Phone)">
-						<input value={state.sellerPhone} onChange={set("sellerPhone")} className={inputClass} />
+						<Input type="tel" inputMode="tel" value={state.sellerPhone} onChange={set("sellerPhone")} />
 					</FormField>
 				</div>
 				<FormField label="Adresi (Address)">
-					<input value={state.sellerAddress} onChange={set("sellerAddress")} className={inputClass} />
+					<Input value={state.sellerAddress} onChange={set("sellerAddress")} />
 				</FormField>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 					<FormField label="T.C. Kimlik No">
-						<input value={state.sellerNationalId} onChange={set("sellerNationalId")} className={inputClass} />
+						<Input value={state.sellerNationalId} onChange={set("sellerNationalId")} />
 					</FormField>
 					<FormField label="Vergi No">
-						<input value={state.sellerTaxNo} onChange={set("sellerTaxNo")} className={inputClass} />
+						<Input value={state.sellerTaxNo} onChange={set("sellerTaxNo")} />
 					</FormField>
 					<FormField label="V. Dairesi (Tax office)">
-						<input value={state.sellerTaxOffice} onChange={set("sellerTaxOffice")} className={inputClass} />
+						<Input value={state.sellerTaxOffice} onChange={set("sellerTaxOffice")} />
 					</FormField>
 				</div>
 				<FormField label="E-posta (Email)">
-					<input type="email" value={state.sellerEmail} onChange={set("sellerEmail")} className={inputClass} />
+					<Input type="email" value={state.sellerEmail} onChange={set("sellerEmail")} />
 				</FormField>
 			</section>
 
 			{/* B — Buyer */}
 			<section className="space-y-4">
-				<h3 className="text-[11px] font-black uppercase tracking-widest text-slate-700">
+				<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
 					B — Alıcı (Buyer)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Adı Soyadı / Firma (Full name)">
-						<input required value={state.buyerName} onChange={set("buyerName")} className={inputClass} />
+						<Input required value={state.buyerName} onChange={set("buyerName")} />
 					</FormField>
 					<FormField label="Telefon (Phone)">
-						<input value={state.buyerPhone} onChange={set("buyerPhone")} className={inputClass} />
+						<Input type="tel" inputMode="tel" value={state.buyerPhone} onChange={set("buyerPhone")} />
 					</FormField>
 				</div>
 				<FormField label="Adresi (Address)">
-					<input value={state.buyerAddress} onChange={set("buyerAddress")} className={inputClass} />
+					<Input value={state.buyerAddress} onChange={set("buyerAddress")} />
 				</FormField>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 					<FormField label="T.C. Kimlik No">
-						<input value={state.buyerNationalId} onChange={set("buyerNationalId")} className={inputClass} />
+						<Input value={state.buyerNationalId} onChange={set("buyerNationalId")} />
 					</FormField>
 					<FormField label="Vergi No">
-						<input value={state.buyerTaxNo} onChange={set("buyerTaxNo")} className={inputClass} />
+						<Input value={state.buyerTaxNo} onChange={set("buyerTaxNo")} />
 					</FormField>
 					<FormField label="V. Dairesi (Tax office)">
-						<input value={state.buyerTaxOffice} onChange={set("buyerTaxOffice")} className={inputClass} />
+						<Input value={state.buyerTaxOffice} onChange={set("buyerTaxOffice")} />
 					</FormField>
 				</div>
 				<FormField label="E-posta (Email)">
-					<input type="email" value={state.buyerEmail} onChange={set("buyerEmail")} className={inputClass} />
+					<Input type="email" value={state.buyerEmail} onChange={set("buyerEmail")} />
 				</FormField>
-				<p className="text-[11px] text-slate-400">Provide at least an email or phone for the buyer.</p>
+				<p className="text-xs text-slate-400">Provide at least an email or phone for the buyer.</p>
 			</section>
 
 			{/* Sale info */}
 			<section className="space-y-4">
-				<h3 className="text-[11px] font-black uppercase tracking-widest text-slate-700">
+				<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
 					Satış Bilgileri (Sale info)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 					<FormField label="Satış Bedeli (Sale price)">
-						<input required type="number" min="0" step="0.01" value={state.salePrice}
-							onChange={set("salePrice")} className={inputClass} />
+						<Input required type="number" inputMode="decimal" min="0" step="0.01" value={state.salePrice} onChange={set("salePrice")} />
 					</FormField>
 					<FormField label="Para Birimi (Currency)">
-						<select value={state.currency} onChange={set("currency")} className={inputClass}>
+						<Select value={state.currency} onChange={set("currency")}>
 							<option value="USD">USD ($)</option>
 							<option value="TRY">TRY (₺)</option>
 							<option value="EUR">EUR (€)</option>
-						</select>
+						</Select>
 					</FormField>
 					<FormField label="Sözleşme Tarihi (Sale date)">
-						<input required type="date" value={state.saleDate} onChange={set("saleDate")} className={inputClass} />
+						<Input required type="date" value={state.saleDate} onChange={set("saleDate")} />
 					</FormField>
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 					<FormField label="Kapora (Deposit)">
-						<input type="number" min="0" step="0.01" value={state.depositAmount}
-							onChange={set("depositAmount")} className={inputClass} />
+						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.depositAmount} onChange={set("depositAmount")} />
 					</FormField>
 					<FormField label="Cezai Şart (Penalty)">
-						<input type="number" min="0" step="0.01" value={state.penaltyAmount}
-							onChange={set("penaltyAmount")} className={inputClass} />
+						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.penaltyAmount} onChange={set("penaltyAmount")} />
 					</FormField>
 					<FormField label="Tapu Devir Tarihi (Target close date)">
-						<input type="date" value={state.targetCloseDate} onChange={set("targetCloseDate")} className={inputClass} />
+						<Input type="date" value={state.targetCloseDate} onChange={set("targetCloseDate")} />
 					</FormField>
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Protokol Süresi / gün (Validity days)">
-						<input type="number" min="0" step="1" value={state.validityDays}
-							onChange={set("validityDays")} className={inputClass} />
+						<Input type="number" inputMode="numeric" min="0" step="1" value={state.validityDays} onChange={set("validityDays")} />
 					</FormField>
 					<FormField label="Vergi Sorumluluğu (Tax responsibility)">
-						<select value={state.taxResponsibility} onChange={set("taxResponsibility")} className={inputClass}>
+						<Select value={state.taxResponsibility} onChange={set("taxResponsibility")}>
 							<option value="buyer">Alıcı tarafından (Buyer pays)</option>
 							<option value="seller">Satıcı tarafından (Seller pays)</option>
 							<option value="legal">Yasal sorumluluklar çerçevesinde (Legal)</option>
-						</select>
+						</Select>
 					</FormField>
 				</div>
 			</section>
 
 			{/* Commission */}
 			<section className="space-y-4">
-				<h3 className="text-[11px] font-black uppercase tracking-widest text-slate-700">
+				<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
 					Komisyon (Commission)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Alıcı Hizmet Bedeli Oranı % (Buyer rate)">
-						<input type="number" min="0" step="0.01" value={state.buyerCommissionRate}
-							onChange={set("buyerCommissionRate")} className={inputClass} />
+						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.buyerCommissionRate} onChange={set("buyerCommissionRate")} />
 					</FormField>
 					<FormField label="Satıcı Hizmet Bedeli Oranı % (Seller rate)">
-						<input type="number" min="0" step="0.01" value={state.sellerCommissionRate}
-							onChange={set("sellerCommissionRate")} className={inputClass} />
+						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.sellerCommissionRate} onChange={set("sellerCommissionRate")} />
 					</FormField>
 				</div>
 				{(commissionPreview.buyer || commissionPreview.seller) && (
-					<div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-600 space-y-1">
+					<div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-sm text-slate-600 space-y-1.5">
 						{commissionPreview.buyer && (
 							<p><span className="font-bold">Alıcı:</span> matrah {fmtMoney(commissionPreview.buyer.matrah)} {state.currency}
 								{" · "}KDV {fmtMoney(commissionPreview.buyer.kdv)}
@@ -250,12 +244,11 @@ export function SalesDetailsForm({ state, onChange }: Props) {
 
 			{/* Special conditions */}
 			<section className="space-y-4">
-				<h3 className="text-[11px] font-black uppercase tracking-widest text-slate-700">
+				<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
 					Özel Şartlar (Special conditions)
 				</h3>
 				<FormField label="Özel Şartlar — optional, free text">
-					<textarea rows={4} value={state.specialConditions}
-						onChange={set("specialConditions")} className={inputClass} />
+					<Textarea rows={4} value={state.specialConditions} onChange={set("specialConditions")} />
 				</FormField>
 			</section>
 		</div>

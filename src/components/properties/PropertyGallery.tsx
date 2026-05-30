@@ -119,7 +119,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 								type="button"
 								onClick={() => fileRef.current?.click()}
 								disabled={uploading}
-								className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 transition-opacity disabled:opacity-50"
+								className="inline-flex items-center h-11 px-4 text-sm font-semibold rounded-xl bg-primary text-primary-content hover:brightness-110 transition-all shadow-soft disabled:opacity-50"
 							>
 								{uploading ? "Uploading…" : "+ Add photos"}
 							</button>
@@ -129,7 +129,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 			</div>
 
 			{error && (
-				<div className="mt-2 p-2 rounded-lg bg-red-50 border border-red-200 text-[11px] text-red-700">
+				<div className="mt-2 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
 					{error}
 				</div>
 			)}
@@ -158,7 +158,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 								<button
 									type="button"
 									onClick={(e) => { e.stopPropagation(); handleDelete(img); }}
-									className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all"
+									className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 text-white text-base leading-none flex items-center justify-center hover:bg-red-600 transition-colors"
 									aria-label="Delete photo"
 								>×</button>
 							)}

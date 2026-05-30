@@ -13,7 +13,7 @@ import type { DocKind, RentalPDFData, SalesPDFData } from "@/src/lib/pdf";
 import { PDFDocument } from "@/src/lib/pdf";
 import type { Property, LeaseTerm } from "@/src/lib/db/types";
 import { PropertyPickerCardList } from "./PropertyPickerCardList";
-import { FormField, inputClass } from "@/src/components/ui/FormField";
+import { FormField, Input, Textarea, Select, Button, cn } from "@/src/components/ui";
 import {
 	SalesDetailsForm,
 	initialSalesFormState,
@@ -23,7 +23,7 @@ import {
 
 const PDFBlobProvider = dynamic(
 	() => import("@react-pdf/renderer").then((m) => m.BlobProvider),
-	{ ssr: false, loading: () => <div className="text-xs text-slate-400 p-6">Loading preview…</div> },
+	{ ssr: false, loading: () => <div className="text-sm text-slate-400 p-6">Loading preview…</div> },
 );
 
 type Step = "type" | "property" | "details" | "preview";
@@ -300,61 +300,56 @@ export function DocumentWizard() {
 		kind === "rental" ? rentalData : salesData;
 	const previewLabel = kind === "rental" ? "Rental agreement preview" : "Sales agreement preview";
 
+	const stepIndex = (["type", "property", "details", "preview"] as Step[]).indexOf(step);
+
 	return (
-		<div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+		<div className="max-w-3xl mx-auto">
 			{/* Stepper */}
-			<ol className="flex flex-wrap items-center gap-x-2 gap-y-2 mb-8 text-[11px] font-bold uppercase tracking-widest">
+			<ol className="flex items-center gap-1.5 mb-6 text-xs font-semibold">
 				{(["type", "property", "details", "preview"] as Step[]).map((s, i) => (
-					<li key={s} className="flex items-center gap-2">
+					<li key={s} className="flex items-center gap-1.5 min-w-0">
 						<span
-							className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${
+							className={cn(
+								"w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0",
 								step === s
 									? "bg-primary text-primary-content"
-									: i < (["type","property","details","preview"] as Step[]).indexOf(step)
+									: i < stepIndex
 										? "bg-emerald-500 text-white"
-										: "bg-slate-200 text-slate-500"
-							}`}
+										: "bg-slate-200 text-slate-500",
+							)}
 						>{i + 1}</span>
-						<span className={step === s ? "text-slate-900" : "text-slate-400"}>{s}</span>
+						<span className={cn("capitalize hidden sm:inline", step === s ? "text-slate-900" : "text-slate-400")}>{s}</span>
 						{i < 3 && <span className="text-slate-300">›</span>}
 					</li>
 				))}
 			</ol>
 
 			{error && (
-				<div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">{error}</div>
+				<div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
 			)}
 
 			{/* Step 1: type */}
 			{step === "type" && (
 				<div className="space-y-4">
-					<h2 className="text-base font-bold text-slate-900">Choose a document type</h2>
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+					<h2 className="text-lg font-bold text-slate-900">Choose a document type</h2>
+					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 						<button
 							onClick={() => { setKind("rental"); setPropertyId(null); setStep("property"); }}
-							className={`text-left p-5 rounded-2xl border-2 transition-colors ${
-								kind === "rental"
-									? "border-primary bg-primary/5 hover:bg-primary/10"
-									: "border-slate-200 hover:border-primary/60"
-							}`}
+							className="text-left p-5 rounded-2xl border-2 border-slate-200 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
-							<p className="text-sm font-bold text-slate-900">Rental Agreement</p>
-							<p className="text-xs text-slate-500 mt-1">Lease a vacant for-rent property to a new tenant.</p>
+							<p className="text-base font-bold text-slate-900">Rental Agreement</p>
+							<p className="text-sm text-slate-500 mt-1">Lease a vacant for-rent property to a new tenant.</p>
 						</button>
 						<button
 							onClick={() => { setKind("sales"); setPropertyId(null); setStep("property"); }}
-							className={`text-left p-5 rounded-2xl border-2 transition-colors ${
-								kind === "sales"
-									? "border-primary bg-primary/5 hover:bg-primary/10"
-									: "border-slate-200 hover:border-primary/60"
-							}`}
+							className="text-left p-5 rounded-2xl border-2 border-slate-200 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
-							<p className="text-sm font-bold text-slate-900">Sales Agreement</p>
-							<p className="text-xs text-slate-500 mt-1">Sell a for-sale property to a new buyer.</p>
+							<p className="text-base font-bold text-slate-900">Sales Agreement</p>
+							<p className="text-sm text-slate-500 mt-1">Sell a for-sale property to a new buyer.</p>
 						</button>
 						<div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed">
-							<p className="text-sm font-bold text-slate-900">Rent Receipt</p>
-							<p className="text-xs text-slate-500 mt-1">Coming soon.</p>
+							<p className="text-base font-bold text-slate-900">Rent Receipt</p>
+							<p className="text-sm text-slate-500 mt-1">Coming soon.</p>
 						</div>
 					</div>
 				</div>
@@ -363,7 +358,7 @@ export function DocumentWizard() {
 			{/* Step 2: property */}
 			{step === "property" && (
 				<div className="space-y-4">
-					<h2 className="text-base font-bold text-slate-900">Pick a property</h2>
+					<h2 className="text-lg font-bold text-slate-900">Pick a property</h2>
 					{loadingProperties ? (
 						<div className="flex justify-center py-8">
 							<span className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -380,13 +375,9 @@ export function DocumentWizard() {
 							}
 						/>
 					)}
-					<div className="flex justify-between pt-4">
-						<button onClick={() => setStep("type")} className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">← Back</button>
-						<button
-							onClick={() => setStep("details")}
-							disabled={!propertyId}
-							className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 disabled:opacity-40"
-						>Continue →</button>
+					<div className="flex justify-between gap-2 pt-4">
+						<Button variant="ghost" onClick={() => setStep("type")}>← Back</Button>
+						<Button onClick={() => setStep("details")} disabled={!propertyId}>Continue →</Button>
 					</div>
 				</div>
 			)}
@@ -395,68 +386,58 @@ export function DocumentWizard() {
 			{step === "details" && property && kind === "rental" && (
 				<div className="space-y-5">
 					<div>
-						<h2 className="text-base font-bold text-slate-900">Rental details</h2>
-						<p className="text-xs text-slate-500 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
+						<h2 className="text-lg font-bold text-slate-900">Rental details</h2>
+						<p className="text-sm text-slate-500 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
 					</div>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<FormField label="Tenant name">
-							<input value={tenantName} onChange={(e) => setTenantName(e.target.value)} className={inputClass} required />
+							<Input value={tenantName} onChange={(e) => setTenantName(e.target.value)} required />
 						</FormField>
 						<FormField label="National ID (optional)">
-							<input value={tenantNationalId} onChange={(e) => setTenantNationalId(e.target.value)} className={inputClass} />
+							<Input value={tenantNationalId} onChange={(e) => setTenantNationalId(e.target.value)} />
 						</FormField>
 						<FormField label="Tenant email">
-							<input type="email" value={tenantEmail} onChange={(e) => setTenantEmail(e.target.value)} className={inputClass} />
+							<Input type="email" value={tenantEmail} onChange={(e) => setTenantEmail(e.target.value)} />
 						</FormField>
 						<FormField label="Tenant phone">
-							<input value={tenantPhone} onChange={(e) => setTenantPhone(e.target.value)} className={inputClass} />
+							<Input type="tel" inputMode="tel" value={tenantPhone} onChange={(e) => setTenantPhone(e.target.value)} />
 						</FormField>
 					</div>
-					<p className="text-[11px] text-slate-400 -mt-3">Provide at least an email or phone for the tenant.</p>
+					<p className="text-xs text-slate-400 -mt-3">Provide at least an email or phone for the tenant.</p>
 
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 						<FormField label="Term">
-							<select value={term} onChange={(e) => setTerm(e.target.value as LeaseTerm)} className={inputClass}>
+							<Select value={term} onChange={(e) => setTerm(e.target.value as LeaseTerm)}>
 								<option value="1yr">1 year</option>
 								<option value="2yr">2 years</option>
 								<option value="undefined">Undefined</option>
-							</select>
+							</Select>
 						</FormField>
 						<FormField label="Start date">
-							<input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} required />
+							<Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
 						</FormField>
 						<FormField label="Currency">
-							<input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} className={inputClass} maxLength={4} />
+							<Input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={4} />
 						</FormField>
 					</div>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<FormField label="Monthly rent">
-							<input type="number" min="0" step="0.01" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} className={inputClass} required />
+							<Input type="number" inputMode="decimal" min="0" step="0.01" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} required />
 						</FormField>
 						<FormField label="Security deposit">
-							<input type="number" min="0" step="0.01" value={deposit} onChange={(e) => setDeposit(e.target.value)} className={inputClass} />
+							<Input type="number" inputMode="decimal" min="0" step="0.01" value={deposit} onChange={(e) => setDeposit(e.target.value)} />
 						</FormField>
 					</div>
 
 					<FormField label="Additional clauses (optional)">
-						<textarea
-							value={additionalClauses}
-							onChange={(e) => setAdditionalClauses(e.target.value)}
-							rows={4}
-							className={inputClass}
-							placeholder="Any extra terms specific to this lease…"
-						/>
+						<Textarea value={additionalClauses} onChange={(e) => setAdditionalClauses(e.target.value)} rows={4} placeholder="Any extra terms specific to this lease…" />
 					</FormField>
 
-					<div className="flex justify-between pt-4">
-						<button onClick={() => setStep("property")} className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">← Back</button>
-						<button
-							onClick={() => setStep("preview")}
-							disabled={!detailsValid}
-							className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 disabled:opacity-40"
-						>Preview →</button>
+					<div className="flex justify-between gap-2 pt-4">
+						<Button variant="ghost" onClick={() => setStep("property")}>← Back</Button>
+						<Button onClick={() => setStep("preview")} disabled={!detailsValid}>Preview →</Button>
 					</div>
 				</div>
 			)}
@@ -464,19 +445,15 @@ export function DocumentWizard() {
 			{step === "details" && property && kind === "sales" && (
 				<div className="space-y-5">
 					<div>
-						<h2 className="text-base font-bold text-slate-900">Sales agreement details</h2>
-						<p className="text-xs text-slate-500 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
+						<h2 className="text-lg font-bold text-slate-900">Sales agreement details</h2>
+						<p className="text-sm text-slate-500 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
 					</div>
 
 					<SalesDetailsForm state={salesState} onChange={patchSales} />
 
-					<div className="flex justify-between pt-4">
-						<button onClick={() => setStep("property")} className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">← Back</button>
-						<button
-							onClick={() => setStep("preview")}
-							disabled={!detailsValid}
-							className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-content hover:opacity-90 disabled:opacity-40"
-						>Preview →</button>
+					<div className="flex justify-between gap-2 pt-4">
+						<Button variant="ghost" onClick={() => setStep("property")}>← Back</Button>
+						<Button onClick={() => setStep("preview")} disabled={!detailsValid}>Preview →</Button>
 					</div>
 				</div>
 			)}
@@ -484,8 +461,8 @@ export function DocumentWizard() {
 			{/* Step 4: preview */}
 			{step === "preview" && previewData && (
 				<div className="space-y-4">
-					<h2 className="text-base font-bold text-slate-900">Review & generate</h2>
-					<div className="h-[75vh] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
+					<h2 className="text-lg font-bold text-slate-900">Review &amp; generate</h2>
+					<div className="h-[60vh] sm:h-[72vh] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
 						<PDFBlobProvider document={<PDFDocument kind={kind} data={previewData} />}>
 							{({ url, loading, error: blobError }) => {
 								if (loading || !url) {
@@ -497,7 +474,7 @@ export function DocumentWizard() {
 								}
 								if (blobError) {
 									return (
-										<div className="h-full flex items-center justify-center text-xs text-red-600 p-6">
+										<div className="h-full flex items-center justify-center text-sm text-red-600 p-6">
 											Preview failed to render: {String(blobError)}
 										</div>
 									);
@@ -512,17 +489,15 @@ export function DocumentWizard() {
 							}}
 						</PDFBlobProvider>
 					</div>
-					<div className="flex justify-between pt-2">
-						<button
-							onClick={() => setStep("details")}
-							disabled={submitting}
-							className="px-4 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40"
-						>← Back</button>
-						<button
+					<div className="flex justify-between gap-2 pt-2">
+						<Button variant="ghost" onClick={() => setStep("details")} disabled={submitting}>← Back</Button>
+						<Button
 							onClick={handleConfirm}
-							disabled={submitting}
-							className="px-5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
-						>{submitting ? "Generating…" : "Confirm & generate PDF"}</button>
+							loading={submitting}
+							className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-soft"
+						>
+							{submitting ? "Generating…" : "Confirm & generate PDF"}
+						</Button>
 					</div>
 				</div>
 			)}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { listPaymentsForLease, recordPayment } from "@/src/lib/db/payments";
 import type { Payment } from "@/src/lib/db/types";
+import { Button, FormField, Input } from "@/src/components/ui";
 
 interface Props {
 	leaseId: string;
@@ -69,94 +70,58 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged }: Props
 	}
 
 	return (
-		<div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+		<div>
 			<div className="flex items-center justify-between mb-3">
-				<h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-					Payments ({rows.length})
-				</h4>
-				<button
-					type="button"
-					onClick={() => setShowForm((s) => !s)}
-					className="text-[10px] font-semibold text-primary hover:underline"
-				>
+				<p className="text-sm font-semibold text-slate-700">{rows.length} payment{rows.length === 1 ? "" : "s"}</p>
+				<Button size="sm" variant={showForm ? "ghost" : "outline"} onClick={() => setShowForm((s) => !s)}>
 					{showForm ? "Cancel" : "+ Record payment"}
-				</button>
+				</Button>
 			</div>
 
 			{showForm && (
-				<form onSubmit={handleSubmit} className="mb-4 space-y-2 p-3 bg-white rounded-lg border border-slate-200">
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-						<label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-							Period start
-							<input
+				<form onSubmit={handleSubmit} className="mb-4 space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<FormField label="Period start">
+							<Input
 								type="date"
 								value={periodStart}
 								onChange={(e) => { setPeriodStart(e.target.value); setPeriodEnd(plusOneMonth(e.target.value)); }}
-								className="mt-1 w-full px-2 py-1 text-xs border border-slate-200 rounded"
 								required
 							/>
-						</label>
-						<label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-							Period end
-							<input
-								type="date"
-								value={periodEnd}
-								onChange={(e) => setPeriodEnd(e.target.value)}
-								className="mt-1 w-full px-2 py-1 text-xs border border-slate-200 rounded"
-								required
-							/>
-						</label>
+						</FormField>
+						<FormField label="Period end">
+							<Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required />
+						</FormField>
 					</div>
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-						<label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-							Amount ({currency})
-							<input
-								type="number"
-								min="0"
-								step="0.01"
-								value={amount}
-								onChange={(e) => setAmount(e.target.value)}
-								className="mt-1 w-full px-2 py-1 text-xs border border-slate-200 rounded"
-								required
-							/>
-						</label>
-						<label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-							Method (optional)
-							<input
-								value={method}
-								onChange={(e) => setMethod(e.target.value)}
-								className="mt-1 w-full px-2 py-1 text-xs border border-slate-200 rounded"
-								placeholder="cash, transfer, …"
-							/>
-						</label>
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<FormField label={`Amount (${currency})`}>
+							<Input type="number" inputMode="decimal" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+						</FormField>
+						<FormField label="Method (optional)">
+							<Input value={method} onChange={(e) => setMethod(e.target.value)} placeholder="cash, transfer, …" />
+						</FormField>
 					</div>
-					<button
-						type="submit"
-						disabled={submitting}
-						className="w-full mt-1 px-3 py-1.5 text-xs font-semibold rounded bg-primary text-primary-content hover:opacity-90 disabled:opacity-50"
-					>
-						{submitting ? "Saving…" : "Save payment"}
-					</button>
+					<Button type="submit" block loading={submitting}>Save payment</Button>
 				</form>
 			)}
 
-			{error && <p className="mb-2 text-[10px] text-red-600">{error}</p>}
+			{error && <p className="mb-2 text-sm text-red-600">{error}</p>}
 
 			{loading ? (
-				<p className="text-[11px] text-slate-400">Loading…</p>
+				<p className="text-sm text-slate-400">Loading…</p>
 			) : rows.length === 0 ? (
-				<p className="text-[11px] text-slate-400 italic">No payments recorded yet.</p>
+				<p className="text-sm text-slate-400 italic">No payments recorded yet.</p>
 			) : (
-				<ul className="divide-y divide-slate-200">
+				<ul className="divide-y divide-slate-100">
 					{rows.map((p) => (
-						<li key={p.id} className="py-2 flex justify-between text-xs">
-							<div>
-								<p className="text-slate-700 font-medium">{fmt(Number(p.amount_paid), currency)}</p>
-								<p className="text-[10px] text-slate-400">
+						<li key={p.id} className="py-3 flex justify-between gap-3 text-sm">
+							<div className="min-w-0">
+								<p className="text-slate-800 font-semibold">{fmt(Number(p.amount_paid), currency)}</p>
+								<p className="text-xs text-slate-400 mt-0.5">
 									{p.period_start} → {p.period_end}{p.method ? ` · ${p.method}` : ""}
 								</p>
 							</div>
-							<p className="text-[10px] text-slate-400">
+							<p className="text-xs text-slate-400 whitespace-nowrap">
 								{p.paid_at ? new Date(p.paid_at).toLocaleDateString() : "—"}
 							</p>
 						</li>

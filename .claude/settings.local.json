@@ -41,7 +41,12 @@
       "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" install leaflet.markercluster@^1.5.3)",
       "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" install -D @types/leaflet.markercluster@^1.5.5)",
       "Bash(npm --prefix \"c:/Users/MnS/Kagu/demo/RE/frontend\" uninstall leaflet.markercluster @types/leaflet.markercluster)",
-      "PowerShell(npm run build)"
+      "PowerShell(npm run build)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/daisyui/package.json'\\).version\\)\")",
+      "PowerShell(if \\(Test-Path \".env.local\"\\) { \"env.local present\" } else { \"NO env.local\" }; \\(Get-Content package.json | Select-String '\"dev\"'\\))",
+      "PowerShell(npm run dev)",
+      "PowerShell(npx next lint 2>&1)",
+      "PowerShell(\"---\")"
     ]
   }
 }
