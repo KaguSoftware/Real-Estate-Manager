@@ -408,8 +408,11 @@ export const styles = StyleSheet.create({
 	},
 
 	// Sales card — replaces the default gray Card on sales pages.
+	// No `flex` here: like `propBlock`, this card sizes to its content height and
+	// gets full width from the parent column's default `alignItems: stretch`. A
+	// `flex: 1` would expand to flexBasis:0 and, under the fixed-height A4 Page,
+	// collapse the box shorter than its stacked fields (overflow + overlap).
 	salesCard: {
-		flex: 1,
 		borderWidth: 0.75,
 		borderColor: colors.gray_brand,
 		borderLeftWidth: 3,
