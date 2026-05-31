@@ -16,6 +16,24 @@ Font.register({
 	],
 });
 
+// In the browser the font sources above are fetched over HTTP asynchronously.
+// react-pdf measures text during layout, so if generation starts before the
+// fonts are in memory it falls back to degenerate line metrics and every line
+// collapses onto the same baseline (overlapping text). Awaiting this once up
+// front guarantees all weights are loaded before the first render. The promise
+// is memoized so concurrent callers (preview + download) share one fetch.
+let fontsReady: Promise<void> | null = null;
+export function loadPdfFonts(): Promise<void> {
+	if (!fontsReady) {
+		fontsReady = Promise.all([
+			Font.load({ fontFamily: "Sans", fontWeight: 400 }),
+			Font.load({ fontFamily: "Sans", fontWeight: 500 }),
+			Font.load({ fontFamily: "Sans", fontWeight: 700 }),
+		]).then(() => undefined);
+	}
+	return fontsReady;
+}
+
 // Single source of truth for page geometry. The fixed PageFooter is absolutely
 // positioned, so it reserves no flow space — body content would run under it
 // unless the page leaves room. Invariant the footer relies on:

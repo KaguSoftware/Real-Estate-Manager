@@ -10,6 +10,10 @@ export async function exportToPDF(
 ) {
 	// Dynamic import keeps @react-pdf/renderer out of the SSR bundle
 	const { generatePDFBlob } = await import("./document");
+	// Ensure embedded fonts are fully loaded before rendering, otherwise text
+	// is laid out with fallback metrics and lines collapse onto each other.
+	const { loadPdfFonts } = await import("./styles");
+	await loadPdfFonts();
 	const blob = await generatePDFBlob(kind, data);
 
 	const safeFilename = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;

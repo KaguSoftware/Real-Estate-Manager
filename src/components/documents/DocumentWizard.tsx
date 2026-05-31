@@ -195,6 +195,19 @@ export function DocumentWizard() {
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	// The PDF embeds web fonts fetched over HTTP. BlobProvider renders eagerly,
+	// so without this gate its first pass can run before the fonts arrive and
+	// text collapses onto a single baseline. Hold the preview until fonts load.
+	const [fontsLoaded, setFontsLoaded] = useState(false);
+	useEffect(() => {
+		if (step !== "preview" || fontsLoaded) return;
+		let cancelled = false;
+		import("@/src/lib/pdf/styles")
+			.then((m) => m.loadPdfFonts())
+			.then(() => { if (!cancelled) setFontsLoaded(true); });
+		return () => { cancelled = true; };
+	}, [step, fontsLoaded]);
+
 	// Load eligible properties whenever we enter step 2.
 	useEffect(() => {
 		if (step !== "property") return;
@@ -563,6 +576,11 @@ export function DocumentWizard() {
 				<div className="space-y-4">
 					<h2 className="text-lg font-bold text-slate-900">Review &amp; generate</h2>
 					<div className="h-[60vh] sm:h-[72vh] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
+						{!fontsLoaded ? (
+							<div className="h-full flex items-center justify-center">
+								<span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+							</div>
+						) : (
 						<PDFBlobProvider document={<PDFDocument kind={kind} data={previewData} />}>
 							{({ url, loading, error: blobError }) => {
 								if (loading || !url) {
@@ -588,6 +606,7 @@ export function DocumentWizard() {
 								);
 							}}
 						</PDFBlobProvider>
+						)}
 					</div>
 					<div className="flex justify-between gap-2 pt-2">
 						<Button variant="ghost" onClick={() => setStep("details")} disabled={submitting}>← Back</Button>
