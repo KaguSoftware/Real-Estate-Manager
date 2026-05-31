@@ -66,7 +66,10 @@
       "Read(//c/Users/MnS/AppData/Local/Temp/project1-ref/frontend/src/lib/pdf/**)",
       "Bash(tmp=\"/c/Users/MnS/AppData/Local/Temp/project1-ref/frontend\"; echo \"=== where ensure*Fonts is called ===\"; grep -rn \"ensureTurkishFonts\\\\|ensureArabicFonts\\\\|ensureFonts\" \"$tmp/src\" | head -20; echo; echo \"=== index.ts ===\"; cat \"$tmp/src/lib/pdf/index.ts\")",
       "Read(//c/Users/MnS/AppData/Local/Temp/project1-ref/frontend/src/**)",
-      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Write-Output \"Stopping PID $\\($_.ProcessId\\)\"; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $tmp = Join-Path $env:TEMP \"project1-ref\"; if \\(Test-Path $tmp\\) { Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue; Write-Output \"Removed clone\" })"
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Write-Output \"Stopping PID $\\($_.ProcessId\\)\"; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $tmp = Join-Path $env:TEMP \"project1-ref\"; if \\(Test-Path $tmp\\) { Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue; Write-Output \"Removed clone\" })",
+      "Bash(node -e \"for\\(const p of ['playwright','puppeteer','puppeteer-core','@playwright/test']\\){try{require.resolve\\(p\\);console.log\\('HAVE',p\\)}catch{console.log\\('no',p\\)}}\")",
+      "Read(//c/Program Files/Google/Chrome/Application/**)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Write-Output \"dev servers stopped\")"
     ]
   }
 }

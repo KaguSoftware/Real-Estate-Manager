@@ -45,7 +45,8 @@ function SectionChip({ letter, title }: { letter: string; title: string }) {
 
 function PartyCard({ party, roleLabel }: { party: PartyInfo; roleLabel: string }) {
 	return (
-		<View style={styles.salesCard}>
+		// wrap={false} keeps the bordered card from splitting across a page break.
+		<View style={styles.salesCard} wrap={false}>
 			<Text style={styles.salesCardLabel}>{roleLabel} — Adı Soyadı / Firma</Text>
 			<Text style={styles.salesCardValue}>{party.full_name || "—"}</Text>
 
