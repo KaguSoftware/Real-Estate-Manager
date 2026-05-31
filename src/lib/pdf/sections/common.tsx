@@ -48,9 +48,14 @@ export const HeroAddress = ({
 	</View>
 );
 
-/** Section title with a horizontal rule on the right. */
+/**
+ * Section title with a horizontal rule on the right.
+ * `minPresenceAhead` keeps the heading from stranding alone at the bottom of a
+ * page — react-pdf pushes it to the next page unless ~that many points of
+ * content can follow it.
+ */
 export const SectionTitle = ({ title }: { title: string }) => (
-	<View style={styles.sectionHeader}>
+	<View style={styles.sectionHeader} minPresenceAhead={40}>
 		<Text style={styles.sectionTitle}>{title}</Text>
 		<View style={styles.sectionRule} />
 	</View>
@@ -161,6 +166,66 @@ export const ClausesList = ({
 		</View>
 	);
 };
+
+/**
+ * Generic bordered table reusing the navy commission-table styling.
+ * The container wraps across pages while each row stays intact (`wrap={false}`),
+ * so a single row never splits over a page break — mirrors the ClausesList model.
+ *
+ * `columns[].flex` controls width; `align` controls cell text alignment. Pass the
+ * same column shape to the header and every row so they line up.
+ */
+export interface TableColumn {
+	header: string;
+	flex?: number;
+	align?: "left" | "center" | "right";
+}
+
+export const Table = ({
+	columns,
+	rows,
+}: {
+	columns: TableColumn[];
+	/** Each row is an array of cell strings, one per column. */
+	rows: string[][];
+}) => (
+	<View style={styles.commissionTable}>
+		<View style={styles.commissionHeaderRow} wrap={false}>
+			{columns.map((c, i) => (
+				<Text
+					key={i}
+					style={[
+						styles.commissionHeaderCell,
+						{ flex: c.flex ?? 1, textAlign: c.align ?? "left" },
+						i === columns.length - 1 ? { borderRightWidth: 0 } : {},
+					]}
+				>
+					{c.header}
+				</Text>
+			))}
+		</View>
+		{rows.map((cells, r) => (
+			<View key={r} style={r % 2 === 1 ? styles.commissionRowAlt : styles.commissionRow} wrap={false}>
+				{cells.map((cell, i) => {
+					const col = columns[i];
+					const isLabel = i === 0;
+					return (
+						<Text
+							key={i}
+							style={[
+								isLabel ? styles.commissionLabelCell : styles.commissionDataCell,
+								{ flex: col?.flex ?? 1, textAlign: col?.align ?? (isLabel ? "left" : "right") },
+								i === cells.length - 1 ? { borderRightWidth: 0 } : {},
+							]}
+						>
+							{cell}
+						</Text>
+					);
+				})}
+			</View>
+		))}
+	</View>
+);
 
 export const SignatureBlock = ({
 	label = "Signatures",

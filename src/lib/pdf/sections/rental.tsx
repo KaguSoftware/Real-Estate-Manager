@@ -5,6 +5,7 @@ import {
 	ClausesList,
 	SignatureBlock,
 	PageFooter,
+	Table,
 	formatDate,
 } from "./common";
 import {
@@ -86,56 +87,7 @@ function PropCell({ label, value }: { label: string; value: string }) {
 	);
 }
 
-/** Two-column utility responsibility table (reuses commission-table styles). */
-function UtilitiesTable({ utilities }: { utilities: RentalPDFData["utilities"] }) {
-	const rows: { key: keyof RentalPDFData["utilities"] }[] = [
-		{ key: "electricity" },
-		{ key: "water" },
-		{ key: "gas" },
-		{ key: "internet" },
-		{ key: "aidat" },
-	];
-	return (
-		<View style={styles.commissionTable}>
-			<View style={styles.commissionHeaderRow}>
-				<Text style={styles.commissionHeaderCellLeft}>Abonelik</Text>
-				<Text style={[styles.commissionHeaderCell, { borderRightWidth: 0 }]}>Sorumlu</Text>
-			</View>
-			{rows.map((r, i) => (
-				<View key={r.key} style={i % 2 === 1 ? styles.commissionRowAlt : styles.commissionRow}>
-					<Text style={styles.commissionLabelCell}>{UTILITY_NAMES[r.key]}</Text>
-					<Text style={[styles.commissionDataCell, { borderRightWidth: 0, textAlign: "left" }]}>
-						{UTILITY_RESP_LABELS[utilities[r.key]]}
-					</Text>
-				</View>
-			))}
-		</View>
-	);
-}
-
-/** Demirbaş (inventory) table (reuses commission-table styles). */
-function InventoryTable({ items }: { items: RentalPDFData["inventory"] }) {
-	return (
-		<View style={styles.commissionTable}>
-			<View style={styles.commissionHeaderRow}>
-				<Text style={styles.commissionHeaderCellLeft}>Demirbaş</Text>
-				<Text style={styles.commissionHeaderCell}>Adet</Text>
-				<Text style={[styles.commissionHeaderCell, { flex: 2, borderRightWidth: 0 }]}>Not</Text>
-			</View>
-			{items.map((it, i) => (
-				<View key={i} style={i % 2 === 1 ? styles.commissionRowAlt : styles.commissionRow} wrap={false}>
-					<Text style={styles.commissionLabelCell}>{fmtOrBlank(it.item)}</Text>
-					<Text style={[styles.commissionDataCell, { textAlign: "center" }]}>
-						{it.qty == null ? "—" : String(it.qty)}
-					</Text>
-					<Text style={[styles.commissionDataCell, { flex: 2, borderRightWidth: 0, textAlign: "left" }]}>
-						{fmtOrBlank(it.note)}
-					</Text>
-				</View>
-			))}
-		</View>
-	);
-}
+const UTILITY_KEYS = ["electricity", "water", "gas", "internet", "aidat"] as const;
 
 export function RentalAgreement({ data }: { data: RentalPDFData }) {
 	const {
@@ -205,9 +157,9 @@ export function RentalAgreement({ data }: { data: RentalPDFData }) {
 			) : null}
 
 			{/* D — Taşınmaz */}
-			<View style={styles.section} wrap={false}>
+			<View style={styles.section}>
 				<SectionChip letter="D" title="Taşınmaza Ait Bilgiler" />
-				<View style={styles.propBlock}>
+				<View style={styles.propBlock} wrap={false}>
 					<Text style={styles.propAddressLabel}>Adresi</Text>
 					<Text style={styles.propAddressValue}>{property.address || "—"}</Text>
 
@@ -222,9 +174,9 @@ export function RentalAgreement({ data }: { data: RentalPDFData }) {
 			</View>
 
 			{/* E — Kira & Süre */}
-			<View style={styles.section} wrap={false}>
+			<View style={styles.section}>
 				<SectionChip letter="E" title="Kira ve Süre" />
-				<View style={{ flexDirection: "row", gap: 12 }}>
+				<View style={{ flexDirection: "row", gap: 12 }} wrap={false}>
 					<View style={styles.salesPriceBox}>
 						<Text style={styles.salesPriceLabel}>Aylık Kira</Text>
 						<View style={{ flexDirection: "row", alignItems: "baseline" }}>
@@ -276,16 +228,33 @@ export function RentalAgreement({ data }: { data: RentalPDFData }) {
 			</View>
 
 			{/* F — Abonelikler */}
-			<View style={styles.section} wrap={false}>
+			<View style={styles.section}>
 				<SectionChip letter="F" title="Abonelik Sorumlulukları" />
-				<UtilitiesTable utilities={utilities} />
+				<Table
+					columns={[
+						{ header: "Abonelik", flex: 1.4, align: "left" },
+						{ header: "Sorumlu", flex: 1, align: "left" },
+					]}
+					rows={UTILITY_KEYS.map((k) => [UTILITY_NAMES[k], UTILITY_RESP_LABELS[utilities[k]]])}
+				/>
 			</View>
 
 			{/* G — Demirbaş (only when set) */}
 			{hasInventory ? (
 				<View style={styles.section}>
 					<SectionChip letter="G" title="Demirbaş Listesi" />
-					<InventoryTable items={inventory} />
+					<Table
+						columns={[
+							{ header: "Demirbaş", flex: 2.2, align: "left" },
+							{ header: "Adet", flex: 0.8, align: "center" },
+							{ header: "Not", flex: 2.5, align: "left" },
+						]}
+						rows={inventory.map((it) => [
+							fmtOrBlank(it.item),
+							it.qty == null ? "—" : String(it.qty),
+							fmtOrBlank(it.note),
+						])}
+					/>
 				</View>
 			) : null}
 

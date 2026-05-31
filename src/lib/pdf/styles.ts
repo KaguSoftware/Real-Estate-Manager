@@ -5,14 +5,26 @@ Font.registerHyphenationCallback((word) => [word]);
 
 // Unicode-capable family used across every PDF. Built-in Helvetica is WinAnsi-only
 // and renders Turkish glyphs (ğ, İ, ş, ı, …) as fallbacks with stacked diacritics.
-// Google Sans Flex 36pt covers Latin Extended-A in full.
+// Google Sans Flex covers Latin Extended-A in full. Three weights give a clear
+// hierarchy: 400 body · 500 labels/eyebrows · 700 headings.
 Font.register({
 	family: "Sans",
 	fonts: [
-		{ src: "/fonts/GoogleSansFlex_36pt-Regular.ttf", fontWeight: 400 },
-		{ src: "/fonts/GoogleSansFlex_36pt-Bold.ttf",    fontWeight: 700 },
+		{ src: "/fonts/GoogleSansFlex_36pt-Regular.ttf",  fontWeight: 400 },
+		{ src: "/fonts/GoogleSansFlex_120pt-Medium.ttf",  fontWeight: 500 },
+		{ src: "/fonts/GoogleSansFlex_36pt-Bold.ttf",     fontWeight: 700 },
 	],
 });
+
+// Single source of truth for page geometry. The fixed PageFooter is absolutely
+// positioned, so it reserves no flow space — body content would run under it
+// unless the page leaves room. Invariant the footer relies on:
+//     PAGE_PADDING_BOTTOM ≥ FOOTER_BOTTOM + FOOTER_HEIGHT
+// Keep these in sync if you touch either the page or the footer.
+export const PAGE_PADDING = 48;
+export const PAGE_PADDING_BOTTOM = 72;
+export const FOOTER_BOTTOM = 20;
+export const FOOTER_HEIGHT = 26;
 
 export const colors = {
 	slate900: "#0f172a",
@@ -42,12 +54,13 @@ export const colors = {
 
 export const styles = StyleSheet.create({
 	page: {
-		paddingTop: 48,
-		paddingBottom: 60,
-		paddingHorizontal: 48,
+		paddingTop: PAGE_PADDING,
+		paddingBottom: PAGE_PADDING_BOTTOM, // reserves room for the fixed footer
+		paddingHorizontal: PAGE_PADDING,
 		fontFamily: "Sans",
 		fontSize: 10,
 		color: colors.slate800,
+		lineHeight: 1.5,
 		backgroundColor: colors.white,
 	},
 
@@ -93,11 +106,11 @@ export const styles = StyleSheet.create({
 		color: colors.slate400,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontWeight: "bold",
-		marginBottom: 4,
+		fontWeight: 500,
+		marginBottom: 5,
 	},
 	heroAddress: {
-		fontSize: 13,
+		fontSize: 14,
 		fontWeight: "bold",
 		color: colors.slate900,
 		lineHeight: 1.35,
@@ -110,7 +123,7 @@ export const styles = StyleSheet.create({
 
 	// ── Section primitives ─────────────────────────────────────────────
 	section: {
-		marginBottom: 18,
+		marginBottom: 20,
 	},
 	sectionHeader: {
 		flexDirection: "row",
@@ -122,7 +135,7 @@ export const styles = StyleSheet.create({
 		color: colors.slate500,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontWeight: "bold",
+		fontWeight: 500,
 	},
 	sectionRule: {
 		flex: 1,
@@ -133,7 +146,7 @@ export const styles = StyleSheet.create({
 	bodyText: {
 		fontSize: 9.5,
 		color: colors.slate700,
-		lineHeight: 1.55,
+		lineHeight: 1.5,
 	},
 
 	// ── Info card grid ─────────────────────────────────────────────────
@@ -153,7 +166,7 @@ export const styles = StyleSheet.create({
 		color: colors.slate400,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontWeight: "bold",
+		fontWeight: 500,
 		marginBottom: 8,
 	},
 	cardPrimary: {
@@ -185,7 +198,7 @@ export const styles = StyleSheet.create({
 	kvLabel: {
 		fontSize: 8.5,
 		color: colors.slate500,
-		fontWeight: "bold",
+		fontWeight: 500,
 		textTransform: "uppercase",
 		letterSpacing: 0.5,
 	},
@@ -214,7 +227,7 @@ export const styles = StyleSheet.create({
 		color: colors.indigo500,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontWeight: "bold",
+		fontWeight: 500,
 		marginBottom: 6,
 	},
 	highlightValue: {
@@ -272,11 +285,11 @@ export const styles = StyleSheet.create({
 		marginBottom: 6,
 	},
 	signatureLabel: {
-		fontSize: 7,
-		color: colors.slate500,
+		fontSize: 7.5,
+		color: colors.slate600,
 		textTransform: "uppercase",
-		letterSpacing: 1.5,
-		fontWeight: "bold",
+		letterSpacing: 1.2,
+		fontWeight: 700,
 	},
 	signatureSubLabel: {
 		fontSize: 7,
@@ -287,9 +300,10 @@ export const styles = StyleSheet.create({
 	// ── Footer ─────────────────────────────────────────────────────────
 	footer: {
 		position: "absolute",
-		bottom: 24,
-		left: 48,
-		right: 48,
+		bottom: FOOTER_BOTTOM,
+		left: PAGE_PADDING,
+		right: PAGE_PADDING,
+		height: FOOTER_HEIGHT,
 		borderTopWidth: 0.5,
 		borderTopColor: colors.slate200,
 		paddingTop: 8,
@@ -302,23 +316,23 @@ export const styles = StyleSheet.create({
 		color: colors.slate400,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		fontWeight: "bold",
+		fontWeight: 500,
 	},
 	pageNumber: {
 		fontSize: 7,
 		color: colors.slate400,
-		fontWeight: "bold",
+		fontWeight: 500,
 	},
 
 	// ── Sales agreement — Avera branding ──────────────────────────────
 	// Hero title bar across the very top of page 1.
 	salesHero: {
 		backgroundColor: colors.navy_brand,
-		paddingVertical: 14,
-		paddingHorizontal: 18,
-		marginHorizontal: -48,    // bleed beyond the page padding
-		marginTop: -48,
-		marginBottom: 22,
+		paddingVertical: 16,
+		paddingHorizontal: PAGE_PADDING, // align inner text with the body column
+		marginHorizontal: -PAGE_PADDING, // bleed to the page edge
+		marginTop: -PAGE_PADDING,
+		marginBottom: 24,
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
@@ -332,7 +346,7 @@ export const styles = StyleSheet.create({
 	},
 	salesHeroDate: {
 		fontSize: 7.5,
-		fontWeight: "bold",
+		fontWeight: 500,
 		color: colors.gray_brand,
 		letterSpacing: 1.5,
 		textTransform: "uppercase",
@@ -366,11 +380,11 @@ export const styles = StyleSheet.create({
 	},
 	salesCardLabel: {
 		fontSize: 6.5,
-		fontWeight: "bold",
+		fontWeight: 500,
 		color: colors.navy_brand,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		marginBottom: 2,
+		marginBottom: 3,
 	},
 	salesCardValue: {
 		fontSize: 9.5,
@@ -396,11 +410,11 @@ export const styles = StyleSheet.create({
 	},
 	propAddressLabel: {
 		fontSize: 6.5,
-		fontWeight: "bold",
+		fontWeight: 500,
 		color: colors.navy_brand,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
-		marginBottom: 2,
+		marginBottom: 3,
 	},
 	propAddressValue: {
 		fontSize: 10,
@@ -420,11 +434,11 @@ export const styles = StyleSheet.create({
 	},
 	propGridLabel: {
 		fontSize: 6,
-		fontWeight: "bold",
+		fontWeight: 500,
 		color: colors.gray_brand,
 		textTransform: "uppercase",
 		letterSpacing: 0.5,
-		marginBottom: 1,
+		marginBottom: 2,
 		lineHeight: 1.2,
 	},
 	propGridValue: {
@@ -511,7 +525,7 @@ export const styles = StyleSheet.create({
 	},
 	salesPriceLabel: {
 		fontSize: 7,
-		fontWeight: "bold",
+		fontWeight: 500,
 		color: colors.gray_brand,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,
@@ -531,7 +545,7 @@ export const styles = StyleSheet.create({
 	},
 	salesDepositLabel: {
 		fontSize: 7,
-		fontWeight: "bold",
+		fontWeight: 500,
 		color: colors.red_brand,
 		textTransform: "uppercase",
 		letterSpacing: 1.5,

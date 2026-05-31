@@ -1,7 +1,6 @@
 import { View, Text } from "@react-pdf/renderer";
 import { styles, colors } from "../styles";
 import {
-	SectionTitle,
 	TextSection,
 	ClausesList,
 	SignatureBlock,
@@ -75,7 +74,7 @@ function CommissionRow({
 	alt?: boolean;
 }) {
 	return (
-		<View style={alt ? styles.commissionRowAlt : styles.commissionRow}>
+		<View style={alt ? styles.commissionRowAlt : styles.commissionRow} wrap={false}>
 			<Text style={styles.commissionLabelCell}>{label}</Text>
 			<Text style={styles.commissionDataCell}>
 				{line.rate == null ? "—" : `${line.rate.toFixed(2)} %`}
@@ -128,9 +127,9 @@ export function SalesAgreement({ data }: { data: SalesPDFData }) {
 			</View>
 
 			{/* C — Gayrimenkul */}
-			<View style={styles.section} wrap={false}>
+			<View style={styles.section}>
 				<SectionChip letter="C" title="Gayrimenkule Ait Bilgiler" />
-				<View style={styles.propBlock}>
+				<View style={styles.propBlock} wrap={false}>
 					<Text style={styles.propAddressLabel}>Adresi</Text>
 					<Text style={styles.propAddressValue}>{property.address || "—"}</Text>
 
@@ -155,10 +154,10 @@ export function SalesAgreement({ data }: { data: SalesPDFData }) {
 			) : null}
 
 			{/* E — Hizmet bedeli (commission) */}
-			<View style={styles.section} wrap={false}>
+			<View style={styles.section}>
 				<SectionChip letter="E" title="Yapılacak İşleme Ait Bilgiler" />
 				<View style={styles.commissionTable}>
-					<View style={styles.commissionHeaderRow}>
+					<View style={styles.commissionHeaderRow} wrap={false}>
 						<Text style={styles.commissionHeaderCellLeft}>Hizmet Bedeli</Text>
 						<Text style={styles.commissionHeaderCell}>Oran %</Text>
 						<Text style={styles.commissionHeaderCell}>Matrah</Text>

@@ -1,4 +1,4 @@
-import { View, Text, Image } from "@react-pdf/renderer";
+import { View, Image } from "@react-pdf/renderer";
 import {
 	DocHeader,
 	HeroAddress,
@@ -98,7 +98,7 @@ import { StyleSheet } from "@react-pdf/renderer";
 const listingStyles = StyleSheet.create({
 	heroImage: {
 		width: "100%",
-		height: 260,
+		height: 240,
 		objectFit: "cover",
 		borderRadius: 4,
 		marginBottom: 8,
@@ -107,11 +107,12 @@ const listingStyles = StyleSheet.create({
 	thumbGrid: {
 		flexDirection: "row",
 		flexWrap: "wrap",
-		gap: 8,
+		gap: 6,
 	},
 	thumb: {
-		width: "31.8%",
-		height: 90,
+		// Clean 3-up: 3×32% = 96% + two 6pt gaps fit comfortably in the column.
+		width: "32%",
+		height: 84,
 		objectFit: "cover",
 		borderRadius: 3,
 		backgroundColor: colors.slate100,
