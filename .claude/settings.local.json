@@ -57,7 +57,16 @@
       "Bash(python -)",
       "Bash(node -e \"const pkg=require\\('@react-pdf/renderer/package.json'\\); console.log\\('main:',pkg.main\\); console.log\\('module:',pkg.module\\); console.log\\('browser:',JSON.stringify\\(pkg.browser\\)\\); console.log\\('exports:',JSON.stringify\\(pkg.exports\\)\\)\")",
       "Bash(curl -s -o /tmp/f.bin -w '%{http_code} %{content_type} %{size_download}' http://localhost:3000/fonts/__TRACKED_VAR__)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(gh repo *)",
+      "PowerShell($env:Path; Write-Output \"---\"; \\(Get-Command gh -ErrorAction SilentlyContinue\\).Source; Write-Output \"---git---\"; \\(Get-Command git\\).Source)",
+      "PowerShell($tmp = Join-Path $env:TEMP \"project1-ref\"; if \\(Test-Path $tmp\\) { Remove-Item -Recurse -Force $tmp }; git clone --depth 1 https://github.com/KaguSoftware/project1 $tmp 2>&1 | Select-Object -Last 10; Write-Output \"EXIT:$LASTEXITCODE\")",
+      "PowerShell($tmp = Join-Path $env:TEMP \"project1-ref\"; if \\(Test-Path $tmp\\) { Write-Output \"CLONED OK\"; Get-ChildItem $tmp | Select-Object Name } else { Write-Output \"NOT FOUND\" })",
+      "Bash(tmp=\"/c/Users/MnS/AppData/Local/Temp/project1-ref/frontend\"; echo \"=== styles.ts font registration ===\"; sed -n '1,60p' \"$tmp/src/lib/pdf/styles.ts\")",
+      "Read(//c/Users/MnS/AppData/Local/Temp/project1-ref/frontend/src/lib/pdf/**)",
+      "Bash(tmp=\"/c/Users/MnS/AppData/Local/Temp/project1-ref/frontend\"; echo \"=== where ensure*Fonts is called ===\"; grep -rn \"ensureTurkishFonts\\\\|ensureArabicFonts\\\\|ensureFonts\" \"$tmp/src\" | head -20; echo; echo \"=== index.ts ===\"; cat \"$tmp/src/lib/pdf/index.ts\")",
+      "Read(//c/Users/MnS/AppData/Local/Temp/project1-ref/frontend/src/**)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Write-Output \"Stopping PID $\\($_.ProcessId\\)\"; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $tmp = Join-Path $env:TEMP \"project1-ref\"; if \\(Test-Path $tmp\\) { Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue; Write-Output \"Removed clone\" })"
     ]
   }
 }

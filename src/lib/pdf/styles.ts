@@ -3,38 +3,48 @@ import { StyleSheet, Font } from "@react-pdf/renderer";
 // Prevent word hyphenation in @react-pdf/renderer
 Font.registerHyphenationCallback((word) => [word]);
 
-// Font sources MUST be absolute URLs. @react-pdf/font decides how to load a
-// source by testing it with the `is-url` package: only strings with a scheme
-// (https://…) take the browser-capable `fetch` path. A root-relative path like
-// "/fonts/x.ttf" is NOT considered a URL, so react-pdf falls back to
-// `fontkit.open(src)`, which reads from a filesystem — impossible in the
-// browser. The font then loads no glyph metrics, every text line is measured at
-// zero height, and the whole document collapses onto one baseline (overlapping
-// text). Prefixing with the page origin keeps everything on the fetch path.
-const fontBase =
-	typeof window !== "undefined" ? window.location.origin : "";
-const fontUrl = (file: string) => `${fontBase}/fonts/${file}`;
+// Fonts are registered LAZILY, on the client only — never at module top level.
+//
+// Two things must both be true for react-pdf to load a font in the browser:
+//   1. The `src` must be an ABSOLUTE URL. @react-pdf/font picks its load path
+//      with the `is-url` package: only strings with a scheme (https://…) take
+//      the browser-capable `fetch` path. A root-relative "/fonts/x.ttf" is not a
+//      URL to `is-url`, so react-pdf falls back to `fontkit.open(src)` which
+//      reads from a filesystem — impossible in the browser. The font then loads
+//      with no glyph metrics, every line is measured at zero height, and the
+//      document collapses onto one baseline (the overlapping-text bug).
+//   2. Registration must run where `window` exists. This module is reachable
+//      during SSR (the wizard statically imports PDFDocument), so a top-level
+//      `Font.register` would run on the server with `window` undefined, bake in
+//      a relative "/fonts/…" path, and — because react-pdf memoizes the
+//      registration — stay broken on the client forever.
+//
+// `ensurePdfFonts()` is idempotent and called from both the download path
+// (generatePDFBlob) and the preview render (PDFDocument), always client-side.
+//
+// Unicode note: built-in Helvetica is WinAnsi-only and renders Turkish glyphs
+// (ğ, İ, ş, ı, …) as fallbacks with stacked diacritics. Google Sans Flex covers
+// Latin Extended-A in full. Weights: 400 body · 500 labels · 700 headings.
+let fontsRegistered = false;
+export function ensurePdfFonts(): void {
+	if (fontsRegistered || typeof window === "undefined") return;
+	const base = window.location.origin;
+	Font.register({
+		family: "Sans",
+		fonts: [
+			{ src: `${base}/fonts/GoogleSansFlex_36pt-Regular.ttf`, fontWeight: 400 },
+			{ src: `${base}/fonts/GoogleSansFlex_120pt-Medium.ttf`, fontWeight: 500 },
+			{ src: `${base}/fonts/GoogleSansFlex_36pt-Bold.ttf`,    fontWeight: 700 },
+		],
+	});
+	fontsRegistered = true;
+}
 
-// Unicode-capable family used across every PDF. Built-in Helvetica is WinAnsi-only
-// and renders Turkish glyphs (ğ, İ, ş, ı, …) as fallbacks with stacked diacritics.
-// Google Sans Flex covers Latin Extended-A in full. Three weights give a clear
-// hierarchy: 400 body · 500 labels/eyebrows · 700 headings.
-Font.register({
-	family: "Sans",
-	fonts: [
-		{ src: fontUrl("GoogleSansFlex_36pt-Regular.ttf"),  fontWeight: 400 },
-		{ src: fontUrl("GoogleSansFlex_120pt-Medium.ttf"),  fontWeight: 500 },
-		{ src: fontUrl("GoogleSansFlex_36pt-Bold.ttf"),     fontWeight: 700 },
-	],
-});
-
-// The font sources above are fetched over HTTP asynchronously. react-pdf
-// measures text during layout, so rendering before the fonts are in memory
-// risks fallback metrics. Awaiting this once up front guarantees all weights
-// are loaded before the first render and avoids a preview flash. The promise is
-// memoized so concurrent callers (preview + download) share one fetch.
+// Optional: await the registered weights so the first render never measures
+// against unloaded fonts (avoids a preview flash). Registration runs first.
 let fontsReady: Promise<void> | null = null;
 export function loadPdfFonts(): Promise<void> {
+	ensurePdfFonts();
 	if (!fontsReady) {
 		fontsReady = Promise.all([
 			Font.load({ fontFamily: "Sans", fontWeight: 400 }),
