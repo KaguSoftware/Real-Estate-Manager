@@ -99,7 +99,14 @@ export const styles = StyleSheet.create({
 		fontFamily: "Sans",
 		fontSize: 10,
 		color: colors.slate800,
-		lineHeight: 1.5,
+		// NO `lineHeight` here (and nowhere else in this file). react-pdf re-resolves
+		// page styles on every pagination relayout, and its `processLineHeight`
+		// re-multiplies a unitless lineHeight by fontSize each pass — so a value like
+		// 1.5 compounds (15 → 150 → 1500 …) until textkit emits zero lines and text
+		// collapses to height 0 (the A/B card overlap bug). `lineHeight` is inherited,
+		// so the page value alone poisons every Text. Omitting it lets textkit use the
+		// font's natural line height (lineGap + ascent − descent), which is stable
+		// across relayouts. Do not reintroduce `lineHeight` as a unitless number.
 		backgroundColor: colors.white,
 	},
 
@@ -152,7 +159,6 @@ export const styles = StyleSheet.create({
 		fontSize: 14,
 		fontWeight: "bold",
 		color: colors.slate900,
-		lineHeight: 1.35,
 	},
 	heroMeta: {
 		fontSize: 9,
@@ -185,7 +191,6 @@ export const styles = StyleSheet.create({
 	bodyText: {
 		fontSize: 9.5,
 		color: colors.slate700,
-		lineHeight: 1.5,
 	},
 
 	// ── Info card grid ─────────────────────────────────────────────────
@@ -213,12 +218,10 @@ export const styles = StyleSheet.create({
 		fontWeight: "bold",
 		color: colors.slate900,
 		marginBottom: 6,
-		lineHeight: 1.3,
 	},
 	cardLine: {
 		fontSize: 9,
 		color: colors.slate600,
-		lineHeight: 1.45,
 	},
 
 	// ── KV pairs (compact, inline) ─────────────────────────────────────
@@ -305,7 +308,6 @@ export const styles = StyleSheet.create({
 		flex: 1,
 		fontSize: 9,
 		color: colors.slate700,
-		lineHeight: 1.5,
 	},
 
 	// ── Signatures ─────────────────────────────────────────────────────
@@ -420,6 +422,26 @@ export const styles = StyleSheet.create({
 		paddingVertical: 10,
 		paddingHorizontal: 12,
 	},
+	// Each field is wrapped in a View with a minHeight floor (mirroring propGridCell).
+	// Defense-in-depth against the lineHeight-compounding bug fixed on `styles.page`:
+	// View minHeight is unaffected by text relayout, so a row can never collapse to
+	// zero height. Floors comfortably exceed single-line glyph heights (no clipping),
+	// and minHeight does not cap growth, so wrapping addresses still expand to fit.
+	// Spacer between logical groups (id block, contact block).
+	salesCardGroupGap: {
+		height: 6,
+	},
+	salesCardFieldLabel: {
+		minHeight: 12,
+	},
+	salesCardFieldValue: {
+		minHeight: 14,
+		marginBottom: 4,
+	},
+	salesCardFieldLine: {
+		minHeight: 12,
+		marginBottom: 2,
+	},
 	salesCardLabel: {
 		fontSize: 6.5,
 		fontWeight: 500,
@@ -432,14 +454,10 @@ export const styles = StyleSheet.create({
 		fontSize: 9.5,
 		color: colors.slate900,
 		fontWeight: "bold",
-		marginBottom: 6,
-		lineHeight: 1.3,
 	},
 	salesCardLine: {
 		fontSize: 8.5,
 		color: colors.slate700,
-		marginBottom: 3,
-		lineHeight: 1.4,
 	},
 
 	// Property "C" block — single full-width card with 4-col KV grid.
@@ -481,12 +499,10 @@ export const styles = StyleSheet.create({
 		textTransform: "uppercase",
 		letterSpacing: 0.5,
 		marginBottom: 2,
-		lineHeight: 1.2,
 	},
 	propGridValue: {
 		fontSize: 9,
 		color: colors.slate800,
-		lineHeight: 1.35,
 	},
 
 	// Commission table (E).
@@ -507,7 +523,6 @@ export const styles = StyleSheet.create({
 		color: colors.white,
 		textTransform: "uppercase",
 		letterSpacing: 0.5,
-		lineHeight: 1.25,
 		borderRightWidth: 0.5,
 		borderRightColor: colors.navy_brand_dark,
 	},
@@ -520,7 +535,6 @@ export const styles = StyleSheet.create({
 		color: colors.white,
 		textTransform: "uppercase",
 		letterSpacing: 0.5,
-		lineHeight: 1.25,
 		borderRightWidth: 0.5,
 		borderRightColor: colors.navy_brand_dark,
 	},
@@ -542,7 +556,6 @@ export const styles = StyleSheet.create({
 		fontSize: 8,
 		fontWeight: "bold",
 		color: colors.navy_brand,
-		lineHeight: 1.3,
 		borderRightWidth: 0.5,
 		borderRightColor: colors.gray_brand,
 	},
@@ -552,7 +565,6 @@ export const styles = StyleSheet.create({
 		paddingHorizontal: 8,
 		fontSize: 8,
 		color: colors.slate800,
-		lineHeight: 1.3,
 		borderRightWidth: 0.5,
 		borderRightColor: colors.gray_brand,
 		textAlign: "right",

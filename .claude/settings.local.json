@@ -69,7 +69,20 @@
       "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Write-Output \"Stopping PID $\\($_.ProcessId\\)\"; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $tmp = Join-Path $env:TEMP \"project1-ref\"; if \\(Test-Path $tmp\\) { Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue; Write-Output \"Removed clone\" })",
       "Bash(node -e \"for\\(const p of ['playwright','puppeteer','puppeteer-core','@playwright/test']\\){try{require.resolve\\(p\\);console.log\\('HAVE',p\\)}catch{console.log\\('no',p\\)}}\")",
       "Read(//c/Program Files/Google/Chrome/Application/**)",
-      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Write-Output \"dev servers stopped\")"
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Write-Output \"dev servers stopped\")",
+      "Bash(node -e \"console.log\\(process.version\\)\")",
+      "Bash(node --import tsx scripts/layout-probe.mjs)",
+      "Bash(node --import tsx -e ' *)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\({...p.dependencies,...p.devDependencies},null,0\\)\\)\")",
+      "Bash(node --import tsx scripts/browser-path-probe.mjs)",
+      "Bash(node --import tsx scripts/before-collapse-probe.mjs)",
+      "Bash(git --no-pager diff --stat)",
+      "Bash(git --no-pager diff src/lib/pdf/styles.ts)",
+      "Bash(echo \"TSC EXIT: $?\")",
+      "Bash(grep -nA4 \"type LeaseTerm\\\\|type UtilityResponsibility\\\\|type TaxResponsibility\\\\|interface InventoryItem\\\\|type InventoryItem\" src/lib/db/types.ts)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/@react-pdf/stylesheet/package.json'\\).main, '|', require\\('./node_modules/@react-pdf/stylesheet/package.json'\\).module\\)\")",
+      "Bash(node lh_check.mjs)",
+      "Bash(git --no-pager diff .claude/settings.local.json)"
     ]
   }
 }

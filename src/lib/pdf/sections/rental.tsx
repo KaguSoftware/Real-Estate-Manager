@@ -43,36 +43,61 @@ function SectionChip({ letter, title }: { letter: string; title: string }) {
 	);
 }
 
+/**
+ * One field row inside a PartyCard. Each field is wrapped in a `<View>` with a
+ * `minHeight` floor (mirroring propGridCell) rather than being a bare `<Text>`.
+ * The real cause of the old "card collapses, fields overlap" bug was a react-pdf
+ * lineHeight-compounding issue, now fixed by removing all `lineHeight` from
+ * styles.ts (see the note on `styles.page`). These View floors are kept as
+ * defense-in-depth: View `minHeight` is unaffected by text relayout, so a row
+ * can never collapse to zero height even if react-pdf regresses.
+ */
+function CardLabelValue({ label, value }: { label: string; value: string }) {
+	return (
+		<>
+			<View style={styles.salesCardFieldLabel}>
+				<Text style={styles.salesCardLabel}>{label}</Text>
+			</View>
+			<View style={styles.salesCardFieldValue}>
+				<Text style={styles.salesCardValue}>{value}</Text>
+			</View>
+		</>
+	);
+}
+
+function CardLine({ children }: { children: string }) {
+	return (
+		<View style={styles.salesCardFieldLine}>
+			<Text style={styles.salesCardLine}>{children}</Text>
+		</View>
+	);
+}
+
 function PartyCard({ party, roleLabel }: { party: PartyInfo; roleLabel: string }) {
 	return (
 		// wrap={false} keeps the bordered card from splitting across a page break.
 		<View style={styles.salesCard} wrap={false}>
-			<Text style={styles.salesCardLabel}>{roleLabel} — Adı Soyadı / Firma</Text>
-			<Text style={styles.salesCardValue}>{party.full_name || "—"}</Text>
+			<CardLabelValue label={`${roleLabel} — Adı Soyadı / Firma`} value={party.full_name || "—"} />
 
-			<Text style={styles.salesCardLabel}>Adresi</Text>
-			<Text style={styles.salesCardLine}>{party.address || "—"}</Text>
+			<View style={styles.salesCardFieldLabel}>
+				<Text style={styles.salesCardLabel}>Adresi</Text>
+			</View>
+			<CardLine>{party.address || "—"}</CardLine>
 
 			{(party.national_id || party.tax_no || party.tax_office) ? (
 				<>
-					<View style={{ height: 6 }} />
-					{party.national_id ? (
-						<Text style={styles.salesCardLine}>T.C. Kimlik: {party.national_id}</Text>
-					) : null}
-					{party.tax_no ? (
-						<Text style={styles.salesCardLine}>Vergi No: {party.tax_no}</Text>
-					) : null}
-					{party.tax_office ? (
-						<Text style={styles.salesCardLine}>V. Dairesi: {party.tax_office}</Text>
-					) : null}
+					<View style={styles.salesCardGroupGap} />
+					{party.national_id ? <CardLine>{`T.C. Kimlik: ${party.national_id}`}</CardLine> : null}
+					{party.tax_no ? <CardLine>{`Vergi No: ${party.tax_no}`}</CardLine> : null}
+					{party.tax_office ? <CardLine>{`V. Dairesi: ${party.tax_office}`}</CardLine> : null}
 				</>
 			) : null}
 
 			{(party.phone || party.email) ? (
 				<>
-					<View style={{ height: 6 }} />
-					{party.phone ? <Text style={styles.salesCardLine}>Tel: {party.phone}</Text> : null}
-					{party.email ? <Text style={styles.salesCardLine}>E-posta: {party.email}</Text> : null}
+					<View style={styles.salesCardGroupGap} />
+					{party.phone ? <CardLine>{`Tel: ${party.phone}`}</CardLine> : null}
+					{party.email ? <CardLine>{`E-posta: ${party.email}`}</CardLine> : null}
 				</>
 			) : null}
 		</View>
