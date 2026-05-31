@@ -67,7 +67,9 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 				</div>
 			</header>
 
-			<main className={cn("mx-auto px-3 sm:px-6 py-4 sm:py-6 safe-x", maxW)}>{children}</main>
+			{/* `safe-x` owns horizontal padding (base 12/24px + notch insets); don't
+			    also set `px-*` here or the two longhands race in the cascade. */}
+			<main className={cn("mx-auto py-4 sm:py-6 safe-x", maxW)}>{children}</main>
 
 			<NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 			{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}

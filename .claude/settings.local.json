@@ -96,7 +96,28 @@
       "Bash(git stash *)",
       "Bash(git checkout *)",
       "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Start-Sleep -Milliseconds 800; if \\(Test-Path \"C:\\\\Users\\\\MnS\\\\Kagu\\\\demo\\\\RE\\\\.next\"\\) { Remove-Item -Recurse -Force \"C:\\\\Users\\\\MnS\\\\Kagu\\\\demo\\\\RE\\\\.next\" -ErrorAction SilentlyContinue }; Write-Output \"stopped dev servers and cleared .next cache\")",
-      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Write-Output \"all next dev servers stopped\")"
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Write-Output \"all next dev servers stopped\")",
+      "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('playwright present'\\)}catch{console.log\\('need playwright'\\)}\")",
+      "Bash(ls -la vercel.json vercel.ts .vercel)",
+      "Bash(cat .vercel/project.json)",
+      "mcp__claude_ai_Vercel__list_teams",
+      "Bash(rm -f shot.mjs shot-rental.png shot-sales.png)",
+      "Bash(rm -rf src/app/pdfcheck)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; Write-Output \"next servers stopped\")",
+      "Bash(curl -s -o /dev/null -w 'HTTP %{http_code} | type=%{content_type} | bytes=%{size_download}\\\\n' https://re-demo-amber.vercel.app/fonts/__TRACKED_VAR__)",
+      "Bash(curl -s \"https://re-demo-amber.vercel.app/\" -o /tmp/live.html -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(cd \"c:\\\\Users\\\\MnS\\\\Kagu\\\\demo\\\\RE\" && mkdir -p /tmp/livechunks && grep -oE '/_next/static/chunks/[^\"]+\\\\.js' /tmp/live.html | sort -u > /tmp/chunklist.txt && wc -l /tmp/chunklist.txt && echo \"=== downloading chunks referenced on homepage \\(may not include PDF chunk\\) ===\" && head -5 /tmp/chunklist.txt)",
+      "Bash(curl -s \"https://re-demo-amber.vercel.app/documents/new\" -o /tmp/docs.html -w \"HTTP %{http_code} bytes=%{size_download}\\\\n\")",
+      "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('playwright ready'\\)}catch{console.log\\('FAILED'\\)}\")",
+      "Bash(node live.mjs)",
+      "Bash(node liverender.mjs)",
+      "Bash(rm -f live.mjs liverender.mjs live-*.png live-card.png shot.mjs shot-*.png)",
+      "Bash(ls *.mjs *.png)",
+      "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('have pw'\\)}catch{console.log\\('need pw'\\)}\")",
+      "Bash(node pad.mjs)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

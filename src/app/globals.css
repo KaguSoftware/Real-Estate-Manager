@@ -74,9 +74,19 @@
 @layer utilities {
 	.safe-top    { padding-top: env(safe-area-inset-top); }
 	.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+	/* Additive notch insets: keep the element's base horizontal padding and only
+	   grow it when a device inset (landscape notch / curved edge) is larger.
+	   A plain `padding: env(...)` would resolve to 0 on phones in portrait and
+	   clobber the base `px-3`/`sm:px-6`, leaving content edge-to-edge. */
 	.safe-x {
-		padding-left: env(safe-area-inset-left);
-		padding-right: env(safe-area-inset-right);
+		padding-left: max(0.75rem, env(safe-area-inset-left));
+		padding-right: max(0.75rem, env(safe-area-inset-right));
+	}
+	@media (min-width: 640px) {
+		.safe-x {
+			padding-left: max(1.5rem, env(safe-area-inset-left));
+			padding-right: max(1.5rem, env(safe-area-inset-right));
+		}
 	}
 	/* Hide scrollbars on horizontal scroll strips (thumbnails, chips). */
 	.no-scrollbar { scrollbar-width: none; }
