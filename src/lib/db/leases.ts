@@ -2,7 +2,7 @@
 // DB-enforces "at most one active lease per property" — see migration 0006.
 
 import { createClient } from "@/src/lib/supabase/client";
-import type { Lease, LeaseTerm, Tenant } from "./types";
+import type { InventoryItem, Lease, LeaseTerm, Tenant, UtilityResponsibility } from "./types";
 
 export interface LeaseInput {
 	property_id: string;
@@ -14,6 +14,22 @@ export interface LeaseInput {
 	deposit?: number;
 	currency?: string;
 	document_pdf_path?: string | null;
+	// Turkish kira-sözleşmesi fields (migration 0007). All optional — the DB
+	// supplies defaults for the utility/subletting/inventory columns.
+	guarantor_id?: string | null;
+	payment_day?: number | null;
+	payment_method?: string | null;
+	bank_account?: string | null;
+	util_electricity?: UtilityResponsibility;
+	util_water?: UtilityResponsibility;
+	util_gas?: UtilityResponsibility;
+	util_internet?: UtilityResponsibility;
+	util_aidat?: UtilityResponsibility;
+	subletting_allowed?: boolean;
+	rent_increase_note?: string | null;
+	inventory?: InventoryItem[];
+	condition_notes?: string | null;
+	special_conditions?: string | null;
 }
 
 async function requireUser() {

@@ -12,6 +12,7 @@
 import { useEffect } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { useAppStore } from "@/src/store";
+import { clearCache } from "@/src/lib/useCachedResource";
 
 async function resolveUser(supabase: ReturnType<typeof createClient>, id: string, email: string) {
   try {
@@ -41,8 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Keep in sync as auth state changes (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         const u = session?.user ?? null;
+        // Drop the SWR cache on real identity changes so one user never sees
+        // another's cached rows. Token refresh keeps the same identity → keep cache.
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT") clearCache();
         if (!u) { setUser(null); return; }
         setUser({ id: u.id, email: u.email ?? "" });
         resolveUser(supabase, u.id, u.email ?? "").then(setUser);

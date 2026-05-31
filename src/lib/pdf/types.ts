@@ -1,19 +1,29 @@
-import type { DocKind, LeaseTerm, TaxResponsibility } from "@/src/lib/db/types";
+import type {
+	DocKind,
+	InventoryItem,
+	LeaseTerm,
+	TaxResponsibility,
+	UtilityResponsibility,
+} from "@/src/lib/db/types";
 
-export type { DocKind, TaxResponsibility };
+export type { DocKind, TaxResponsibility, UtilityResponsibility, InventoryItem };
 
+/**
+ * Turkish residential lease (konut kira sözleşmesi). Mirrors SalesPDFData's
+ * richness: PartyInfo cards for each party, structured property/lease blocks,
+ * per-utility responsibility, demirbaş (inventory) list and free-text notes.
+ */
 export interface RentalPDFData {
+	landlord: PartyInfo;          // Kiraya Veren (Mal Sahibi)
+	tenant: PartyInfo;            // Kiracı
+	guarantor: PartyInfo | null;  // Kefil — optional
 	property: {
-		homeowner_name: string;
-		address_line: string;
-		city: string | null;
+		address: string;
+		nitelik: string | null;     // e.g. "3+1"
 		size_sqm: number | null;
-	};
-	tenant: {
-		full_name: string;
-		email: string | null;
-		phone: string | null;
-		national_id: string | null;
+		city: string | null;
+		floor: string | null;
+		unit_no: string | null;
 	};
 	lease: {
 		term: LeaseTerm;
@@ -22,8 +32,22 @@ export interface RentalPDFData {
 		monthly_rent: number;
 		deposit: number;
 		currency: string;
+		payment_day: number | null;
+		payment_method: string | null;
+		bank_account: string | null;
 	};
-	additionalClauses?: string;
+	utilities: {
+		electricity: UtilityResponsibility;
+		water: UtilityResponsibility;
+		gas: UtilityResponsibility;
+		internet: UtilityResponsibility;
+		aidat: UtilityResponsibility;
+	};
+	subletting_allowed: boolean;
+	rent_increase_note: string | null;
+	inventory: InventoryItem[];
+	condition_notes: string | null;
+	special_conditions: string | null;
 	generatedAt: string; // ISO timestamp
 }
 

@@ -6,6 +6,8 @@ export type ListingType    = "for_rent" | "for_sale";
 export type PropertyStatus = "vacant" | "occupied" | "sold";
 export type LeaseTerm      = "1yr" | "2yr" | "undefined";
 export type LeaseStatus    = "active" | "ended" | "terminated";
+/** Who pays a given utility on a rental. */
+export type UtilityResponsibility = "tenant" | "landlord" | "shared";
 export type LeadStatus     = "new" | "called_rejected" | "follow_up" | "interested" | "closed";
 
 export interface Profile {
@@ -77,6 +79,13 @@ export interface Lead {
 	updated_at: string;
 }
 
+/** A single demirbaş (inventory) line on a rental. */
+export interface InventoryItem {
+	item: string;
+	qty: number | null;
+	note: string | null;
+}
+
 export interface Lease {
 	id: string;
 	owner_id: string;
@@ -90,6 +99,21 @@ export interface Lease {
 	currency: string;
 	status: LeaseStatus;
 	document_pdf_path: string | null;
+	// Turkish kira-sözleşmesi fields — see migration 0007_rental_kira.sql.
+	guarantor_id: string | null;
+	payment_day: number | null;
+	payment_method: string | null;
+	bank_account: string | null;
+	util_electricity: UtilityResponsibility;
+	util_water: UtilityResponsibility;
+	util_gas: UtilityResponsibility;
+	util_internet: UtilityResponsibility;
+	util_aidat: UtilityResponsibility;
+	subletting_allowed: boolean;
+	rent_increase_note: string | null;
+	inventory: InventoryItem[];
+	condition_notes: string | null;
+	special_conditions: string | null;
 	created_at: string;
 	updated_at: string;
 }

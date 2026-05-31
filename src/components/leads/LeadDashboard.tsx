@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/src/store";
-import { listLeads } from "@/src/lib/db/leads";
+import { listLeads, type LeadFilter } from "@/src/lib/db/leads";
+import { useCachedResource } from "@/src/lib/useCachedResource";
 import { AppShell, Card } from "@/src/components/ui";
 import { LeadFilters } from "./LeadFilters";
 import { LeadTable } from "./LeadTable";
@@ -22,7 +23,6 @@ export function LeadDashboard() {
 	// Open the create-client modal when arriving via the global Add menu (/leads?new=1).
 	// Read the flag once at mount via a lazy initializer (no setState-in-effect)…
 	const openNew = searchParams.get("new") === "1";
-	const [error, setError] = useState<string | null>(null);
 	const [editing, setEditing] = useState<{ mode: "create" } | { mode: "edit"; lead: Lead } | null>(
 		() => (openNew ? { mode: "create" } : null),
 	);
@@ -33,20 +33,25 @@ export function LeadDashboard() {
 		if (openNew) router.replace("/leads");
 	}, [openNew, router]);
 
+	// Stale-while-revalidate: navigating back to the same filters serves cached
+	// leads instantly and revalidates in the background; only filter changes
+	// (or a mutation) trigger an eager refetch.
+	const query: LeadFilter = {
+		status: leadFilters.status === "all" ? undefined : leadFilters.status,
+		q: leadFilters.q || undefined,
+	};
+	const cacheKey = user ? `leads:${JSON.stringify(query)}` : null;
+
+	const { loading, error } = useCachedResource(
+		cacheKey,
+		() => listLeads(query),
+		setLeads,
+		{ enabled: !!user },
+	);
+
 	useEffect(() => {
-		if (!user) return;
-		let cancelled = false;
-		setIsLoadingLeads(true);
-		setError(null);
-		listLeads({
-			status: leadFilters.status === "all" ? undefined : leadFilters.status,
-			q: leadFilters.q || undefined,
-		})
-			.then((rows) => { if (!cancelled) setLeads(rows); })
-			.catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)); })
-			.finally(() => { if (!cancelled) setIsLoadingLeads(false); });
-		return () => { cancelled = true; };
-	}, [user, leadFilters.status, leadFilters.q, setLeads, setIsLoadingLeads]);
+		setIsLoadingLeads(loading);
+	}, [loading, setIsLoadingLeads]);
 
 	return (
 		<AppShell

@@ -12,16 +12,21 @@ import { createSale } from "@/src/lib/db/sales";
 import { exportToPDF } from "@/src/lib/pdf";
 import type { DocKind, RentalPDFData, SalesPDFData } from "@/src/lib/pdf";
 import { PDFDocument } from "@/src/lib/pdf";
-import type { Property, LeaseTerm, Lead } from "@/src/lib/db/types";
+import type { Property, Lead } from "@/src/lib/db/types";
 import { PropertyPickerCardList } from "./PropertyPickerCardList";
 import { ClientPickerCardList } from "./ClientPickerCardList";
-import { FormField, Input, Textarea, Select, Button, cn } from "@/src/components/ui";
+import { Button, cn } from "@/src/components/ui";
 import {
 	SalesDetailsForm,
 	initialSalesFormState,
 	computeCommission,
 	type SalesFormState,
 } from "./SalesDetailsForm";
+import {
+	RentalDetailsForm,
+	initialRentalFormState,
+	type RentalFormState,
+} from "./RentalDetailsForm";
 
 const PDFBlobProvider = dynamic(
 	() => import("@react-pdf/renderer").then((m) => m.BlobProvider),
@@ -32,39 +37,74 @@ type Step = "type" | "property" | "client" | "details" | "preview";
 
 const STEPS: Step[] = ["type", "property", "client", "details", "preview"];
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
-
 function safeFilename(s: string) {
 	return s.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "document";
 }
 
-function buildRentalPDFData(args: {
-	property: Property;
-	tenant: { full_name: string; email: string | null; phone: string | null; national_id: string | null };
-	term: LeaseTerm;
-	startDate: string;
-	monthlyRent: number;
-	deposit: number;
-	currency: string;
-	additionalClauses: string;
-}): RentalPDFData {
+function buildRentalPDFData(property: Property, s: RentalFormState): RentalPDFData {
+	const paymentDay = s.paymentDay ? Number(s.paymentDay) : null;
 	return {
+		landlord: {
+			full_name: s.landlordName.trim(),
+			address: s.landlordAddress.trim(),
+			national_id: s.landlordNationalId.trim() || null,
+			tax_no: s.landlordTaxNo.trim() || null,
+			tax_office: s.landlordTaxOffice.trim() || null,
+			phone: s.landlordPhone.trim() || null,
+			email: s.landlordEmail.trim() || null,
+		},
+		tenant: {
+			full_name: s.tenantName.trim(),
+			address: s.tenantAddress.trim(),
+			national_id: s.tenantNationalId.trim() || null,
+			tax_no: s.tenantTaxNo.trim() || null,
+			tax_office: s.tenantTaxOffice.trim() || null,
+			phone: s.tenantPhone.trim() || null,
+			email: s.tenantEmail.trim() || null,
+		},
+		guarantor:
+			s.guarantorEnabled && s.guarantorName.trim()
+				? {
+						full_name: s.guarantorName.trim(),
+						address: s.guarantorAddress.trim(),
+						national_id: s.guarantorNationalId.trim() || null,
+						tax_no: null,
+						tax_office: null,
+						phone: s.guarantorPhone.trim() || null,
+						email: s.guarantorEmail.trim() || null,
+					}
+				: null,
 		property: {
-			homeowner_name: args.property.homeowner_name,
-			address_line: args.property.address_line,
-			city: args.property.city,
-			size_sqm: args.property.size_sqm,
+			address: [property.address_line, property.city].filter(Boolean).join(", "),
+			nitelik: property.nitelik,
+			size_sqm: property.size_sqm,
+			city: property.city,
+			floor: null,
+			unit_no: null,
 		},
-		tenant: args.tenant,
 		lease: {
-			term: args.term,
-			start_date: args.startDate,
-			end_date: computeLeaseEndDate(args.startDate, args.term),
-			monthly_rent: args.monthlyRent,
-			deposit: args.deposit,
-			currency: args.currency,
+			term: s.term,
+			start_date: s.startDate,
+			end_date: computeLeaseEndDate(s.startDate, s.term),
+			monthly_rent: Number(s.monthlyRent || 0),
+			deposit: Number(s.deposit || 0),
+			currency: s.currency,
+			payment_day: paymentDay,
+			payment_method: s.paymentMethod.trim() || null,
+			bank_account: s.bankAccount.trim() || null,
 		},
-		additionalClauses: args.additionalClauses || undefined,
+		utilities: {
+			electricity: s.utilElectricity,
+			water: s.utilWater,
+			gas: s.utilGas,
+			internet: s.utilInternet,
+			aidat: s.utilAidat,
+		},
+		subletting_allowed: s.sublettingAllowed,
+		rent_increase_note: s.rentIncreaseNote.trim() || null,
+		inventory: s.inventory.filter((r) => r.item.trim()),
+		condition_notes: s.conditionNotes.trim() || null,
+		special_conditions: s.specialConditions.trim() || null,
 		generatedAt: new Date().toISOString(),
 	};
 }
@@ -140,17 +180,11 @@ export function DocumentWizard() {
 	const [loadingClients, setLoadingClients] = useState(false);
 	const [clientId, setClientId] = useState<string | null>(null);
 
-	// Step 3 — rental state
-	const [tenantName, setTenantName] = useState("");
-	const [tenantEmail, setTenantEmail] = useState("");
-	const [tenantPhone, setTenantPhone] = useState("");
-	const [tenantNationalId, setTenantNationalId] = useState("");
-	const [term, setTerm] = useState<LeaseTerm>("1yr");
-	const [startDate, setStartDate] = useState(todayISO());
-	const [monthlyRent, setMonthlyRent] = useState("");
-	const [deposit, setDeposit] = useState("0");
-	const [currency, setCurrency] = useState("TRY");
-	const [additionalClauses, setAdditionalClauses] = useState("");
+	// Step 3 — rental state (init via RentalDetailsForm helper once a property is picked)
+	const [rentalState, setRentalState] = useState<RentalFormState>(() => initialRentalFormState(null));
+	function patchRental<K extends keyof RentalFormState>(key: K, value: RentalFormState[K]) {
+		setRentalState((s) => ({ ...s, [key]: value }));
+	}
 
 	// Step 3 — sales state (init via SalesDetailsForm helper once a property is picked)
 	const [salesState, setSalesState] = useState<SalesFormState>(() => initialSalesFormState(null));
@@ -193,9 +227,12 @@ export function DocumentWizard() {
 		const phone = lead.phone ?? "";
 		const email = lead.email ?? "";
 		if (kind === "rental") {
-			if (!tenantName.trim()) setTenantName(lead.full_name);
-			if (!tenantPhone.trim() && phone) setTenantPhone(phone);
-			if (!tenantEmail.trim() && email) setTenantEmail(email);
+			setRentalState((s) => ({
+				...s,
+				tenantName: s.tenantName.trim() ? s.tenantName : lead.full_name,
+				tenantPhone: s.tenantPhone.trim() ? s.tenantPhone : phone,
+				tenantEmail: s.tenantEmail.trim() ? s.tenantEmail : email,
+			}));
 		} else if (kind === "sales") {
 			setSalesState((s) => ({
 				...s,
@@ -210,10 +247,28 @@ export function DocumentWizard() {
 	useEffect(() => {
 		if (!property) return;
 		if (kind === "rental") {
-			setCurrency(property.currency);
-			if (property.list_price != null && monthlyRent === "") {
-				setMonthlyRent(property.list_price.toString());
-			}
+			// Re-seed the rental form from the picked property, preserving any
+			// tenant/guarantor/clause edits if the user bounces back+forward.
+			setRentalState((prev) => ({
+				...initialRentalFormState(property),
+				tenantName: prev.tenantName,
+				tenantAddress: prev.tenantAddress,
+				tenantPhone: prev.tenantPhone,
+				tenantEmail: prev.tenantEmail,
+				tenantNationalId: prev.tenantNationalId,
+				tenantTaxNo: prev.tenantTaxNo,
+				tenantTaxOffice: prev.tenantTaxOffice,
+				guarantorEnabled: prev.guarantorEnabled,
+				guarantorName: prev.guarantorName,
+				guarantorAddress: prev.guarantorAddress,
+				guarantorNationalId: prev.guarantorNationalId,
+				guarantorPhone: prev.guarantorPhone,
+				guarantorEmail: prev.guarantorEmail,
+				inventory: prev.inventory,
+				conditionNotes: prev.conditionNotes,
+				specialConditions: prev.specialConditions,
+				rentIncreaseNote: prev.rentIncreaseNote,
+			}));
 		} else if (kind === "sales") {
 			// Re-seed sales form whenever the picked property changes.
 			setSalesState((prev) => ({
@@ -229,27 +284,12 @@ export function DocumentWizard() {
 				specialConditions: prev.specialConditions,
 			}));
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [property, kind]);
 
 	const rentalData = useMemo<RentalPDFData | null>(() => {
 		if (kind !== "rental" || step !== "preview" || !property) return null;
-		return buildRentalPDFData({
-			property,
-			tenant: {
-				full_name: tenantName.trim(),
-				email: tenantEmail.trim() || null,
-				phone: tenantPhone.trim() || null,
-				national_id: tenantNationalId.trim() || null,
-			},
-			term,
-			startDate,
-			monthlyRent: Number(monthlyRent || 0),
-			deposit: Number(deposit || 0),
-			currency,
-			additionalClauses,
-		});
-	}, [kind, step, property, tenantName, tenantEmail, tenantPhone, tenantNationalId, term, startDate, monthlyRent, deposit, currency, additionalClauses]);
+		return buildRentalPDFData(property, rentalState);
+	}, [kind, step, property, rentalState]);
 
 	const salesData = useMemo<SalesPDFData | null>(() => {
 		if (kind !== "sales" || step !== "preview" || !property) return null;
@@ -262,25 +302,52 @@ export function DocumentWizard() {
 		setError(null);
 		try {
 			if (kind === "rental" && rentalData) {
+				const s = rentalState;
 				const tenant = await createTenant({
-					full_name: tenantName.trim(),
-					email: tenantEmail.trim() || null,
-					phone: tenantPhone.trim() || null,
-					national_id: tenantNationalId.trim() || null,
+					full_name: s.tenantName.trim(),
+					email: s.tenantEmail.trim() || null,
+					phone: s.tenantPhone.trim() || null,
+					national_id: s.tenantNationalId.trim() || null,
 				});
+				// Optional guarantor (kefil) is stored as its own tenants row.
+				let guarantorId: string | null = null;
+				if (s.guarantorEnabled && s.guarantorName.trim()) {
+					const guarantor = await createTenant({
+						full_name: s.guarantorName.trim(),
+						email: s.guarantorEmail.trim() || null,
+						phone: s.guarantorPhone.trim() || null,
+						national_id: s.guarantorNationalId.trim() || null,
+						notes: "Kefil (guarantor)",
+					});
+					guarantorId = guarantor.id;
+				}
 				await createLease({
 					property_id: property.id,
 					tenant_id: tenant.id,
-					term,
-					start_date: startDate,
-					end_date: computeLeaseEndDate(startDate, term),
-					monthly_rent: Number(monthlyRent || 0),
-					deposit: Number(deposit || 0),
-					currency,
+					term: s.term,
+					start_date: s.startDate,
+					end_date: computeLeaseEndDate(s.startDate, s.term),
+					monthly_rent: Number(s.monthlyRent || 0),
+					deposit: Number(s.deposit || 0),
+					currency: s.currency,
+					guarantor_id: guarantorId,
+					payment_day: s.paymentDay ? Number(s.paymentDay) : null,
+					payment_method: s.paymentMethod.trim() || null,
+					bank_account: s.bankAccount.trim() || null,
+					util_electricity: s.utilElectricity,
+					util_water: s.utilWater,
+					util_gas: s.utilGas,
+					util_internet: s.utilInternet,
+					util_aidat: s.utilAidat,
+					subletting_allowed: s.sublettingAllowed,
+					rent_increase_note: s.rentIncreaseNote.trim() || null,
+					inventory: s.inventory.filter((r) => r.item.trim()),
+					condition_notes: s.conditionNotes.trim() || null,
+					special_conditions: s.specialConditions.trim() || null,
 				});
 				const updated = await updateProperty(property.id, { status: "occupied" });
 				upsertProperty(updated);
-				const filename = `rental-${safeFilename(tenant.full_name)}-${safeFilename(property.address_line)}.pdf`;
+				const filename = `kira-${safeFilename(tenant.full_name)}-${safeFilename(property.address_line)}.pdf`;
 				await exportToPDF("rental", rentalData, filename);
 				router.push(`/properties/${updated.id}`);
 				return;
@@ -325,10 +392,11 @@ export function DocumentWizard() {
 
 	const rentalValid =
 		!!property &&
-		tenantName.trim().length > 0 &&
-		(tenantEmail.trim().length > 0 || tenantPhone.trim().length > 0) &&
-		Number(monthlyRent) > 0 &&
-		startDate.length === 10;
+		rentalState.landlordName.trim().length > 0 &&
+		rentalState.tenantName.trim().length > 0 &&
+		(rentalState.tenantEmail.trim().length > 0 || rentalState.tenantPhone.trim().length > 0) &&
+		Number(rentalState.monthlyRent) > 0 &&
+		rentalState.startDate.length === 10;
 
 	const salesValid =
 		!!property &&
@@ -341,7 +409,7 @@ export function DocumentWizard() {
 	const detailsValid = kind === "rental" ? rentalValid : salesValid;
 	const previewData: RentalPDFData | SalesPDFData | null =
 		kind === "rental" ? rentalData : salesData;
-	const previewLabel = kind === "rental" ? "Rental agreement preview" : "Sales agreement preview";
+	const previewLabel = kind === "rental" ? "Kira sözleşmesi önizleme" : "Sales agreement preview";
 
 	const stepIndex = STEPS.indexOf(step);
 
@@ -380,8 +448,8 @@ export function DocumentWizard() {
 							onClick={() => { setKind("rental"); setPropertyId(null); setClientId(null); setStep("property"); }}
 							className="text-left p-5 rounded-2xl border-2 border-slate-200 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
-							<p className="text-base font-bold text-slate-900">Rental Agreement</p>
-							<p className="text-sm text-slate-500 mt-1">Lease a vacant for-rent property to a new tenant.</p>
+							<p className="text-base font-bold text-slate-900">Kira Sözleşmesi</p>
+							<p className="text-sm text-slate-500 mt-1">Boş bir kiralık taşınmazı yeni bir kiracıya kiralayın.</p>
 						</button>
 						<button
 							onClick={() => { setKind("sales"); setPropertyId(null); setClientId(null); setStep("property"); }}
@@ -461,54 +529,11 @@ export function DocumentWizard() {
 			{step === "details" && property && kind === "rental" && (
 				<div className="space-y-5">
 					<div>
-						<h2 className="text-lg font-bold text-slate-900">Rental details</h2>
+						<h2 className="text-lg font-bold text-slate-900">Kira sözleşmesi detayları</h2>
 						<p className="text-sm text-slate-500 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
 					</div>
 
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<FormField label="Tenant name">
-							<Input value={tenantName} onChange={(e) => setTenantName(e.target.value)} required />
-						</FormField>
-						<FormField label="National ID (optional)">
-							<Input value={tenantNationalId} onChange={(e) => setTenantNationalId(e.target.value)} />
-						</FormField>
-						<FormField label="Tenant email">
-							<Input type="email" value={tenantEmail} onChange={(e) => setTenantEmail(e.target.value)} />
-						</FormField>
-						<FormField label="Tenant phone">
-							<Input type="tel" inputMode="tel" value={tenantPhone} onChange={(e) => setTenantPhone(e.target.value)} />
-						</FormField>
-					</div>
-					<p className="text-xs text-slate-400 -mt-3">Provide at least an email or phone for the tenant.</p>
-
-					<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-						<FormField label="Term">
-							<Select value={term} onChange={(e) => setTerm(e.target.value as LeaseTerm)}>
-								<option value="1yr">1 year</option>
-								<option value="2yr">2 years</option>
-								<option value="undefined">Undefined</option>
-							</Select>
-						</FormField>
-						<FormField label="Start date">
-							<Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-						</FormField>
-						<FormField label="Currency">
-							<Input value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} maxLength={4} />
-						</FormField>
-					</div>
-
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<FormField label="Monthly rent">
-							<Input type="number" inputMode="decimal" min="0" step="0.01" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} required />
-						</FormField>
-						<FormField label="Security deposit">
-							<Input type="number" inputMode="decimal" min="0" step="0.01" value={deposit} onChange={(e) => setDeposit(e.target.value)} />
-						</FormField>
-					</div>
-
-					<FormField label="Additional clauses (optional)">
-						<Textarea value={additionalClauses} onChange={(e) => setAdditionalClauses(e.target.value)} rows={4} placeholder="Any extra terms specific to this lease…" />
-					</FormField>
+					<RentalDetailsForm state={rentalState} onChange={patchRental} />
 
 					<div className="flex justify-between gap-2 pt-4">
 						<Button variant="ghost" onClick={() => setStep("client")}>← Back</Button>

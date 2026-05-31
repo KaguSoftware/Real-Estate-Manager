@@ -48,7 +48,11 @@
       "PowerShell(npx next lint 2>&1)",
       "PowerShell(\"---\")",
       "Bash(git rm *)",
-      "Bash([ -f \"$f\" ])"
+      "Bash([ -f \"$f\" ])",
+      "PowerShell(npx eslint src/components/documents/DocumentWizard.tsx src/components/documents/RentalDetailsForm.tsx src/lib/pdf/sections/rental.tsx src/lib/pdf/rentalClauses.ts src/lib/pdf/types.ts src/lib/db/types.ts src/lib/db/leases.ts)",
+      "PowerShell(npx tsc --noEmit)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "PowerShell(npx eslint src/lib/useCachedResource.ts src/store/useAppStore.ts src/components/properties/PropertyDashboard.tsx src/components/leads/LeadDashboard.tsx src/components/auth/AuthProvider.tsx)"
     ]
   }
 }

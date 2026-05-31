@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
-import { listProperties } from "@/src/lib/db/properties";
+import { listProperties, type PropertyFilter } from "@/src/lib/db/properties";
+import { useCachedResource } from "@/src/lib/useCachedResource";
 import { AppShell, Card } from "@/src/components/ui";
 import { PropertyFilters } from "./PropertyFilters";
 import { PropertyTable } from "./PropertyTable";
@@ -17,37 +18,31 @@ export function PropertyDashboard() {
 	const setProperties = useAppStore((s) => s.setProperties);
 	const setIsLoadingProperties = useAppStore((s) => s.setIsLoadingProperties);
 
-	const [error, setError] = useState<string | null>(null);
+	// Normalize filters into a query object + a stable cache key. Navigating back
+	// to the same filters serves the cached list instantly and revalidates in the
+	// background (stale-while-revalidate); only real filter changes refetch eagerly.
+	const query: PropertyFilter = {
+		listing_type: filters.listing_type === "all" ? undefined : filters.listing_type,
+		status: filters.status === "all" ? undefined : filters.status,
+		q: filters.q || undefined,
+		nitelik: filters.nitelik.length ? filters.nitelik : undefined,
+		furnished: filters.furnished === "all" ? undefined : filters.furnished === "yes",
+		location: filters.location.length ? filters.location : undefined,
+	};
+	const cacheKey = user ? `properties:${JSON.stringify(query)}` : null;
 
+	const { loading, error } = useCachedResource(
+		cacheKey,
+		() => listProperties(query),
+		setProperties,
+		{ enabled: !!user },
+	);
+
+	// Mirror the initial-load flag into the store so PropertyTable can show its
+	// spinner. Background revalidation (loading === false) never shows a spinner.
 	useEffect(() => {
-		if (!user) return;
-		let cancelled = false;
-		setIsLoadingProperties(true);
-		setError(null);
-		listProperties({
-			listing_type: filters.listing_type === "all" ? undefined : filters.listing_type,
-			status: filters.status === "all" ? undefined : filters.status,
-			q: filters.q || undefined,
-			nitelik: filters.nitelik.length ? filters.nitelik : undefined,
-			furnished: filters.furnished === "all" ? undefined : filters.furnished === "yes",
-			location: filters.location.length ? filters.location : undefined,
-		})
-			.then((rows) => {
-				if (!cancelled) setProperties(rows);
-			})
-			.catch((e: unknown) => {
-				if (!cancelled) setError(e instanceof Error ? e.message : String(e));
-			})
-			.finally(() => {
-				if (!cancelled) setIsLoadingProperties(false);
-			});
-		return () => {
-			cancelled = true;
-		};
-		// Depend on serialized array values so the query only refires on real changes
-		// (a new [] reference with the same contents won't trigger a refetch).
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [user, filters.listing_type, filters.status, filters.q, filters.nitelik.join("|"), filters.furnished, filters.location.join("|"), setProperties, setIsLoadingProperties]);
+		setIsLoadingProperties(loading);
+	}, [loading, setIsLoadingProperties]);
 
 	return (
 		<AppShell

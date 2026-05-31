@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Property, PropertyStatus, ListingType, Lead, LeadStatus } from "@/src/lib/db/types";
+import { invalidateCache } from "@/src/lib/useCachedResource";
 
 export interface UserProfile {
 	id: string;
@@ -71,6 +72,9 @@ export const useAppStore = create<AppState>((set) => ({
 	setProperties: (properties) => set({ properties }),
 	upsertProperty: (p) =>
 		set((s) => {
+			// A create/update may change which filtered queries this row belongs to,
+			// so drop all cached property lists; the next visit refetches fresh.
+			invalidateCache("properties");
 			const idx = s.properties.findIndex((x) => x.id === p.id);
 			return {
 				properties:
@@ -80,7 +84,10 @@ export const useAppStore = create<AppState>((set) => ({
 			};
 		}),
 	removeProperty: (id) =>
-		set((s) => ({ properties: s.properties.filter((p) => p.id !== id) })),
+		set((s) => {
+			invalidateCache("properties");
+			return { properties: s.properties.filter((p) => p.id !== id) };
+		}),
 	isLoadingProperties: false,
 	setIsLoadingProperties: (v) => set({ isLoadingProperties: v }),
 
@@ -93,6 +100,7 @@ export const useAppStore = create<AppState>((set) => ({
 	setLeads: (leads) => set({ leads }),
 	upsertLead: (l) =>
 		set((s) => {
+			invalidateCache("leads");
 			const idx = s.leads.findIndex((x) => x.id === l.id);
 			return {
 				leads:
@@ -102,7 +110,10 @@ export const useAppStore = create<AppState>((set) => ({
 			};
 		}),
 	removeLead: (id) =>
-		set((s) => ({ leads: s.leads.filter((l) => l.id !== id) })),
+		set((s) => {
+			invalidateCache("leads");
+			return { leads: s.leads.filter((l) => l.id !== id) };
+		}),
 	isLoadingLeads: false,
 	setIsLoadingLeads: (v) => set({ isLoadingLeads: v }),
 
