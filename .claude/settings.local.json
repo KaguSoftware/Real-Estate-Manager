@@ -52,7 +52,12 @@
       "PowerShell(npx eslint src/components/documents/DocumentWizard.tsx src/components/documents/RentalDetailsForm.tsx src/lib/pdf/sections/rental.tsx src/lib/pdf/rentalClauses.ts src/lib/pdf/types.ts src/lib/db/types.ts src/lib/db/leases.ts)",
       "PowerShell(npx tsc --noEmit)",
       "mcp__claude_ai_Supabase__list_projects",
-      "PowerShell(npx eslint src/lib/useCachedResource.ts src/store/useAppStore.ts src/components/properties/PropertyDashboard.tsx src/components/leads/LeadDashboard.tsx src/components/auth/AuthProvider.tsx)"
+      "PowerShell(npx eslint src/lib/useCachedResource.ts src/store/useAppStore.ts src/components/properties/PropertyDashboard.tsx src/components/leads/LeadDashboard.tsx src/components/auth/AuthProvider.tsx)",
+      "Bash(python3 -)",
+      "Bash(python -)",
+      "Bash(node -e \"const pkg=require\\('@react-pdf/renderer/package.json'\\); console.log\\('main:',pkg.main\\); console.log\\('module:',pkg.module\\); console.log\\('browser:',JSON.stringify\\(pkg.browser\\)\\); console.log\\('exports:',JSON.stringify\\(pkg.exports\\)\\)\")",
+      "Bash(curl -s -o /tmp/f.bin -w '%{http_code} %{content_type} %{size_download}' http://localhost:3000/fonts/__TRACKED_VAR__)",
+      "Read(//tmp/**)"
     ]
   }
 }

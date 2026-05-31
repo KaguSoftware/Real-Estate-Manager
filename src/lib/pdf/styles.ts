@@ -3,6 +3,18 @@ import { StyleSheet, Font } from "@react-pdf/renderer";
 // Prevent word hyphenation in @react-pdf/renderer
 Font.registerHyphenationCallback((word) => [word]);
 
+// Font sources MUST be absolute URLs. @react-pdf/font decides how to load a
+// source by testing it with the `is-url` package: only strings with a scheme
+// (https://…) take the browser-capable `fetch` path. A root-relative path like
+// "/fonts/x.ttf" is NOT considered a URL, so react-pdf falls back to
+// `fontkit.open(src)`, which reads from a filesystem — impossible in the
+// browser. The font then loads no glyph metrics, every text line is measured at
+// zero height, and the whole document collapses onto one baseline (overlapping
+// text). Prefixing with the page origin keeps everything on the fetch path.
+const fontBase =
+	typeof window !== "undefined" ? window.location.origin : "";
+const fontUrl = (file: string) => `${fontBase}/fonts/${file}`;
+
 // Unicode-capable family used across every PDF. Built-in Helvetica is WinAnsi-only
 // and renders Turkish glyphs (ğ, İ, ş, ı, …) as fallbacks with stacked diacritics.
 // Google Sans Flex covers Latin Extended-A in full. Three weights give a clear
@@ -10,18 +22,17 @@ Font.registerHyphenationCallback((word) => [word]);
 Font.register({
 	family: "Sans",
 	fonts: [
-		{ src: "/fonts/GoogleSansFlex_36pt-Regular.ttf",  fontWeight: 400 },
-		{ src: "/fonts/GoogleSansFlex_120pt-Medium.ttf",  fontWeight: 500 },
-		{ src: "/fonts/GoogleSansFlex_36pt-Bold.ttf",     fontWeight: 700 },
+		{ src: fontUrl("GoogleSansFlex_36pt-Regular.ttf"),  fontWeight: 400 },
+		{ src: fontUrl("GoogleSansFlex_120pt-Medium.ttf"),  fontWeight: 500 },
+		{ src: fontUrl("GoogleSansFlex_36pt-Bold.ttf"),     fontWeight: 700 },
 	],
 });
 
-// In the browser the font sources above are fetched over HTTP asynchronously.
-// react-pdf measures text during layout, so if generation starts before the
-// fonts are in memory it falls back to degenerate line metrics and every line
-// collapses onto the same baseline (overlapping text). Awaiting this once up
-// front guarantees all weights are loaded before the first render. The promise
-// is memoized so concurrent callers (preview + download) share one fetch.
+// The font sources above are fetched over HTTP asynchronously. react-pdf
+// measures text during layout, so rendering before the fonts are in memory
+// risks fallback metrics. Awaiting this once up front guarantees all weights
+// are loaded before the first render and avoids a preview flash. The promise is
+// memoized so concurrent callers (preview + download) share one fetch.
 let fontsReady: Promise<void> | null = null;
 export function loadPdfFonts(): Promise<void> {
 	if (!fontsReady) {
