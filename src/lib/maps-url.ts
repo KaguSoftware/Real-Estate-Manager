@@ -5,10 +5,14 @@
 // /api/resolve-maps route handler does it server-side and hands us back the
 // final URL.
 
+import type { ReverseAddress } from "./geocode";
+
 export interface ParsedMapsUrl {
 	lat?: number;
 	lon?: number;
 	placeName?: string;
+	/** Structured address from server-side reverse geocoding (when coords resolve). */
+	address?: ReverseAddress;
 }
 
 export interface ResolveResult extends ParsedMapsUrl {
@@ -52,16 +56,29 @@ export function parseLongMapsUrl(url: string): ParsedMapsUrl {
 		}
 	}
 
-	// 3) q=/ll=/sll=/query=/destination=lat,lng — legacy share links.
+	// 3) q=/ll=/sll=/query=/destination=/center=/daddr=/saddr=lat,lng — share &
+	//    directions links. Matches both ?q= and bare /search/lat,lng segments.
 	if (out.lat == null || out.lon == null) {
-		const m3 = /[?&](?:q|ll|sll|query|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/.exec(url);
+		const m3 =
+			/[?&](?:q|ll|sll|query|destination|center|daddr|saddr)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/.exec(url) ||
+			/\/(?:search|dir)\/(-?\d+\.\d+),\s*(-?\d+\.\d+)/.exec(url);
 		if (m3) {
 			out.lat = pickCoord(Number(m3[1]), 90);
 			out.lon = pickCoord(Number(m3[2]), 180);
 		}
 	}
 
-	// 4) /maps/place/NAME — best-effort address string.
+	// 4) /data=…!1d<lng>!2d<lat> viewport markers — last-resort. Note the order:
+	//    !1d is longitude, !2d is latitude (opposite of the !3d/!4d place pin).
+	if (out.lat == null || out.lon == null) {
+		const m4 = /!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/.exec(url);
+		if (m4) {
+			out.lon = pickCoord(Number(m4[1]), 180);
+			out.lat = pickCoord(Number(m4[2]), 90);
+		}
+	}
+
+	// 5) /maps/place/NAME — best-effort address string.
 	const mp = /\/maps\/place\/([^/@?]+)/.exec(url);
 	if (mp) {
 		try {
@@ -206,32 +223,33 @@ export function splitPlaceName(name: string): SplitPlaceName {
 	return out;
 }
 
+// Always delegate to the /api/resolve-maps route — even for long URLs — because
+// it expands short links robustly AND reverse-geocodes the coords server-side
+// (Nominatim must run server-side for the policy User-Agent + no CORS). The route
+// returns structured { lat, lon, placeName, address }. If the route is
+// unreachable, fall back to client-side parsing so coords still work offline.
 export async function resolveAndParseMapsUrl(url: string): Promise<ResolveResult> {
 	const trimmed = url.trim();
 	if (!trimmed) return { error: "Empty URL" };
 
-	let target = trimmed;
-	if (isShortMapsUrl(target)) {
-		try {
-			const res = await fetch(`/api/resolve-maps?url=${encodeURIComponent(target)}`);
-			if (!res.ok) {
-				return { error: `Could not resolve short link (${res.status})` };
-			}
-			const body = (await res.json()) as { finalUrl?: string; error?: string };
-			if (body.error || !body.finalUrl) {
-				return { error: body.error ?? "Resolver returned no URL" };
-			}
-			target = body.finalUrl;
-		} catch (e) {
-			return { error: e instanceof Error ? e.message : "Resolver request failed" };
+	try {
+		const res = await fetch(`/api/resolve-maps?url=${encodeURIComponent(trimmed)}`);
+		const body = (await res.json().catch(() => ({}))) as ResolveResult & { finalUrl?: string };
+		if (!res.ok) {
+			// The route still returns a useful body (e.g. placeName) on partial
+			// failures; surface its error but keep any fields it managed to extract.
+			return { ...body, error: body.error ?? `Could not resolve link (${res.status})` };
 		}
+		if (body.lat == null || body.lon == null) {
+			return { ...body, error: body.error ?? "No coordinates found in this URL" };
+		}
+		return body;
+	} catch {
+		// Network/route failure — best-effort client-side parse of the raw URL.
+		const parsed = parseLongMapsUrl(trimmed);
+		if (parsed.lat == null || parsed.lon == null) {
+			return { ...parsed, error: "Could not reach the link resolver." };
+		}
+		return parsed;
 	}
-
-	const parsed = parseLongMapsUrl(target);
-	if (parsed.lat == null || parsed.lon == null) {
-		// Still return any placeName we got — the caller can autofill text fields
-		// even when coords are missing.
-		return { ...parsed, error: "No coordinates found in this URL" };
-	}
-	return parsed;
 }

@@ -12,7 +12,7 @@ import {
 import type { Property, ListingType, PropertyStatus } from "@/src/lib/db/types";
 import { FormField, Input, Textarea, Select, Button } from "@/src/components/ui";
 import { geocodeAddress } from "@/src/lib/geocode";
-import { resolveAndParseMapsUrl, splitPlaceName } from "@/src/lib/maps-url";
+import { resolveAndParseMapsUrl, splitPlaceName, type ResolveResult } from "@/src/lib/maps-url";
 import { MapPin, Loader2, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
 
 interface Props {
@@ -40,6 +40,56 @@ function joinAddress(parts: {
 	if (door.length) left.push(door.join(" "));
 	if (district.trim()) left.push(district.trim());
 	return left.join(", ");
+}
+
+/** A flat set of address fields a maps link can fill. Empty values are omitted. */
+interface MapsFields {
+	mahalle?: string;
+	street?: string;
+	buildingNo?: string;
+	apartmentNo?: string;
+	district?: string;
+	city?: string;
+	mevkii?: string;
+}
+
+/**
+ * Merge reverse-geocode address parts (preferred for road/neighbourhood/city)
+ * with the slug-derived split (door numbers, fallbacks). For non-Turkish
+ * addresses we keep generic road/city mapping and skip the Turkish mahalle/mevkii
+ * mirroring. Returns only non-empty fields.
+ */
+function mapsToFormFields(result: ResolveResult): MapsFields {
+	const a = result.address;
+	const slug = result.placeName ? splitPlaceName(result.placeName) : {};
+	const isTR = !a?.country_code || a.country_code.toLowerCase() === "tr";
+
+	const out: MapsFields = {};
+	const set = (k: keyof MapsFields, ...vals: (string | undefined)[]) => {
+		const v = vals.find((x) => x && x.trim());
+		if (v) out[k] = v.trim();
+	};
+
+	const rCity = a?.province || a?.city || a?.state || a?.town;
+	const rDistrict = [a?.county, a?.district, a?.town].find((d) => d && d !== rCity);
+	const rMahalle = a?.neighbourhood || a?.quarter || a?.suburb;
+
+	set("street", a?.road, slug.street);
+	set("buildingNo", a?.house_number, slug.buildingNo);
+	set("apartmentNo", slug.apartmentNo);
+	set("city", rCity, slug.city);
+	set("district", rDistrict, slug.district);
+
+	if (isTR) {
+		set("mahalle", rMahalle, slug.mahalle);
+		// mevkii: a leftover locality not already used as the mahalle.
+		const leftover = [a?.suburb, a?.quarter].find((s) => s && s !== out.mahalle);
+		set("mevkii", leftover);
+	} else {
+		set("mahalle", slug.mahalle);
+	}
+
+	return out;
 }
 
 export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
@@ -99,30 +149,47 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			setParsedCoords(null);
 			return;
 		}
+		// In-flight guard: ignore re-triggers (paste + blur can both fire) while a
+		// parse is already running.
+		if (mapsBusy) return;
 		setMapsBusy(true);
 		setMapsHint("Parsing link…");
 		try {
 			const result = await resolveAndParseMapsUrl(url);
-			if (result.lat != null && result.lon != null) {
-				setParsedCoords({ lat: result.lat, lon: result.lon });
-				setMapsHint(
-					`Pinned at ${result.lat.toFixed(5)}, ${result.lon.toFixed(5)}` +
-						(result.placeName ? ` · ${result.placeName}` : ""),
-				);
-			} else {
-				setParsedCoords(null);
-				setMapsHint(result.error ?? "Could not read this link.");
-			}
 
-			// Autofill empty fields only.
-			if (result.placeName) {
-				const parts = splitPlaceName(result.placeName);
-				if (parts.mahalle && !mahalle.trim()) setMahalle(parts.mahalle);
-				if (parts.street && !street.trim()) setStreet(parts.street);
-				if (parts.buildingNo && !buildingNo.trim()) setBuildingNo(parts.buildingNo);
-				if (parts.apartmentNo && !apartmentNo.trim()) setApartmentNo(parts.apartmentNo);
-				if (parts.district && !district.trim()) setDistrict(parts.district);
-				if (parts.city && !city.trim()) setCity(parts.city);
+			const hasCoords = result.lat != null && result.lon != null;
+			if (hasCoords) setParsedCoords({ lat: result.lat!, lon: result.lon! });
+			else setParsedCoords(null);
+
+			// Autofill — empty fields only, never clobber what the user typed.
+			const f = mapsToFormFields(result);
+			let filled = 0;
+			const fill = (val: string | undefined, current: string, setter: (v: string) => void) => {
+				if (val && !current.trim()) { setter(val); filled++; }
+			};
+			fill(f.mahalle, mahalle, setMahalle);
+			fill(f.street, street, setStreet);
+			fill(f.buildingNo, buildingNo, setBuildingNo);
+			fill(f.apartmentNo, apartmentNo, setApartmentNo);
+			fill(f.district, district, setDistrict);
+			fill(f.city, city, setCity);
+			// Mirror into the tapu section where it's still blank.
+			fill(f.mahalle, tapuMahalle, setTapuMahalle);
+			fill(f.mevkii, mevkii, setMevkii);
+
+			// Three-tier hint.
+			if (hasCoords) {
+				const at = `Pinned at ${result.lat!.toFixed(5)}, ${result.lon!.toFixed(5)}`;
+				if (filled > 0) {
+					setMapsHint(`${at} · filled ${filled} field${filled === 1 ? "" : "s"}`);
+				} else if (result.address || result.placeName) {
+					setMapsHint(`${at} — please check the address fields.`);
+				} else {
+					setMapsHint(`${at} — couldn't auto-read the address, please fill it in.`);
+				}
+			} else {
+				const base = result.error ?? "Could not read this link.";
+				setMapsHint(filled > 0 ? `${base} Filled ${filled} field${filled === 1 ? "" : "s"} from the link name; location not pinned.` : base);
 			}
 		} finally {
 			setMapsBusy(false);

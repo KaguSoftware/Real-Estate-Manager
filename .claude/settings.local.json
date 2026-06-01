@@ -114,7 +114,10 @@
       "Bash(rm -f live.mjs liverender.mjs live-*.png live-card.png shot.mjs shot-*.png)",
       "Bash(ls *.mjs *.png)",
       "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('have pw'\\)}catch{console.log\\('need pw'\\)}\")",
-      "Bash(node pad.mjs)"
+      "Bash(node pad.mjs)",
+      "Bash(cat)",
+      "Bash(node /tmp/maps-test.mjs)",
+      "Bash(rm -f /tmp/maps-test.mjs; npx next build 2>&1 | tail -25)"
     ],
     "additionalDirectories": [
       "\\tmp"
