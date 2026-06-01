@@ -4,14 +4,14 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import type { Property } from "@/src/lib/db/types";
-import { Badge, Card, type BadgeTone } from "@/src/components/ui";
+import { Badge, Button, Card, type BadgeTone } from "@/src/components/ui";
 
 type SortKey = "homeowner_name" | "address_line" | "size_sqm" | "list_price" | "updated_at";
 type SortDir = "asc" | "desc";
 
 function fmtPrice(p: number | null, ccy: string) {
 	if (p == null) return "—";
-	return `${p.toFixed(0)} ${ccy}`;
+	return `${Math.round(p).toLocaleString()} ${ccy}`;
 }
 
 function StatusBadge({ status }: { status: Property["status"] }) {
@@ -32,6 +32,16 @@ export function PropertyTable() {
 	const router = useRouter();
 	const properties = useAppStore((s) => s.properties);
 	const isLoading  = useAppStore((s) => s.isLoadingProperties);
+	const filters    = useAppStore((s) => s.filters);
+	const resetFilters = useAppStore((s) => s.resetFilters);
+
+	const hasActiveFilter =
+		filters.listing_type !== "all" ||
+		filters.status !== "all" ||
+		filters.furnished !== "all" ||
+		filters.nitelik.length > 0 ||
+		filters.location.length > 0 ||
+		filters.q !== "";
 
 	const [sortKey, setSortKey] = useState<SortKey>("updated_at");
 	const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -67,7 +77,14 @@ export function PropertyTable() {
 	}
 
 	if (properties.length === 0) {
-		return (
+		return hasActiveFilter ? (
+			<Card className="p-8 sm:p-12 text-center">
+				<p className="text-sm text-slate-500">No properties match your filters.</p>
+				<Button variant="outline" size="sm" className="mt-3" onClick={resetFilters}>
+					Clear filters
+				</Button>
+			</Card>
+		) : (
 			<Card className="p-8 sm:p-12 text-center">
 				<p className="text-sm text-slate-500">No properties yet.</p>
 				<p className="text-xs text-slate-400 mt-1">Tap <span className="font-semibold">Add</span> to create your first listing.</p>
@@ -81,6 +98,11 @@ export function PropertyTable() {
 
 	return (
 		<>
+			<p className="px-1 mb-2 text-xs font-medium text-slate-400">
+				{properties.length} {properties.length === 1 ? "property" : "properties"}
+				{hasActiveFilter ? " matched" : ""}
+			</p>
+
 			{/* Mobile: card list */}
 			<div className="block sm:hidden space-y-3">
 				{sorted.map((p) => (
