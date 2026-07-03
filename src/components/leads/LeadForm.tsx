@@ -1,5 +1,6 @@
 "use client";
 
+import { humanizeError } from "@/src/lib/errors";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
@@ -84,7 +85,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 			toast.success(mode === "create" ? "Lead added." : "Lead updated.");
 			onDone();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : String(err));
+			setError(humanizeError(err));
 		} finally {
 			setBusy(false);
 		}
@@ -100,7 +101,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 			onDone();
 		} catch (err) {
 			setConfirmingDelete(false);
-			setError(err instanceof Error ? err.message : String(err));
+			setError(humanizeError(err));
 			setBusy(false);
 		}
 	}

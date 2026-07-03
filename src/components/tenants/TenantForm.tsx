@@ -1,5 +1,6 @@
 "use client";
 
+import { humanizeError } from "@/src/lib/errors";
 import { useEffect, useState } from "react";
 import {
 	createTenant,
@@ -74,7 +75,7 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 			toast.success(mode === "create" ? "Tenant added." : "Tenant updated.");
 			onDone();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : String(err));
+			setError(humanizeError(err));
 		} finally {
 			setBusy(false);
 		}
@@ -91,7 +92,7 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 			onDone();
 		} catch (err) {
 			setConfirmingDelete(false);
-			setError(err instanceof Error ? err.message : String(err));
+			setError(humanizeError(err));
 			setBusy(false);
 		}
 	}

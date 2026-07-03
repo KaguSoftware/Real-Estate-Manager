@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { listProperties, type PropertyFilter } from "@/src/lib/db/properties";
 import { useCachedResource } from "@/src/lib/useCachedResource";
-import { AppShell, Card, Alert } from "@/src/components/ui";
+import { AppShell, Card, Alert, Button } from "@/src/components/ui";
 import { PropertyFilters } from "./PropertyFilters";
 import { PropertyTable } from "./PropertyTable";
 import { PropertyMap } from "./PropertyMap";
@@ -80,7 +80,7 @@ export function PropertyDashboard() {
 	};
 	const cacheKey = user ? `properties:${JSON.stringify(query)}` : null;
 
-	const { loading, error } = useCachedResource(
+	const { loading, error, refetch } = useCachedResource(
 		cacheKey,
 		() => listProperties(query),
 		setProperties,
@@ -109,7 +109,14 @@ export function PropertyDashboard() {
 					<PropertyMap />
 					<PropertyFilters />
 
-					{error && <Alert className="mb-4">{error}</Alert>}
+					{error && (
+						<Alert
+							className="mb-4"
+							action={<Button size="sm" variant="outline" onClick={refetch}>Retry</Button>}
+						>
+							Couldn&apos;t load properties: {error}
+						</Alert>
+					)}
 
 					<PropertyTable />
 

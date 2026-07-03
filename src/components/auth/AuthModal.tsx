@@ -1,5 +1,6 @@
 "use client";
 
+import { humanizeError } from "@/src/lib/errors";
 import { useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { Sheet, Button, FormField, Input, Alert, cn } from "@/src/components/ui";
@@ -51,7 +52,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
     setErrorMsg("");
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) { setStatus("error"); setErrorMsg(error.message); }
+    if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); }
     else { setStatus("done"); onClose(); }
   }
 
@@ -64,7 +65,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
       email: email.trim(),
       options: { emailRedirectTo: authCallbackUrl() },
     });
-    if (error) { setStatus("error"); setErrorMsg(error.message); }
+    if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); }
     else { setStatus("done"); setSuccessMsg(`Magic link sent to ${email.trim()}. Check your inbox.`); }
   }
 
@@ -83,7 +84,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
       password,
       options: { emailRedirectTo: authCallbackUrl() },
     });
-    if (error) { setStatus("error"); setErrorMsg(error.message); }
+    if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); }
     else { setStatus("done"); setSuccessMsg("Check your email to confirm your account before signing in."); }
   }
 

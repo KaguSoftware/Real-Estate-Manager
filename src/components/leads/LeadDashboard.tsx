@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { listLeads, type LeadFilter } from "@/src/lib/db/leads";
 import { useCachedResource } from "@/src/lib/useCachedResource";
-import { AppShell, Card, Alert } from "@/src/components/ui";
+import { AppShell, Card, Alert, Button } from "@/src/components/ui";
 import { LeadFilters } from "./LeadFilters";
 import { LeadTable } from "./LeadTable";
 import { LeadForm } from "./LeadForm";
@@ -44,7 +44,7 @@ export function LeadDashboard() {
 	};
 	const cacheKey = user ? `leads:${JSON.stringify(query)}` : null;
 
-	const { loading, error } = useCachedResource(
+	const { loading, error, refetch } = useCachedResource(
 		cacheKey,
 		() => listLeads(query),
 		setLeads,
@@ -92,7 +92,14 @@ export function LeadDashboard() {
 						</div>
 					)}
 
-					{error && <Alert className="mb-4">{error}</Alert>}
+					{error && (
+						<Alert
+							className="mb-4"
+							action={<Button size="sm" variant="outline" onClick={refetch}>Retry</Button>}
+						>
+							Couldn&apos;t load clients: {error}
+						</Alert>
+					)}
 
 					<LeadTable onEdit={(lead) => setEditing({ mode: "edit", lead })} />
 

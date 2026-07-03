@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { humanizeError } from "./errors";
 
 /**
  * Stale-while-revalidate cache for list/detail fetches.
@@ -173,7 +174,7 @@ export function useCachedResource<T>(
 				if (!cancelled) forceRender((n) => n + 1);
 			})
 			.catch((e: unknown) => {
-				if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+				if (!cancelled) setError(humanizeError(e));
 			})
 			.finally(() => {
 				if (inflight.get(key) === promise) inflight.delete(key);

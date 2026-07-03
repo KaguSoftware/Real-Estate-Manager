@@ -8,6 +8,7 @@
  * SECURITY DEFINER RPC that re-checks is_admin() inside the function.
  */
 
+import { humanizeError } from "@/src/lib/errors";
 import { useEffect, useState } from "react";
 import { adminListUsers, adminSetUserRole } from "@/src/lib/db/profiles";
 import type { ProfileRow, GlobalRole } from "@/src/lib/db/types";
@@ -23,7 +24,7 @@ export function AdminPanel() {
 	useEffect(() => {
 		adminListUsers()
 			.then(setUsers)
-			.catch((e) => setError(e instanceof Error ? e.message : "Failed to load users"))
+			.catch((e) => setError(humanizeError(e)))
 			.finally(() => setLoading(false));
 	}, []);
 
@@ -35,7 +36,7 @@ export function AdminPanel() {
 			setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, app_role: role } : u)));
 			toast.success("Role updated.");
 		} catch (e) {
-			setRoleError(e instanceof Error ? e.message : "Failed to update role");
+			setRoleError(humanizeError(e));
 		} finally {
 			setUpdatingRole(null);
 		}

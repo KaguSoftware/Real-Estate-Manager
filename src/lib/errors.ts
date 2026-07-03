@@ -23,6 +23,18 @@ export function humanizeError(e: unknown): string {
 			return "You don't have permission to do that.";
 	}
 
+	// Supabase Auth error strings.
+	if (/invalid login credentials/i.test(raw)) return "Wrong email or password. Please try again.";
+	if (/email not confirmed/i.test(raw))
+		return "Your email isn't confirmed yet — check your inbox for the confirmation link.";
+	if (/user already registered/i.test(raw))
+		return "An account with this email already exists. Try signing in instead.";
+	if (/password should be/i.test(raw))
+		return "Password is too weak — use at least 6 characters.";
+	if (/rate limit|too many requests|security purposes/i.test(raw))
+		return "Too many attempts — please wait a minute and try again.";
+	if (/invalid email/i.test(raw)) return "That doesn't look like a valid email address.";
+
 	if (/JWT|token|not authenticated/i.test(raw)) return "Your session expired — please sign in again.";
 	if (/Failed to fetch|NetworkError|fetch failed/i.test(raw))
 		return "Couldn't reach the server. Check your connection and try again.";

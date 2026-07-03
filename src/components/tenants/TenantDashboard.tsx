@@ -86,7 +86,14 @@ export function TenantDashboard() {
 						</Button>
 					</div>
 
-					{error && <Alert className="mb-4">{error}</Alert>}
+					{error && (
+						<Alert
+							className="mb-4"
+							action={<Button size="sm" variant="outline" onClick={refetch}>Retry</Button>}
+						>
+							Couldn&apos;t load tenants: {error}
+						</Alert>
+					)}
 
 					<TenantTable
 						tenants={tenants}
