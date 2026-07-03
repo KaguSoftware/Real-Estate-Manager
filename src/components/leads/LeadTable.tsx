@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppStore } from "@/src/store";
+import { updateLead } from "@/src/lib/db/leads";
+import { humanizeError } from "@/src/lib/errors";
+import { toast } from "@/src/components/ui";
 import type { Lead } from "@/src/lib/db/types";
 import { LEAD_STATUS_META } from "./leadStatus";
 import { Badge, Card, SpinnerBlock, EmptyState } from "@/src/components/ui";
@@ -41,6 +44,21 @@ interface Props {
 export function LeadTable({ onEdit }: Props) {
 	const leads     = useAppStore((s) => s.leads);
 	const isLoading = useAppStore((s) => s.isLoadingLeads);
+	const upsertLead = useAppStore((s) => s.upsertLead);
+	const [callBusyId, setCallBusyId] = useState<string | null>(null);
+
+	async function markCalledToday(lead: Lead) {
+		setCallBusyId(lead.id);
+		try {
+			const updated = await updateLead(lead.id, { last_call_at: new Date().toISOString() });
+			upsertLead(updated);
+			toast.success(`Marked ${lead.full_name} as called today.`);
+		} catch (e) {
+			toast.error(humanizeError(e));
+		} finally {
+			setCallBusyId(null);
+		}
+	}
 
 	const sorted = useMemo(
 		() => [...leads].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
@@ -124,7 +142,20 @@ export function LeadTable({ onEdit }: Props) {
 									<td className="px-4 py-3 text-sm whitespace-nowrap">
 										<span className="inline-flex items-center gap-2">
 											<span className="text-slate-500">{fmtCallDate(l.last_call_at)}</span>
-											{isToday(l.last_call_at) && <CalledTodayPill />}
+											{isToday(l.last_call_at) ? (
+												<CalledTodayPill />
+											) : (
+												<button
+													type="button"
+													onClick={(e) => { e.stopPropagation(); markCalledToday(l); }}
+													disabled={callBusyId === l.id}
+													aria-label={`Mark ${l.full_name} as called today`}
+													title="Mark as called today"
+													className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+												>
+													<PhoneCall className="w-3.5 h-3.5" />
+												</button>
+											)}
 										</span>
 									</td>
 								</tr>

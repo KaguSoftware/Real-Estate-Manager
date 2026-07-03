@@ -6,7 +6,22 @@ import { useAppStore } from "@/src/store";
 import type { Property } from "@/src/lib/db/types";
 import { Badge, Button, Card, SpinnerBlock, EmptyState, type BadgeTone } from "@/src/components/ui";
 import { downloadCsv } from "@/src/lib/csv";
+import { listCoverImages } from "@/src/lib/db/propertyImages";
+import { useCachedResource } from "@/src/lib/useCachedResource";
 import { Home, Download } from "lucide-react";
+
+/** Cover photo or a neutral placeholder, sized for list rows/cards. */
+function Thumb({ src, className }: { src: string | undefined; className?: string }) {
+	if (!src) {
+		return (
+			<div className={`bg-slate-100 flex items-center justify-center text-slate-300 ${className ?? ""}`}>
+				<Home className="w-5 h-5" />
+			</div>
+		);
+	}
+	// eslint-disable-next-line @next/next/no-img-element -- Supabase storage URLs; next/image needs remote-domain config
+	return <img src={src} alt="" loading="lazy" className={`object-cover ${className ?? ""}`} />;
+}
 
 type SortKey = "homeowner_name" | "address_line" | "size_sqm" | "list_price" | "updated_at";
 type SortDir = "asc" | "desc";
@@ -44,6 +59,17 @@ export function PropertyTable() {
 		filters.nitelik.length > 0 ||
 		filters.location.length > 0 ||
 		filters.q !== "";
+
+	// Cover photos for the visible rows — one query per distinct id set, cached
+	// under the "properties" prefix so image mutations invalidate it too.
+	const idsKey = useMemo(
+		() => properties.map((p) => p.id).sort().join(","),
+		[properties],
+	);
+	const { data: covers } = useCachedResource(
+		properties.length ? `properties:covers:${idsKey}` : null,
+		() => listCoverImages(properties.map((p) => p.id)),
+	);
 
 	const [sortKey, setSortKey] = useState<SortKey>("updated_at");
 	const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -140,6 +166,7 @@ export function PropertyTable() {
 						className="w-full text-left bg-white border border-slate-200/80 rounded-2xl shadow-card p-4 active:bg-slate-50 transition-colors"
 					>
 						<div className="flex items-start justify-between gap-3">
+							<Thumb src={covers?.[p.id]} className="w-14 h-14 rounded-xl shrink-0" />
 							<div className="min-w-0 flex-1">
 								<p className="text-base font-bold text-slate-900 line-clamp-2">{p.address_line}</p>
 								<p className="text-sm text-slate-500 mt-0.5 truncate">{p.homeowner_name}{p.city ? ` · ${p.city}` : ""}</p>
@@ -163,6 +190,7 @@ export function PropertyTable() {
 					<table className="w-full min-w-160 text-sm">
 						<thead className="bg-slate-50/60 border-b border-slate-100">
 							<tr>
+								<th className={staticHeaderCls}><span className="sr-only">Photo</span></th>
 								<th className={headerCls} onClick={() => toggle("homeowner_name")}>Homeowner {sortArrow("homeowner_name")}</th>
 								<th className={headerCls} onClick={() => toggle("address_line")}>Address {sortArrow("address_line")}</th>
 								<th className={headerCls} onClick={() => toggle("size_sqm")}>Size (m²) {sortArrow("size_sqm")}</th>
@@ -180,6 +208,9 @@ export function PropertyTable() {
 									onMouseEnter={() => prefetch(p.id)}
 									className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
 								>
+									<td className="pl-4 pr-0 py-2">
+										<Thumb src={covers?.[p.id]} className="w-11 h-11 rounded-lg" />
+									</td>
 									<td className="px-4 py-3 text-sm font-medium text-slate-800 min-w-0">{p.homeowner_name}</td>
 									<td className="px-4 py-3 text-sm text-slate-600 min-w-0">{p.address_line}{p.city ? `, ${p.city}` : ""}</td>
 									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{p.size_sqm ?? "—"}</td>

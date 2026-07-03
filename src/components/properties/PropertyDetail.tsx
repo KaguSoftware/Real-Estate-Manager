@@ -20,6 +20,7 @@ import {
 import { PropertyGallery } from "./PropertyGallery";
 import { PropertyForm } from "./PropertyForm";
 import { LeaseEditSheet } from "./LeaseEditSheet";
+import { MatchingLeads } from "./MatchingLeads";
 import { LocationPicker } from "./LocationPicker";
 import { Pencil, Plus, Share2, ChevronDown, CheckCircle2, XCircle, History, ExternalLink } from "lucide-react";
 
@@ -409,6 +410,9 @@ export function PropertyDetail({ propertyId }: Props) {
 					/>
 				</Card>
 			)}
+
+			{/* Clients whose preferences match this property */}
+			<MatchingLeads property={data} />
 
 			{/* Payments — full width */}
 			{data.active_lease && (

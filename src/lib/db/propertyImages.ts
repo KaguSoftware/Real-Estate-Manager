@@ -40,6 +40,27 @@ export async function listPropertyImages(propertyId: string): Promise<PropertyIm
 	return ((data ?? []) as PropertyImageRow[]).map((r) => withUrl(r, supabase));
 }
 
+/** Cover (first-by-position) image URL per property, one query for a whole list. */
+export async function listCoverImages(
+	propertyIds: string[],
+): Promise<Record<string, string>> {
+	if (propertyIds.length === 0) return {};
+	const { supabase } = await requireUser();
+	const { data, error } = await supabase
+		.from("property_images")
+		.select("property_id, storage_path, position")
+		.in("property_id", propertyIds)
+		.order("position", { ascending: true });
+	if (error) throw error;
+
+	const covers: Record<string, string> = {};
+	for (const row of (data ?? []) as Pick<PropertyImageRow, "property_id" | "storage_path" | "position">[]) {
+		if (covers[row.property_id]) continue; // rows are position-ordered → first wins
+		covers[row.property_id] = supabase.storage.from(BUCKET).getPublicUrl(row.storage_path).data.publicUrl;
+	}
+	return covers;
+}
+
 export async function uploadPropertyImage(
 	propertyId: string,
 	file: File,

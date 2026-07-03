@@ -9,6 +9,7 @@ import {
 	uploadPropertyImage,
 	deletePropertyImage,
 } from "@/src/lib/db/propertyImages";
+import { invalidateCache } from "@/src/lib/useCachedResource";
 import type { PropertyImage } from "@/src/lib/db/types";
 import { Alert, ConfirmDialog, Spinner, toast } from "@/src/components/ui";
 
@@ -63,6 +64,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 		}
 
 		setUploading(false);
+		invalidateCache("properties:covers");
 		if (fileRef.current) fileRef.current.value = "";
 	}
 
@@ -78,6 +80,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 			setImages(next);
 			// Keep the featured index in range.
 			setFeaturedIdx((idx) => Math.max(0, Math.min(idx, next.length - 1)));
+			invalidateCache("properties:covers");
 			toast.success("Photo deleted.");
 		} catch (e) {
 			setError(humanizeError(e));
