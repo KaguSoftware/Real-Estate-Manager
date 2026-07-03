@@ -37,22 +37,27 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 			{/* Mobile: card list */}
 			<div className="block sm:hidden space-y-3">
 				{tenants.map((t) => (
-					<button
+					// div (not button) so the WhatsApp link can live inside without
+					// invalid interactive nesting.
+					<div
 						key={t.id}
-						type="button"
+						role="button"
+						tabIndex={0}
 						onClick={() => onEdit(t)}
-						className="w-full text-left bg-white border border-slate-200/80 rounded-2xl shadow-card p-4 active:bg-slate-50 transition-colors"
+						onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(t); } }}
+						className="w-full text-left bg-white border border-slate-200/80 rounded-2xl shadow-card p-4 active:bg-slate-50 transition-colors cursor-pointer"
 					>
 						<p className="text-base font-bold text-slate-900 truncate">{t.full_name}</p>
 						{(t.phone || t.email) && (
 							<p className="text-sm text-slate-500 mt-0.5 truncate">
 								{t.phone ?? ""}
+								{t.phone && <WhatsAppButton phone={t.phone} name={t.full_name} />}
 								{t.phone && t.email ? " · " : ""}
 								{t.email ?? ""}
 							</p>
 						)}
 						<p className="text-xs text-slate-400 mt-2">Added {fmtDate(t.created_at)}</p>
-					</button>
+					</div>
 				))}
 			</div>
 

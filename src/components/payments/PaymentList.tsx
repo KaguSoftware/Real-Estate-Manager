@@ -235,7 +235,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 								</p>
 							</div>
 							<div className="flex items-center gap-1 shrink-0">
-								<p className="text-xs text-slate-400 whitespace-nowrap mr-2">
+								<p className="hidden sm:block text-xs text-slate-400 whitespace-nowrap mr-2">
 									{p.paid_at ? new Date(p.paid_at).toLocaleDateString() : "—"}
 								</p>
 								{onReceipt && (

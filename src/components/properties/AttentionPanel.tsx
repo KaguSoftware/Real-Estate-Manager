@@ -62,11 +62,11 @@ export function AttentionPanel() {
 						<Section icon={Wallet} title="Overdue rent" tone="red">
 							{data.overduePayments.map((p) => (
 								<Row key={p.paymentId} href={`/properties/${p.propertyId}`}>
-									<span className="truncate">{p.propertyLabel}</span>
+									<span className="flex-1 min-w-0 truncate">{p.propertyLabel}</span>
 									<span className="font-semibold text-red-600 whitespace-nowrap">
 										{fmtMoney(p.outstanding, p.currency)}
 									</span>
-									<span className="text-slate-400 whitespace-nowrap">due {p.periodEnd}</span>
+									<span className="text-xs text-slate-400 whitespace-nowrap">due {p.periodEnd}</span>
 								</Row>
 							))}
 						</Section>
@@ -76,11 +76,11 @@ export function AttentionPanel() {
 						<Section icon={Wallet} title="Rent due in the next 7 days" tone="amber">
 							{data.upcomingPayments.map((p) => (
 								<Row key={p.paymentId} href={`/properties/${p.propertyId}`}>
-									<span className="truncate">{p.propertyLabel}</span>
+									<span className="flex-1 min-w-0 truncate">{p.propertyLabel}</span>
 									<span className="font-semibold text-slate-700 whitespace-nowrap">
 										{fmtMoney(p.outstanding, p.currency)}
 									</span>
-									<span className="text-slate-400 whitespace-nowrap">due {p.periodEnd}</span>
+									<span className="text-xs text-slate-400 whitespace-nowrap">due {p.periodEnd}</span>
 								</Row>
 							))}
 						</Section>
@@ -90,7 +90,7 @@ export function AttentionPanel() {
 						<Section icon={CalendarClock} title="Leases ending within 30 days" tone="amber">
 							{data.endingLeases.map((l) => (
 								<Row key={l.leaseId} href={`/properties/${l.propertyId}`}>
-									<span className="truncate">{l.propertyLabel}</span>
+									<span className="flex-1 min-w-0 truncate">{l.propertyLabel}</span>
 									<span className="text-slate-500 whitespace-nowrap">
 										ends {l.endDate} ({l.daysLeft} day{l.daysLeft === 1 ? "" : "s"})
 									</span>
@@ -103,7 +103,7 @@ export function AttentionPanel() {
 						<Section icon={PhoneMissed} title="Leads waiting on a follow-up" tone="amber">
 							{data.staleLeads.map((l) => (
 								<Row key={l.leadId} href="/leads">
-									<span className="truncate">{l.name}</span>
+									<span className="flex-1 min-w-0 truncate">{l.name}</span>
 									<span className="text-slate-400 whitespace-nowrap">
 										{l.lastCallAt ? `last call ${l.daysSilent} days ago` : `no call in ${l.daysSilent} days`}
 									</span>
