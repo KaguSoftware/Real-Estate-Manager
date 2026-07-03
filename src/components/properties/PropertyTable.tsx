@@ -117,7 +117,12 @@ export function PropertyTable() {
 				<EmptyState
 					icon={Home}
 					title="No properties yet"
-					hint="Tap Add to create your first listing."
+					hint="Add your first listing to see it on the map and dashboard."
+					action={
+						<Button size="sm" onClick={() => router.push("/properties/new")}>
+							Add your first property
+						</Button>
+					}
 				/>
 			</Card>
 		);

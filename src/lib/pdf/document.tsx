@@ -19,7 +19,7 @@ export function PDFDocument({ kind, data }: { kind: DocKind; data: AnyPDFData })
 		listing: "Property Listing",
 	};
 	return (
-		<Document title={titleByKind[kind]} author="Real Estate Manager">
+		<Document title={titleByKind[kind]} author="Kagu Real Estate">
 			<Page size="A4" style={styles.page} wrap>
 				{kind === "rental"  && <RentalAgreement data={data as RentalPDFData} />}
 				{kind === "sales"   && <SalesAgreement data={data as SalesPDFData} />}

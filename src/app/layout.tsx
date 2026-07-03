@@ -9,8 +9,8 @@ const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-latin"
 const notoArabic = Noto_Sans_Arabic({ subsets: ["arabic"], weight: ["400", "500", "600", "700", "900"], variable: "--font-arabic" });
 
 export const metadata: Metadata = {
-	title: "Real Estate Manager",
-	description: "Property management and document generation",
+	title: "Kagu Real Estate",
+	description: "Property management, client CRM and contract generation",
 };
 
 export const viewport: Viewport = {

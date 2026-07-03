@@ -257,7 +257,7 @@ export const SignatureBlock = ({
 
 export const PageFooter = () => (
 	<View style={styles.footer} fixed>
-		<Text style={styles.footerText}>Real Estate Manager</Text>
+		<Text style={styles.footerText}>Kagu Real Estate</Text>
 		<Text
 			style={styles.pageNumber}
 			render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
