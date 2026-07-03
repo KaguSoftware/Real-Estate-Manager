@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/src/lib/supabase/client";
 import { useAppStore } from "@/src/store";
@@ -24,6 +24,18 @@ const NAV: NavItem[] = [
 	{ href: "/documents/new", label: "New document", icon: FilePlus2 },
 	{ href: "/admin", label: "Admin", icon: Shield, adminOnly: true },
 ];
+
+/** Spinner shown while this link's navigation is in flight (useLinkStatus). */
+function PendingHint() {
+	const { pending } = useLinkStatus();
+	if (!pending) return null;
+	return (
+		<span
+			aria-hidden
+			className="ml-auto h-4 w-4 rounded-full border-2 border-slate-200 border-t-primary animate-spin"
+		/>
+	);
+}
 
 export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const user = useAppStore((s) => s.user);
@@ -106,6 +118,7 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 							>
 								<Icon className="w-5 h-5 shrink-0" />
 								{label}
+								<PendingHint />
 							</Link>
 						);
 					})}

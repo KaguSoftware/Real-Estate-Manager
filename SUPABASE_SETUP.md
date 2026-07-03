@@ -4,68 +4,56 @@
 
 1. Go to [https://supabase.com/dashboard](https://supabase.com/dashboard) and sign in.
 2. Click **New project**.
-3. Choose your organisation, give the project a name (e.g. `project1`), set a strong database password, and pick a region close to your users.
+3. Choose your organisation, give the project a name (e.g. `kagu-realestate`), set a strong database password, and pick a region close to your users.
 4. Wait ~2 minutes for the project to provision.
 
-## 2. Run the Migration
+## 2. Run the Migrations
+
+Migrations live in `supabase/migrations/` and must run **in numeric order**:
+
+| File | What it creates |
+| --- | --- |
+| `0001_init.sql` | `profiles`, `properties`, `tenants`, `leases`, `payments` + RLS, triggers, admin helpers |
+| `0002_property_images.sql` | `property_images` table + public `property-images` storage bucket |
+| `0003_sales.sql` | `sales` table + Turkish tapu fields on properties |
+| `0004_property_coords.sql` | latitude/longitude columns |
+| `0005_leads.sql` | `leads` (client CRM) table |
+| `0006_furnished.sql` | furnished flag |
+| `0007_rental_kira.sql` | Turkish kira-sözleşmesi lease fields (guarantor, utilities, inventory) |
+| `0008_profile_settings.sql` | per-user `profiles.settings` JSONB (attention thresholds) |
+| `0009_documents_bucket.sql` | private `documents` storage bucket for generated contract PDFs |
 
 ### Option A — SQL Editor (quickest)
 
 1. In the Supabase Dashboard, open the **SQL Editor** (left sidebar).
-2. Click **New query**.
-3. Paste the entire contents of `supabase/migrations/0001_init.sql` into the editor.
-4. Click **Run** (or press `Ctrl+Enter` / `Cmd+Enter`).
-5. Verify in **Table Editor** that three tables appear: `profiles`, `documents`, `document_access`.
+2. Click **New query**, paste the contents of each migration file **in order**, and **Run** each one.
+3. Verify in **Table Editor** that these tables appear: `profiles`, `properties`, `tenants`, `leases`, `payments`, `property_images`, `sales`, `leads`.
+4. Verify in **Storage** that the `property-images` (public) and `documents` (private) buckets exist.
 
 ### Option B — Supabase CLI
 
 ```bash
-# Install the CLI if you haven't already
 npm install -g supabase
-
-# Link to your project (you'll be prompted for the project ref and DB password)
 supabase link --project-ref <your-project-id>
-
-# Push the migration
 supabase db push
 ```
 
 ## 3. Configure Environment Variables
 
-1. Copy `.env.local.example` to `.env.local`:
+1. Copy `.env.example` to `.env.local`:
    ```bash
-   cp .env.local.example .env.local
+   cp .env.example .env.local
    ```
 
-2. Open `.env.local` and fill in your values.  
+2. Open `.env.local` and fill in your values.
    Find them in the Supabase Dashboard → **Settings** → **API**:
    - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
    - **anon public** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - **service_role** key → `SUPABASE_SERVICE_ROLE_KEY` (not used in Phase 1, but document it now)
+   - **service_role** key → `SUPABASE_SERVICE_ROLE_KEY` (server-only; used by the admin panel API route)
 
 3. `.env.local` is already in `.gitignore` — never commit it.
 
-## 4. (Optional) Generate TypeScript Types
-
-After the migration has run, regenerate the typed client from your live schema:
-
-```bash
-npx supabase gen types typescript --project-id <your-project-id> > src/lib/supabase/types.ts
-```
-
-This replaces the placeholder in `src/lib/supabase/types.ts` with full, accurate types for every table and RPC.
-
-## 5. Verify
-
-Start the dev server and open the browser console — no Supabase errors should appear:
-
-```bash
-npm run dev
-```
-
-The app should behave exactly as before (no UI changes in Phase 1). The Supabase client is wired up but not yet called until Phase 2 adds auth + save functionality.
-
-## 6. Enable Email Auth (Magic Link)
+## 4. Enable Email Auth (Magic Link)
 
 In the Supabase Dashboard:
 
@@ -75,4 +63,10 @@ In the Supabase Dashboard:
 4. Set your **Site URL** to `http://localhost:3000` for local dev.
 5. Add any production URLs to **Additional redirect URLs** before deploying.
 
-> Magic link auth is used in Phase 2 — you can configure it now or later.
+## 5. Verify
+
+```bash
+npm run dev
+```
+
+Sign in with a magic link, add a property, and check the browser console for Supabase errors. To make yourself an admin (unlocks `/admin`), set your row's `app_role` to `admin` in the `profiles` table.

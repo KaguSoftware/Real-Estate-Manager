@@ -8,6 +8,7 @@ import { useCachedResource } from "@/src/lib/useCachedResource";
 import { AppShell, Card, CardLabel, Badge, type BadgeTone } from "@/src/components/ui";
 import { AttentionPanel } from "@/src/components/properties/AttentionPanel";
 import { DashboardStats } from "@/src/components/properties/DashboardStats";
+import { PortfolioAnalytics } from "./PortfolioAnalytics";
 import { LEAD_STATUS_META } from "@/src/components/leads/leadStatus";
 import { fmtMoney } from "@/src/lib/format";
 import {
@@ -53,6 +54,7 @@ export function HomeDashboard() {
 				<>
 					<AttentionPanel />
 					<DashboardStats />
+					<PortfolioAnalytics />
 
 					{/* Quick actions */}
 					<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">

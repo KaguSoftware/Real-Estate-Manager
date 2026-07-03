@@ -1,7 +1,7 @@
 "use client";
 
 import type { Tenant } from "@/src/lib/db/types";
-import { Card, SpinnerBlock, EmptyState } from "@/src/components/ui";
+import { Card, SpinnerBlock, EmptyState, Pagination, usePagination } from "@/src/components/ui";
 import { WhatsAppButton } from "@/src/components/ui/WhatsAppButton";
 import { Users, Pencil } from "lucide-react";
 
@@ -16,6 +16,7 @@ function fmtDate(d: string) {
 }
 
 export function TenantTable({ tenants, loading, onEdit }: Props) {
+	const { page, setPage, pageCount, pageItems, total, pageSize } = usePagination(tenants);
 	if (loading) return <SpinnerBlock />;
 
 	if (tenants.length === 0) {
@@ -36,7 +37,7 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 		<>
 			{/* Mobile: card list */}
 			<div className="block sm:hidden space-y-3">
-				{tenants.map((t) => (
+				{pageItems.map((t) => (
 					// div (not button) so the WhatsApp link can live inside without
 					// invalid interactive nesting.
 					<div
@@ -76,7 +77,7 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 							</tr>
 						</thead>
 						<tbody>
-							{tenants.map((t) => (
+							{pageItems.map((t) => (
 								<tr
 									key={t.id}
 									onClick={() => onEdit(t)}
@@ -107,6 +108,7 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 					</table>
 				</div>
 			</Card>
+			<Pagination page={page} pageCount={pageCount} total={total} pageSize={pageSize} onPageChange={setPage} />
 		</>
 	);
 }

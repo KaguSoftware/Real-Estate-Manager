@@ -14,6 +14,10 @@ export interface DashboardStats {
 	outstandingByCurrency: Record<string, number>;
 	leadsByStatus: Record<LeadStatus, number>;
 	totalLeads: number;
+	/** occupied / (occupied + vacant), 0..1; null when no rentable properties. */
+	occupancyRate: number | null;
+	/** Current calendar month's rent collection, keyed by currency. */
+	collectionThisMonth: Record<string, { due: number; paid: number }>;
 }
 
 async function requireUser() {
@@ -54,20 +58,33 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 	}
 
 	const outstandingByCurrency: Record<string, number> = {};
+	const collectionThisMonth: Record<string, { due: number; paid: number }> = {};
 	if (activeLeases.length > 0) {
+		const now = new Date();
+		const monthStart = `${now.toISOString().slice(0, 7)}-01`;
+		const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+		const monthEnd = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-01`;
+
 		const payRes = await supabase
 			.from("payments")
-			.select("lease_id, amount_due, amount_paid")
+			.select("lease_id, amount_due, amount_paid, period_start")
 			.in("lease_id", activeLeases.map((l) => l.id));
 		if (payRes.error) throw payRes.error;
 		for (const p of (payRes.data ?? []) as {
 			lease_id: string;
 			amount_due: number;
 			amount_paid: number;
+			period_start: string;
 		}[]) {
 			const cur = currencyByLease.get(p.lease_id) ?? "TRY";
-			const delta = Number(p.amount_due ?? 0) - Number(p.amount_paid ?? 0);
-			outstandingByCurrency[cur] = (outstandingByCurrency[cur] ?? 0) + delta;
+			const due = Number(p.amount_due ?? 0);
+			const paid = Number(p.amount_paid ?? 0);
+			outstandingByCurrency[cur] = (outstandingByCurrency[cur] ?? 0) + (due - paid);
+			if (p.period_start >= monthStart && p.period_start < monthEnd) {
+				const bucket = (collectionThisMonth[cur] ??= { due: 0, paid: 0 });
+				bucket.due += due;
+				bucket.paid += paid;
+			}
 		}
 		// Fully-settled currencies aren't interesting — keep only positive balances.
 		for (const cur of Object.keys(outstandingByCurrency)) {
@@ -84,5 +101,16 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 		totalLeads++;
 	}
 
-	return { properties, monthlyRentByCurrency, outstandingByCurrency, leadsByStatus, totalLeads };
+	const rentable = properties.occupied + properties.vacant;
+	const occupancyRate = rentable > 0 ? properties.occupied / rentable : null;
+
+	return {
+		properties,
+		monthlyRentByCurrency,
+		outstandingByCurrency,
+		leadsByStatus,
+		totalLeads,
+		occupancyRate,
+		collectionThisMonth,
+	};
 }

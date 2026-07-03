@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import type { Property } from "@/src/lib/db/types";
-import { Badge, Button, Card, SpinnerBlock, EmptyState, type BadgeTone } from "@/src/components/ui";
+import { Badge, Button, Card, SpinnerBlock, EmptyState, Pagination, usePagination, type BadgeTone } from "@/src/components/ui";
 import { downloadCsv } from "@/src/lib/csv";
 import { listCoverImages } from "@/src/lib/db/propertyImages";
 import { useCachedResource } from "@/src/lib/useCachedResource";
@@ -93,6 +93,10 @@ export function PropertyTable() {
 		return sortDir === "asc" ? arr : arr.reverse();
 	}, [properties, sortKey, sortDir]);
 
+	// Windows only what the table/cards render; CSV export and the map still
+	// use the full sorted/store list.
+	const { page, setPage, pageCount, pageItems, total, pageSize } = usePagination(sorted);
+
 	function open(id: string) { router.push(`/properties/${id}`); }
 	function prefetch(id: string) { router.prefetch(`/properties/${id}`); }
 
@@ -163,7 +167,7 @@ export function PropertyTable() {
 
 			{/* Mobile: card list */}
 			<div className="block sm:hidden space-y-3">
-				{sorted.map((p) => (
+				{pageItems.map((p) => (
 					<button
 						key={p.id}
 						type="button"
@@ -206,7 +210,7 @@ export function PropertyTable() {
 							</tr>
 						</thead>
 						<tbody>
-							{sorted.map((p) => (
+							{pageItems.map((p) => (
 								<tr
 									key={p.id}
 									onClick={() => open(p.id)}
@@ -231,6 +235,7 @@ export function PropertyTable() {
 					</table>
 				</div>
 			</Card>
+			<Pagination page={page} pageCount={pageCount} total={total} pageSize={pageSize} onPageChange={setPage} />
 		</>
 	);
 }

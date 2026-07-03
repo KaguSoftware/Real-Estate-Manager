@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { getProperty, updateProperty } from "@/src/lib/db/properties";
 import { endLease, listLeasesForProperty } from "@/src/lib/db/leases";
+import { listPaymentsForLease, recordPayment } from "@/src/lib/db/payments";
+import { getDocumentUrl } from "@/src/lib/db/documents";
 import { cancelSale, closeSale, getActiveSaleForProperty, listSalesForProperty } from "@/src/lib/db/sales";
 import { listPropertyImages } from "@/src/lib/db/propertyImages";
 import { invalidateCache } from "@/src/lib/useCachedResource";
@@ -20,9 +22,23 @@ import {
 import { PropertyGallery } from "./PropertyGallery";
 import { PropertyForm } from "./PropertyForm";
 import { LeaseEditSheet } from "./LeaseEditSheet";
+import { RenewLeaseSheet } from "./RenewLeaseSheet";
 import { MatchingLeads } from "./MatchingLeads";
 import { LocationPicker } from "./LocationPicker";
-import { Pencil, Plus, Share2, ChevronDown, CheckCircle2, XCircle, History, ExternalLink } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Share2, ChevronDown, CheckCircle2, XCircle, History, ExternalLink } from "lucide-react";
+
+/** Current calendar month as ISO period bounds (first → last day). */
+function currentMonthPeriod(): { start: string; end: string } {
+	const now = new Date();
+	const y = now.getFullYear();
+	const m = now.getMonth();
+	const pad = (n: number) => String(n).padStart(2, "0");
+	const lastDay = new Date(y, m + 1, 0).getDate();
+	return {
+		start: `${y}-${pad(m + 1)}-01`,
+		end: `${y}-${pad(m + 1)}-${pad(lastDay)}`,
+	};
+}
 
 /** Fetch a public image URL and return it as a data URL so @react-pdf embeds
  *  it reliably (avoids intermittent remote-fetch/CORS failures during render). */
@@ -58,8 +74,9 @@ export function PropertyDetail({ propertyId }: Props) {
 	const [editing, setEditing] = useState(false);
 	const [sharing, setSharing] = useState(false);
 	const [editingLease, setEditingLease] = useState(false);
+	const [renewingLease, setRenewingLease] = useState(false);
 	// Which confirmation is open, and whether its action is running.
-	const [pendingAction, setPendingAction] = useState<null | "end-lease" | "close-sale" | "cancel-sale">(null);
+	const [pendingAction, setPendingAction] = useState<null | "end-lease" | "close-sale" | "cancel-sale" | "record-rent">(null);
 	const [actionBusy, setActionBusy] = useState(false);
 
 	const reload = useCallback(async () => {
@@ -150,6 +167,24 @@ export function PropertyDetail({ propertyId }: Props) {
 				toast.success("Sale closed.");
 				invalidateCache("stats");
 			invalidateCache("attention");
+			} else if (pendingAction === "record-rent" && data.active_lease) {
+				// One-click convenience: record this calendar month's rent as paid
+				// in full. Guard against double-recording the same period.
+				const period = currentMonthPeriod();
+				const existing = await listPaymentsForLease(data.active_lease.id);
+				if (existing.some((p) => p.period_start === period.start)) {
+					toast.error("This month's rent is already recorded.");
+				} else {
+					await recordPayment({
+						lease_id: data.active_lease.id,
+						period_start: period.start,
+						period_end: period.end,
+						amount_due: Number(data.active_lease.monthly_rent),
+					});
+					invalidateCache("stats");
+					invalidateCache("attention");
+					toast.success("This month's rent recorded as paid.");
+				}
 			} else if (pendingAction === "cancel-sale" && sale) {
 				await cancelSale(sale.id);
 				const updated = await updateProperty(data.id, { status: "vacant" });
@@ -300,6 +335,10 @@ export function PropertyDetail({ propertyId }: Props) {
 									<Field label="Target close" value={sale.target_close_date ?? "—"} />
 								</dl>
 
+								{sale.document_pdf_path && (
+									<ContractPdfLink path={sale.document_pdf_path} />
+								)}
+
 								{sale.status === "active" && (
 									<div className="flex flex-col sm:flex-row gap-2 pt-1">
 										<Button block onClick={() => setPendingAction("close-sale")}>
@@ -360,6 +399,10 @@ export function PropertyDetail({ propertyId }: Props) {
 								<Field label="End" value={data.active_lease.end_date ?? "—"} />
 							</dl>
 
+							{data.active_lease.document_pdf_path && (
+								<ContractPdfLink path={data.active_lease.document_pdf_path} />
+							)}
+
 							{/* Balance — 3 columns on sm+, stacked on phones */}
 							<div className="border-t border-slate-100 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
 								<BalanceCell label="Paid" value={fmtMoney(data.active_lease.balance.totalPaid, data.active_lease.currency)} />
@@ -371,9 +414,19 @@ export function PropertyDetail({ propertyId }: Props) {
 								/>
 							</div>
 
-							<Button variant="danger" block onClick={() => setPendingAction("end-lease")}>
-								End lease
+							<Button block variant="outline" onClick={() => setPendingAction("record-rent")}>
+								<Plus className="w-4 h-4" />
+								Record this month&apos;s rent
 							</Button>
+							<div className="flex flex-col sm:flex-row gap-2">
+								<Button block onClick={() => setRenewingLease(true)}>
+									<RefreshCw className="w-4 h-4" />
+									Renew lease
+								</Button>
+								<Button variant="danger" block onClick={() => setPendingAction("end-lease")}>
+									End lease
+								</Button>
+							</div>
 						</div>
 					) : (
 						<div className="text-center py-6">
@@ -475,6 +528,16 @@ export function PropertyDetail({ propertyId }: Props) {
 				/>
 			)}
 
+			{/* Renew sheet — mounted only while open so it always starts from fresh values. */}
+			{data.active_lease && renewingLease && (
+				<RenewLeaseSheet
+					open
+					lease={data.active_lease}
+					onClose={() => setRenewingLease(false)}
+					onRenewed={reload}
+				/>
+			)}
+
 			<ConfirmDialog
 				open={pendingAction === "end-lease"}
 				title="End this lease?"
@@ -484,6 +547,20 @@ export function PropertyDetail({ propertyId }: Props) {
 						: undefined
 				}
 				confirmLabel="End lease"
+				loading={actionBusy}
+				onConfirm={runPendingAction}
+				onCancel={() => setPendingAction(null)}
+			/>
+			<ConfirmDialog
+				open={pendingAction === "record-rent"}
+				title="Record this month's rent?"
+				message={
+					data.active_lease
+						? `Records ${fmtMoney(Number(data.active_lease.monthly_rent), data.active_lease.currency)} for ${currentMonthPeriod().start.slice(0, 7)} as paid in full. You can adjust it later in Payments.`
+						: undefined
+				}
+				confirmLabel="Record rent"
+				tone="primary"
 				loading={actionBusy}
 				onConfirm={runPendingAction}
 				onCancel={() => setPendingAction(null)}
@@ -596,6 +673,33 @@ function HistoryRow({
 				{badge}
 			</div>
 		</li>
+	);
+}
+
+/** "Contract PDF" link for a stored document (private bucket → signed URL). */
+function ContractPdfLink({ path }: { path: string }) {
+	const [busy, setBusy] = useState(false);
+	async function openPdf() {
+		setBusy(true);
+		try {
+			const url = await getDocumentUrl(path);
+			window.open(url, "_blank", "noopener,noreferrer");
+		} catch (e) {
+			toast.error(humanizeError(e));
+		} finally {
+			setBusy(false);
+		}
+	}
+	return (
+		<button
+			type="button"
+			onClick={openPdf}
+			disabled={busy}
+			className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-2 disabled:opacity-50"
+		>
+			<ExternalLink className="w-3.5 h-3.5" />
+			{busy ? "Opening…" : "Contract PDF"}
+		</button>
 	);
 }
 

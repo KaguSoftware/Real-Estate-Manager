@@ -2,6 +2,7 @@
 
 import { createClient } from "@/src/lib/supabase/client";
 import type { Payment, LeaseBalance } from "./types";
+import { parseInput, paymentInputSchema } from "@/src/lib/schemas/inputs";
 
 export interface PaymentInput {
 	lease_id: string;
@@ -32,14 +33,15 @@ export async function listPaymentsForLease(leaseId: string): Promise<Payment[]> 
 }
 
 export async function recordPayment(input: PaymentInput): Promise<Payment> {
+	const parsed = parseInput(paymentInputSchema, input);
 	const { supabase, user } = await requireUser();
 	const { data, error } = await supabase
 		.from("payments")
 		.insert({
-			...input,
+			...parsed,
 			owner_id: user.id,
-			amount_paid: input.amount_paid ?? input.amount_due,
-			paid_at: input.paid_at ?? new Date().toISOString(),
+			amount_paid: parsed.amount_paid ?? parsed.amount_due,
+			paid_at: parsed.paid_at ?? new Date().toISOString(),
 		})
 		.select()
 		.single();

@@ -2,35 +2,27 @@
 // leases expiring soon, and leads that have gone quiet. Same philosophy as
 // stats.ts — a few cheap selects reduced in JS; cached under "attention" via
 // useCachedResource and invalidated alongside "stats".
+//
+// Classification logic lives in attentionLogic.ts (pure, unit-tested);
+// thresholds default to DEFAULT_ATTENTION_THRESHOLDS and can be overridden
+// per user via profiles.settings (see settings.ts).
 
 import { createClient } from "@/src/lib/supabase/client";
-import type { LeadStatus } from "./types";
+import {
+	DEFAULT_ATTENTION_THRESHOLDS,
+	classifyLeads,
+	classifyLeases,
+	classifyPayments,
+	type AttentionLead,
+	type AttentionLeaseEnd,
+	type AttentionPayment,
+	type AttentionThresholds,
+	type LeadRow,
+	type LeaseEndRow,
+	type PaymentRow,
+} from "./attentionLogic";
 
-export interface AttentionPayment {
-	paymentId: string;
-	propertyId: string;
-	propertyLabel: string;
-	periodStart: string;
-	periodEnd: string;
-	outstanding: number;
-	currency: string;
-}
-
-export interface AttentionLeaseEnd {
-	leaseId: string;
-	propertyId: string;
-	propertyLabel: string;
-	endDate: string;
-	daysLeft: number;
-}
-
-export interface AttentionLead {
-	leadId: string;
-	name: string;
-	status: LeadStatus;
-	lastCallAt: string | null;
-	daysSilent: number;
-}
+export type { AttentionLead, AttentionLeaseEnd, AttentionPayment, AttentionThresholds };
 
 export interface AttentionData {
 	overduePayments: AttentionPayment[];
@@ -40,43 +32,18 @@ export interface AttentionData {
 	total: number;
 }
 
-const UPCOMING_DAYS = 7;
-const LEASE_WARN_DAYS = 30;
-const LEAD_SILENT_DAYS = 14;
-
-interface PaymentRow {
-	id: string;
-	period_start: string;
-	period_end: string;
-	amount_due: number;
-	amount_paid: number;
-	lease: {
-		id: string;
-		status: string;
-		currency: string;
-		property_id: string;
-		property: { id: string; address_line: string; homeowner_name: string } | null;
-	} | null;
-}
-
-function propertyLabel(p: { address_line: string; homeowner_name: string } | null): string {
-	if (!p) return "Unknown property";
-	return p.address_line || p.homeowner_name || "Unknown property";
-}
-
-function daysBetween(fromISO: string, to: Date): number {
-	return Math.round((to.getTime() - new Date(fromISO).getTime()) / 86_400_000);
-}
-
-export async function getAttentionData(): Promise<AttentionData> {
+export async function getAttentionData(
+	thresholds: AttentionThresholds = DEFAULT_ATTENTION_THRESHOLDS,
+): Promise<AttentionData> {
 	const supabase = createClient();
 	const { data: { user }, error: authErr } = await supabase.auth.getUser();
 	if (authErr || !user) throw new Error("Not authenticated");
 
 	const now = new Date();
 	const todayISO = now.toISOString().slice(0, 10);
-	const soon = new Date(now.getTime() + UPCOMING_DAYS * 86_400_000).toISOString().slice(0, 10);
-	const leaseHorizon = new Date(now.getTime() + LEASE_WARN_DAYS * 86_400_000)
+	const soon = new Date(now.getTime() + thresholds.upcomingDays * 86_400_000)
+		.toISOString().slice(0, 10);
+	const leaseHorizon = new Date(now.getTime() + thresholds.leaseWarnDays * 86_400_000)
 		.toISOString().slice(0, 10);
 
 	const [payRes, leaseRes, leadRes] = await Promise.all([
@@ -103,61 +70,19 @@ export async function getAttentionData(): Promise<AttentionData> {
 	if (leaseRes.error) throw leaseRes.error;
 	if (leadRes.error) throw leadRes.error;
 
-	const overduePayments: AttentionPayment[] = [];
-	const upcomingPayments: AttentionPayment[] = [];
-	for (const row of (payRes.data ?? []) as unknown as PaymentRow[]) {
-		const outstanding = Number(row.amount_due ?? 0) - Number(row.amount_paid ?? 0);
-		if (outstanding <= 0) continue;
-		if (!row.lease || row.lease.status !== "active") continue;
-		const entry: AttentionPayment = {
-			paymentId: row.id,
-			propertyId: row.lease.property_id,
-			propertyLabel: propertyLabel(row.lease.property),
-			periodStart: row.period_start,
-			periodEnd: row.period_end,
-			outstanding,
-			currency: row.lease.currency || "TRY",
-		};
-		(row.period_end < todayISO ? overduePayments : upcomingPayments).push(entry);
-	}
-	overduePayments.sort((a, b) => a.periodEnd.localeCompare(b.periodEnd));
-	upcomingPayments.sort((a, b) => a.periodEnd.localeCompare(b.periodEnd));
-
-	const endingLeases: AttentionLeaseEnd[] = (
-		(leaseRes.data ?? []) as unknown as {
-			id: string;
-			end_date: string;
-			property_id: string;
-			property: { id: string; address_line: string; homeowner_name: string } | null;
-		}[]
-	)
-		.map((l) => ({
-			leaseId: l.id,
-			propertyId: l.property_id,
-			propertyLabel: propertyLabel(l.property),
-			endDate: l.end_date,
-			daysLeft: -daysBetween(l.end_date, now),
-		}))
-		.sort((a, b) => a.endDate.localeCompare(b.endDate));
-
-	const staleLeads: AttentionLead[] = (
-		(leadRes.data ?? []) as {
-			id: string;
-			full_name: string;
-			status: LeadStatus;
-			last_call_at: string | null;
-			created_at: string;
-		}[]
-	)
-		.map((l) => ({
-			leadId: l.id,
-			name: l.full_name,
-			status: l.status,
-			lastCallAt: l.last_call_at,
-			daysSilent: daysBetween(l.last_call_at ?? l.created_at, now),
-		}))
-		.filter((l) => l.daysSilent >= LEAD_SILENT_DAYS)
-		.sort((a, b) => b.daysSilent - a.daysSilent);
+	const { overduePayments, upcomingPayments } = classifyPayments(
+		(payRes.data ?? []) as unknown as PaymentRow[],
+		todayISO,
+	);
+	const endingLeases = classifyLeases(
+		(leaseRes.data ?? []) as unknown as LeaseEndRow[],
+		now,
+	);
+	const staleLeads = classifyLeads(
+		(leadRes.data ?? []) as LeadRow[],
+		now,
+		thresholds.leadSilentDays,
+	);
 
 	return {
 		overduePayments,

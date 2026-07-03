@@ -10,7 +10,8 @@ import { listLeads } from "@/src/lib/db/leads";
 import { createTenant } from "@/src/lib/db/tenants";
 import { createLease, computeLeaseEndDate } from "@/src/lib/db/leases";
 import { createSale } from "@/src/lib/db/sales";
-import { exportToPDF } from "@/src/lib/pdf";
+import { downloadPdfFile, generatePdfFile } from "@/src/lib/pdf";
+import { saveDocumentPdf } from "@/src/lib/db/documents";
 import type { DocKind, RentalPDFData, SalesPDFData } from "@/src/lib/pdf";
 import { PDFDocument } from "@/src/lib/pdf";
 import type { Property, Lead } from "@/src/lib/db/types";
@@ -429,7 +430,7 @@ export function DocumentWizard() {
 					});
 					guarantorId = guarantor.id;
 				}
-				await createLease({
+				const lease = await createLease({
 					property_id: property.id,
 					tenant_id: tenant.id,
 					term: s.term,
@@ -457,7 +458,15 @@ export function DocumentWizard() {
 				upsertProperty(updated);
 				invalidateCache("tenants");
 				const filename = `kira-${safeFilename(tenant.full_name)}-${safeFilename(property.address_line)}.pdf`;
-				await exportToPDF("rental", rentalData, filename);
+				const pdfFile = await generatePdfFile("rental", rentalData, filename);
+				await downloadPdfFile(pdfFile);
+				// Keep a copy in storage for later reference. Best-effort: the
+				// user already has the download, so a failed upload only warns.
+				try {
+					await saveDocumentPdf({ table: "leases", id: lease.id }, pdfFile);
+				} catch {
+					toast.error("Contract downloaded, but saving a copy online failed.");
+				}
 				clearDraft();
 				toast.success("Lease created and contract downloaded.");
 				router.push(`/properties/${updated.id}`);
@@ -472,7 +481,7 @@ export function DocumentWizard() {
 					phone: salesState.buyerPhone.trim() || null,
 					national_id: salesState.buyerNationalId.trim() || null,
 				});
-				await createSale({
+				const sale = await createSale({
 					property_id: property.id,
 					buyer_id: buyer.id,
 					sale_price: Number(salesState.salePrice || 0),
@@ -491,7 +500,13 @@ export function DocumentWizard() {
 				upsertProperty(updated);
 				invalidateCache("tenants");
 				const filename = `sales-${safeFilename(buyer.full_name)}-${safeFilename(property.address_line)}.pdf`;
-				await exportToPDF("sales", salesData, filename);
+				const pdfFile = await generatePdfFile("sales", salesData, filename);
+				await downloadPdfFile(pdfFile);
+				try {
+					await saveDocumentPdf({ table: "sales", id: sale.id }, pdfFile);
+				} catch {
+					toast.error("Agreement downloaded, but saving a copy online failed.");
+				}
 				clearDraft();
 				toast.success("Sale recorded and agreement downloaded.");
 				router.push(`/properties/${updated.id}`);

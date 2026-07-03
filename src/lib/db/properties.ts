@@ -12,6 +12,8 @@ import type {
 	Lease,
 } from "./types";
 import { getLeaseBalance } from "./payments";
+import { orIlikeAnyColumn, orIlikeAnyValue } from "./filterString";
+import { parseInput, propertyInputSchema } from "@/src/lib/schemas/inputs";
 
 export interface PropertyFilter {
 	listing_type?: ListingType;
@@ -68,13 +70,12 @@ export async function listProperties(filter: PropertyFilter = {}): Promise<Prope
 	if (filter.listing_type) q = q.eq("listing_type", filter.listing_type);
 	if (filter.status)       q = q.eq("status", filter.status);
 	if (filter.q && filter.q.trim()) {
-		const needle = `%${filter.q.trim()}%`;
-		q = q.or(`homeowner_name.ilike.${needle},address_line.ilike.${needle},city.ilike.${needle}`);
+		q = q.or(orIlikeAnyColumn(["homeowner_name", "address_line", "city"], filter.q.trim()));
 	}
 	const niteliks = (filter.nitelik ?? []).map((n) => n.trim()).filter(Boolean);
 	if (niteliks.length > 0) {
 		// Any of the selected types (OR), each a case-insensitive substring match.
-		q = q.or(niteliks.map((n) => `nitelik.ilike.%${n}%`).join(","));
+		q = q.or(orIlikeAnyValue(["nitelik"], niteliks));
 	}
 	if (filter.furnished != null) {
 		q = q.eq("furnished", filter.furnished);
@@ -83,12 +84,7 @@ export async function listProperties(filter: PropertyFilter = {}): Promise<Prope
 	if (locations.length > 0) {
 		// Each location may match city / mahalle / mevkii; all values are OR-combined.
 		// Multiple .or() groups are AND-combined by PostgREST, so this is independent of `q`.
-		const clauses = locations.flatMap((loc) => [
-			`city.ilike.%${loc}%`,
-			`mahalle.ilike.%${loc}%`,
-			`mevkii.ilike.%${loc}%`,
-		]);
-		q = q.or(clauses.join(","));
+		q = q.or(orIlikeAnyValue(["city", "mahalle", "mevkii"], locations));
 	}
 
 	const { data, error } = await q;
@@ -128,10 +124,11 @@ export async function getProperty(id: string): Promise<PropertyWithActiveLease> 
 }
 
 export async function createProperty(input: PropertyInput): Promise<Property> {
+	const parsed = parseInput(propertyInputSchema, input);
 	const { supabase, user } = await requireUser();
 	const { data, error } = await supabase
 		.from("properties")
-		.insert({ ...input, owner_id: user.id })
+		.insert({ ...parsed, owner_id: user.id })
 		.select()
 		.single();
 	if (error) throw error;
@@ -142,10 +139,11 @@ export async function updateProperty(
 	id: string,
 	patch: Partial<PropertyInput>,
 ): Promise<Property> {
+	const parsed = parseInput(propertyInputSchema.partial(), patch);
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
 		.from("properties")
-		.update(patch)
+		.update(parsed)
 		.eq("id", id)
 		.select()
 		.single();

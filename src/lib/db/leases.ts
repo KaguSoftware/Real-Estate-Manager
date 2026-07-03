@@ -3,6 +3,7 @@
 
 import { createClient } from "@/src/lib/supabase/client";
 import type { InventoryItem, Lease, LeaseTerm, Tenant, UtilityResponsibility } from "./types";
+import { leaseInputSchema, parseInput } from "@/src/lib/schemas/inputs";
 
 export interface LeaseInput {
 	property_id: string;
@@ -40,14 +41,15 @@ async function requireUser() {
 }
 
 export async function createLease(input: LeaseInput): Promise<Lease> {
+	const parsed = parseInput(leaseInputSchema, input);
 	const { supabase, user } = await requireUser();
 	const { data, error } = await supabase
 		.from("leases")
 		.insert({
-			...input,
+			...parsed,
 			owner_id: user.id,
-			deposit: input.deposit ?? 0,
-			currency: input.currency ?? "TRY",
+			deposit: parsed.deposit ?? 0,
+			currency: parsed.currency ?? "TRY",
 		})
 		.select()
 		.single();
@@ -125,6 +127,49 @@ export async function listLeasesForProperty(
 		.order("start_date", { ascending: false });
 	if (error) throw error;
 	return (data ?? []) as (Lease & { tenant: Tenant | null })[];
+}
+
+/**
+ * Renew a lease: end the old one the day the new one starts, then create the
+ * replacement (same property/tenant unless overridden). Sequential because the
+ * partial unique index allows only one active lease per property — the old
+ * lease must be ended before the new insert. Not atomic: if the create fails
+ * the old lease stays ended, which is surfaced to the caller as an error so
+ * the user can retry the new lease from the documents wizard.
+ */
+export async function renewLease(
+	oldLease: Lease,
+	overrides: Partial<LeaseInput> & { start_date: string },
+): Promise<Lease> {
+	await endLease(oldLease.id, overrides.start_date);
+	const input: LeaseInput = {
+		property_id: oldLease.property_id,
+		tenant_id: oldLease.tenant_id,
+		term: oldLease.term,
+		monthly_rent: Number(oldLease.monthly_rent),
+		deposit: Number(oldLease.deposit),
+		currency: oldLease.currency,
+		guarantor_id: oldLease.guarantor_id,
+		payment_day: oldLease.payment_day,
+		payment_method: oldLease.payment_method,
+		bank_account: oldLease.bank_account,
+		util_electricity: oldLease.util_electricity,
+		util_water: oldLease.util_water,
+		util_gas: oldLease.util_gas,
+		util_internet: oldLease.util_internet,
+		util_aidat: oldLease.util_aidat,
+		subletting_allowed: oldLease.subletting_allowed,
+		rent_increase_note: oldLease.rent_increase_note,
+		inventory: oldLease.inventory,
+		condition_notes: oldLease.condition_notes,
+		special_conditions: oldLease.special_conditions,
+		...overrides,
+		end_date:
+			overrides.end_date !== undefined
+				? overrides.end_date
+				: computeLeaseEndDate(overrides.start_date, overrides.term ?? oldLease.term),
+	};
+	return createLease(input);
 }
 
 /** Compute an end_date when term is fixed; null for undefined. */

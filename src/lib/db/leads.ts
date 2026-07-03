@@ -3,6 +3,8 @@
 
 import { createClient } from "@/src/lib/supabase/client";
 import type { Lead, LeadStatus, ListingType } from "./types";
+import { orIlikeAnyColumn } from "./filterString";
+import { leadInputSchema, parseInput } from "@/src/lib/schemas/inputs";
 
 export interface LeadFilter {
 	status?: LeadStatus;
@@ -40,8 +42,7 @@ export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
 	let q = supabase.from("leads").select("*").order("updated_at", { ascending: false });
 	if (filter.status) q = q.eq("status", filter.status);
 	if (filter.q && filter.q.trim()) {
-		const needle = `%${filter.q.trim()}%`;
-		q = q.or(`full_name.ilike.${needle},phone.ilike.${needle},interested_in.ilike.${needle}`);
+		q = q.or(orIlikeAnyColumn(["full_name", "phone", "interested_in"], filter.q.trim()));
 	}
 
 	const { data, error } = await q;
@@ -58,10 +59,11 @@ export async function getLead(id: string): Promise<Lead> {
 }
 
 export async function createLead(input: LeadInput): Promise<Lead> {
+	const parsed = parseInput(leadInputSchema, input);
 	const { supabase, user } = await requireUser();
 	const { data, error } = await supabase
 		.from("leads")
-		.insert({ ...input, owner_id: user.id })
+		.insert({ ...parsed, owner_id: user.id })
 		.select()
 		.single();
 	if (error) throw error;
@@ -72,10 +74,11 @@ export async function updateLead(
 	id: string,
 	patch: Partial<LeadInput>,
 ): Promise<Lead> {
+	const parsed = parseInput(leadInputSchema.partial(), patch);
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
 		.from("leads")
-		.update(patch)
+		.update(parsed)
 		.eq("id", id)
 		.select()
 		.single();

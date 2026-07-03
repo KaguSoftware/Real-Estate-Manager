@@ -2,6 +2,8 @@
 
 import { createClient } from "@/src/lib/supabase/client";
 import type { Tenant } from "./types";
+import { orIlikeAnyColumn } from "./filterString";
+import { parseInput, tenantInputSchema } from "@/src/lib/schemas/inputs";
 
 export interface TenantInput {
 	full_name: string;
@@ -19,10 +21,11 @@ async function requireUser() {
 }
 
 export async function createTenant(input: TenantInput): Promise<Tenant> {
+	const parsed = parseInput(tenantInputSchema, input);
 	const { supabase, user } = await requireUser();
 	const { data, error } = await supabase
 		.from("tenants")
-		.insert({ ...input, owner_id: user.id })
+		.insert({ ...parsed, owner_id: user.id })
 		.select()
 		.single();
 	if (error) throw error;
@@ -41,9 +44,10 @@ export async function updateTenant(
 	id: string,
 	patch: Partial<TenantInput>,
 ): Promise<Tenant> {
+	const parsed = parseInput(tenantInputSchema.partial(), patch);
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
-		.from("tenants").update(patch).eq("id", id).select().single();
+		.from("tenants").update(parsed).eq("id", id).select().single();
 	if (error) throw error;
 	return data as Tenant;
 }
@@ -65,8 +69,7 @@ export async function listTenants(filter: TenantFilter = {}): Promise<Tenant[]> 
 		.order("updated_at", { ascending: false });
 	const q = filter.q?.trim();
 	if (q) {
-		const like = `%${q}%`;
-		query = query.or(`full_name.ilike.${like},email.ilike.${like},phone.ilike.${like}`);
+		query = query.or(orIlikeAnyColumn(["full_name", "email", "phone"], q));
 	}
 	const { data, error } = await query;
 	if (error) throw error;

@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react";
 import { useAppStore } from "@/src/store";
 import { updateLead } from "@/src/lib/db/leads";
+import { listProperties } from "@/src/lib/db/properties";
+import { rankPropertiesForLead } from "@/src/lib/matching/score";
 import { humanizeError } from "@/src/lib/errors";
+import { invalidateCache, useCachedResource } from "@/src/lib/useCachedResource";
 import { toast } from "@/src/components/ui";
 import type { Lead } from "@/src/lib/db/types";
 import { LEAD_STATUS_META } from "./leadStatus";
-import { Badge, Card, SpinnerBlock, EmptyState } from "@/src/components/ui";
+import { Badge, Card, SpinnerBlock, EmptyState, Pagination, usePagination } from "@/src/components/ui";
 import { WhatsAppButton } from "@/src/components/ui/WhatsAppButton";
-import { PhoneCall, Users } from "lucide-react";
+import { Home, PhoneCall, Users } from "lucide-react";
 
 function isToday(dateStr: string | null): boolean {
 	if (!dateStr) return false;
@@ -50,8 +53,16 @@ export function LeadTable({ onEdit }: Props) {
 	async function markCalledToday(lead: Lead) {
 		setCallBusyId(lead.id);
 		try {
-			const updated = await updateLead(lead.id, { last_call_at: new Date().toISOString() });
+			const today = new Date().toISOString();
+			// Keep a lightweight contact history by prepending a dated line to
+			// the free-text notes, so past calls stay visible in the lead form.
+			const logLine = `[${today.slice(0, 10)}] Called.`;
+			const notes = lead.notes ? `${logLine}\n${lead.notes}` : logLine;
+			const updated = await updateLead(lead.id, { last_call_at: today, notes });
 			upsertLead(updated);
+			// The attention panel's "gone quiet" list depends on last_call_at.
+			invalidateCache("attention");
+			invalidateCache("leads");
 			toast.success(`Marked ${lead.full_name} as called today.`);
 		} catch (e) {
 			toast.error(humanizeError(e));
@@ -60,10 +71,20 @@ export function LeadTable({ onEdit }: Props) {
 		}
 	}
 
-	const sorted = useMemo(
+	// Column-light property fetch reused across the app ("Matches" hints).
+	const { data: properties } = useCachedResource("properties:for-matching", () => listProperties());
+	const matchCounts = useMemo(() => {
+		const counts = new Map<string, number>();
+		if (!properties) return counts;
+		for (const l of leads) counts.set(l.id, rankPropertiesForLead(l, properties).length);
+		return counts;
+	}, [leads, properties]);
+
+	const sortedAll = useMemo(
 		() => [...leads].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
 		[leads],
 	);
+	const { page, setPage, pageCount, pageItems: sorted, total, pageSize } = usePagination(sortedAll);
 
 	if (isLoading) {
 		return <SpinnerBlock />;
@@ -142,6 +163,7 @@ export function LeadTable({ onEdit }: Props) {
 								<th className={headerCls}>Phone</th>
 								<th className={headerCls}>Interested in</th>
 								<th className={headerCls}>Status</th>
+								<th className={headerCls}>Matches</th>
 								<th className={headerCls}>Last call</th>
 							</tr>
 						</thead>
@@ -159,6 +181,19 @@ export function LeadTable({ onEdit }: Props) {
 									</td>
 									<td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{l.interested_in ?? "—"}</td>
 									<td className="px-4 py-3"><StatusBadge status={l.status} /></td>
+									<td className="px-4 py-3 text-sm whitespace-nowrap">
+										{(matchCounts.get(l.id) ?? 0) > 0 ? (
+											<span
+												className="inline-flex items-center gap-1 text-emerald-600 font-semibold"
+												title="Properties in your portfolio matching this client's preferences"
+											>
+												<Home className="w-3.5 h-3.5" />
+												{matchCounts.get(l.id)}
+											</span>
+										) : (
+											<span className="text-slate-300">—</span>
+										)}
+									</td>
 									<td className="px-4 py-3 text-sm whitespace-nowrap">
 										<span className="inline-flex items-center gap-2">
 											<span className="text-slate-500">{fmtCallDate(l.last_call_at)}</span>
@@ -184,6 +219,7 @@ export function LeadTable({ onEdit }: Props) {
 					</table>
 				</div>
 			</Card>
+			<Pagination page={page} pageCount={pageCount} total={total} pageSize={pageSize} onPageChange={setPage} />
 		</>
 	);
 }
