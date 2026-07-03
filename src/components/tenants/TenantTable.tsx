@@ -3,7 +3,7 @@
 import type { Tenant } from "@/src/lib/db/types";
 import { Card, SpinnerBlock, EmptyState } from "@/src/components/ui";
 import { WhatsAppButton } from "@/src/components/ui/WhatsAppButton";
-import { Users } from "lucide-react";
+import { Users, Pencil } from "lucide-react";
 
 interface Props {
 	tenants: Tenant[];
@@ -67,6 +67,7 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 								<th className={headerCls}>Email</th>
 								<th className={headerCls}>National ID</th>
 								<th className={headerCls}>Added</th>
+								<th className={headerCls}><span className="sr-only">Actions</span></th>
 							</tr>
 						</thead>
 						<tbody>
@@ -84,6 +85,17 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 									<td className="px-4 py-3 text-sm text-slate-600">{t.email ?? "—"}</td>
 									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{t.national_id ?? "—"}</td>
 									<td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">{fmtDate(t.created_at)}</td>
+									<td className="px-4 py-3 text-right whitespace-nowrap">
+										<button
+											type="button"
+											onClick={(e) => { e.stopPropagation(); onEdit(t); }}
+											aria-label={`Edit ${t.full_name}`}
+											title="Edit or delete this tenant"
+											className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+										>
+											<Pencil className="w-4 h-4" />
+										</button>
+									</td>
 								</tr>
 							))}
 						</tbody>

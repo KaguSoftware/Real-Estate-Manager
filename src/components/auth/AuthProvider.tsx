@@ -34,10 +34,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const supabase = createClient();
+    // Supabase re-emits SIGNED_IN on token refresh / tab refocus for the SAME
+    // user; clearing the cache then blanks every mounted list. Only clear when
+    // the signed-in identity actually changes.
+    let lastUserId: string | null = null;
 
     // Set user immediately from session, then enrich with app_role
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { setUser(null); return; }
+      lastUserId = user.id;
       setUser({ id: user.id, email: user.email ?? "" });
       resolveUser(supabase, user.id, user.email ?? "").then(setUser);
     });
@@ -48,7 +53,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const u = session?.user ?? null;
         // Drop the SWR cache on real identity changes so one user never sees
         // another's cached rows. Token refresh keeps the same identity → keep cache.
-        if (event === "SIGNED_IN" || event === "SIGNED_OUT") clearCache();
+        if (event === "SIGNED_OUT" || (event === "SIGNED_IN" && u?.id !== lastUserId)) {
+          clearCache();
+        }
+        lastUserId = u?.id ?? lastUserId;
+        if (event === "SIGNED_OUT") lastUserId = null;
         if (event === "SIGNED_OUT") {
           // Single source of truth for store cleanup on sign-out.
           setProperties([]);

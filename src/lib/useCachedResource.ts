@@ -28,10 +28,20 @@ const cache = new Map<string, Entry<unknown>>();
 // key -> in-flight promise, so concurrent mounts share one network request.
 const inflight = new Map<string, Promise<unknown>>();
 
+// Mounted hook instances, notified when cache entries are dropped/written so
+// they can refetch (their entry vanished) or re-render (it changed). Without
+// this, a component whose entry is invalidated while mounted renders null
+// forever — its effect never reruns because the key didn't change.
+const subscribers = new Set<() => void>();
+function notifySubscribers() {
+	for (const fn of subscribers) fn();
+}
+
 /** Drop everything (e.g. on sign-out). */
 export function clearCache() {
 	cache.clear();
 	inflight.clear();
+	notifySubscribers();
 }
 
 /** Drop a single key, or all keys sharing a prefix (e.g. "properties"). */
@@ -39,11 +49,13 @@ export function invalidateCache(keyOrPrefix: string) {
 	for (const k of cache.keys()) {
 		if (k === keyOrPrefix || k.startsWith(`${keyOrPrefix}:`)) cache.delete(k);
 	}
+	notifySubscribers();
 }
 
 /** Imperatively write a value into the cache (e.g. after a mutation). */
 export function mutateCache<T>(key: string, data: T) {
 	cache.set(key, { data, fetchedAt: Date.now() });
+	notifySubscribers();
 }
 
 export interface CachedResource<T> {
@@ -108,6 +120,25 @@ export function useCachedResource<T>(
 
 	// Bumped by refetch() to force the effect to run again.
 	const [nonce, setNonce] = useState(0);
+
+	// React to external cache invalidation: if our entry was dropped, refetch;
+	// if it was rewritten (mutateCache), just re-render to show the new value.
+	const keyRef = useRef(key);
+	const activeRef = useRef(active);
+	useEffect(() => {
+		keyRef.current = key;
+		activeRef.current = active;
+	});
+	useEffect(() => {
+		const onCacheChange = () => {
+			const k = keyRef.current;
+			if (k == null) return;
+			if (!cache.has(k) && activeRef.current) setNonce((n) => n + 1);
+			else forceRender((n) => n + 1);
+		};
+		subscribers.add(onCacheChange);
+		return () => { subscribers.delete(onCacheChange); };
+	}, []);
 
 	useEffect(() => {
 		if (!active || key == null) return;
