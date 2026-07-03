@@ -7,7 +7,7 @@ import { createClient } from "@/src/lib/supabase/client";
 import { useAppStore } from "@/src/store";
 import { cn } from "./cn";
 import { useFocusTrap } from "./useFocusTrap";
-import { Home, Users, ContactRound, FilePlus2, Shield, LogOut, X } from "lucide-react";
+import { LayoutDashboard, Home, Users, ContactRound, FilePlus2, Shield, LogOut, X } from "lucide-react";
 
 interface NavItem {
 	href: string;
@@ -17,7 +17,8 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-	{ href: "/", label: "Properties", icon: Home },
+	{ href: "/", label: "Dashboard", icon: LayoutDashboard },
+	{ href: "/properties", label: "Properties", icon: Home },
 	{ href: "/leads", label: "Clients", icon: Users },
 	{ href: "/tenants", label: "Tenants", icon: ContactRound },
 	{ href: "/documents/new", label: "New document", icon: FilePlus2 },

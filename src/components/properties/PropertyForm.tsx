@@ -266,7 +266,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			await deleteProperty(initial.id);
 			removeProperty(initial.id);
 			toast.success("Property deleted.");
-			router.push("/");
+			router.push("/properties");
 			onDone?.();
 		} catch (e) {
 			setConfirmingDelete(false);

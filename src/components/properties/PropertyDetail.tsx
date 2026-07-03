@@ -182,7 +182,7 @@ export function PropertyDetail({ propertyId }: Props) {
 		return (
 			<AppShell title="Property">
 				<Alert>{error}</Alert>
-				<Button variant="ghost" size="sm" className="mt-4" onClick={() => router.push("/")}>← Back to properties</Button>
+				<Button variant="ghost" size="sm" className="mt-4" onClick={() => router.push("/properties")}>← Back to properties</Button>
 			</AppShell>
 		);
 	}

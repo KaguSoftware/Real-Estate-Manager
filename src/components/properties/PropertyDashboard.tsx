@@ -9,8 +9,6 @@ import { AppShell, Card, Alert } from "@/src/components/ui";
 import { PropertyFilters } from "./PropertyFilters";
 import { PropertyTable } from "./PropertyTable";
 import { PropertyMap } from "./PropertyMap";
-import { DashboardStats } from "./DashboardStats";
-import { AttentionPanel } from "./AttentionPanel";
 import { Plus } from "lucide-react";
 
 /** Serialize non-default filter values so views are shareable/bookmarkable. */
@@ -66,7 +64,7 @@ export function PropertyDashboard() {
 		if (!hydrated.current) return;
 		const qs = filtersToParams(filters);
 		const current = searchParams.toString();
-		if (qs !== current) router.replace(qs ? `/?${qs}` : "/", { scroll: false });
+		if (qs !== current) router.replace(qs ? `/properties?${qs}` : "/properties", { scroll: false });
 	}, [filters, router, searchParams]);
 
 	// Normalize filters into a query object + a stable cache key. Navigating back
@@ -108,8 +106,6 @@ export function PropertyDashboard() {
 				</Card>
 			) : (
 				<>
-					<AttentionPanel />
-					<DashboardStats />
 					<PropertyMap />
 					<PropertyFilters />
 

@@ -115,7 +115,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 			status: "all",
 			q: "",
 		});
-		router.push("/");
+		router.push("/properties");
 	}
 
 	const hasPrefs =

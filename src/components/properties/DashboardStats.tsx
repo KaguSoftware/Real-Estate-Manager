@@ -53,7 +53,7 @@ export function DashboardStats() {
 				label="Properties"
 				value={String(properties.vacant + properties.occupied + properties.sold)}
 				detail={`${properties.occupied} occupied · ${properties.vacant} vacant${properties.sold ? ` · ${properties.sold} sold` : ""}`}
-				onClick={resetFilters}
+				onClick={() => { resetFilters(); router.push("/properties"); }}
 				hint="Show all properties"
 			/>
 			<StatCard
@@ -61,7 +61,7 @@ export function DashboardStats() {
 				label="Monthly rent"
 				value={rent ?? "—"}
 				detail={rent ? "across active leases" : "no active leases"}
-				onClick={() => setFilters({ status: "occupied" })}
+				onClick={() => { setFilters({ status: "occupied" }); router.push("/properties"); }}
 				hint="Show occupied properties"
 			/>
 			<StatCard
@@ -70,7 +70,7 @@ export function DashboardStats() {
 				value={outstanding ?? "0"}
 				detail={outstanding ? "unpaid across active leases" : "all settled"}
 				danger={!!outstanding}
-				onClick={() => setFilters({ status: "occupied" })}
+				onClick={() => { setFilters({ status: "occupied" }); router.push("/properties"); }}
 				hint="Show occupied properties"
 			/>
 			<StatCard
