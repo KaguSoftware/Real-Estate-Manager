@@ -39,8 +39,9 @@ export interface ReverseAddress {
 
 // Identifying email per Nominatim policy. Override with NOMINATIM_EMAIL; the
 // fallback keeps the app runnable without configuration.
-const NOMINATIM_EMAIL = process.env.NOMINATIM_EMAIL || "real-estate-manager@example.com";
-const NOMINATIM_UA = "RealEstateManager/1.0 (property geocoding; +https://example.com)";
+const NOMINATIM_EMAIL = process.env.NOMINATIM_EMAIL || "parsaxavier@gmail.com";
+const NOMINATIM_UA =
+	"KaguRealEstate/1.0 (property geocoding; +https://github.com/KaguSoftware/RealEstate)";
 
 // Nominatim allows at most 1 request/second. Both geocodeAddress and
 // reverseGeocode funnel through this gate: each call waits until at least 1s has

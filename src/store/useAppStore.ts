@@ -76,6 +76,7 @@ export const useAppStore = create<AppState>((set) => ({
 			// so drop all cached property lists; the next visit refetches fresh.
 			invalidateCache("properties");
 			invalidateCache("stats");
+			invalidateCache("attention");
 			const idx = s.properties.findIndex((x) => x.id === p.id);
 			return {
 				properties:
@@ -88,6 +89,7 @@ export const useAppStore = create<AppState>((set) => ({
 		set((s) => {
 			invalidateCache("properties");
 			invalidateCache("stats");
+			invalidateCache("attention");
 			return { properties: s.properties.filter((p) => p.id !== id) };
 		}),
 	isLoadingProperties: false,
@@ -104,6 +106,7 @@ export const useAppStore = create<AppState>((set) => ({
 		set((s) => {
 			invalidateCache("leads");
 			invalidateCache("stats");
+			invalidateCache("attention");
 			const idx = s.leads.findIndex((x) => x.id === l.id);
 			return {
 				leads:
@@ -116,6 +119,7 @@ export const useAppStore = create<AppState>((set) => ({
 		set((s) => {
 			invalidateCache("leads");
 			invalidateCache("stats");
+			invalidateCache("attention");
 			return { leads: s.leads.filter((l) => l.id !== id) };
 		}),
 	isLoadingLeads: false,

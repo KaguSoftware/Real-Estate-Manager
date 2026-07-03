@@ -10,13 +10,15 @@ import { LeadFilters } from "./LeadFilters";
 import { LeadTable } from "./LeadTable";
 import { LeadForm } from "./LeadForm";
 import type { Lead } from "@/src/lib/db/types";
-import { Plus } from "lucide-react";
+import { downloadCsv } from "@/src/lib/csv";
+import { Plus, Download } from "lucide-react";
 
 export function LeadDashboard() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const user = useAppStore((s) => s.user);
 	const leadFilters = useAppStore((s) => s.leadFilters);
+	const leads = useAppStore((s) => s.leads);
 	const setLeads = useAppStore((s) => s.setLeads);
 	const setIsLoadingLeads = useAppStore((s) => s.setIsLoadingLeads);
 
@@ -67,6 +69,28 @@ export function LeadDashboard() {
 			) : (
 				<>
 					<LeadFilters onAdd={() => setEditing({ mode: "create" })} />
+
+					{leads.length > 0 && (
+						<div className="px-1 mb-2 flex justify-end">
+							<button
+								type="button"
+								onClick={() =>
+									downloadCsv(
+										"clients",
+										["Name", "Phone", "Email", "Interested in", "Status", "Last call", "Notes"],
+										leads.map((l) => [
+											l.full_name, l.phone, l.email, l.interested_in,
+											l.status, l.last_call_at?.slice(0, 10), l.notes,
+										]),
+									)
+								}
+								className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-700 transition-colors"
+							>
+								<Download className="w-3.5 h-3.5" />
+								Export CSV
+							</button>
+						</div>
+					)}
 
 					{error && <Alert className="mb-4">{error}</Alert>}
 

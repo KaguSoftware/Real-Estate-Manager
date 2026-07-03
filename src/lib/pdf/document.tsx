@@ -3,7 +3,7 @@ import { styles, ensurePdfFonts } from "./styles";
 import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData } from "./types";
 import { RentalAgreement } from "./sections/rental";
 import { SalesAgreement } from "./sections/sales";
-import { RentReceiptStub } from "./sections/receipt";
+import { RentReceipt } from "./sections/receipt";
 import { PropertyListing } from "./sections/listing";
 
 type AnyPDFData = RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData;
@@ -23,7 +23,7 @@ export function PDFDocument({ kind, data }: { kind: DocKind; data: AnyPDFData })
 			<Page size="A4" style={styles.page} wrap>
 				{kind === "rental"  && <RentalAgreement data={data as RentalPDFData} />}
 				{kind === "sales"   && <SalesAgreement data={data as SalesPDFData} />}
-				{kind === "receipt" && <RentReceiptStub />}
+				{kind === "receipt" && <RentReceipt data={data as ReceiptPDFData} />}
 				{kind === "listing" && <PropertyListing data={data as ListingPDFData} />}
 			</Page>
 		</Document>

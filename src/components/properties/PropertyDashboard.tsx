@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { listProperties, type PropertyFilter } from "@/src/lib/db/properties";
 import { useCachedResource } from "@/src/lib/useCachedResource";
@@ -10,14 +10,64 @@ import { PropertyFilters } from "./PropertyFilters";
 import { PropertyTable } from "./PropertyTable";
 import { PropertyMap } from "./PropertyMap";
 import { DashboardStats } from "./DashboardStats";
+import { AttentionPanel } from "./AttentionPanel";
 import { Plus } from "lucide-react";
+
+/** Serialize non-default filter values so views are shareable/bookmarkable. */
+function filtersToParams(filters: {
+	listing_type: string; status: string; q: string;
+	nitelik: string[]; furnished: string; location: string[];
+}): string {
+	const p = new URLSearchParams();
+	if (filters.listing_type !== "all") p.set("type", filters.listing_type);
+	if (filters.status !== "all") p.set("status", filters.status);
+	if (filters.furnished !== "all") p.set("furnished", filters.furnished);
+	if (filters.q) p.set("q", filters.q);
+	if (filters.nitelik.length) p.set("nitelik", filters.nitelik.join(","));
+	if (filters.location.length) p.set("loc", filters.location.join(","));
+	return p.toString();
+}
 
 export function PropertyDashboard() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const user = useAppStore((s) => s.user);
 	const filters = useAppStore((s) => s.filters);
+	const setFilters = useAppStore((s) => s.setFilters);
 	const setProperties = useAppStore((s) => s.setProperties);
 	const setIsLoadingProperties = useAppStore((s) => s.setIsLoadingProperties);
+
+	// One-time hydration: an arriving URL with filter params wins over the store,
+	// so shared/bookmarked links reproduce the same view. Afterwards the store is
+	// the source of truth and is mirrored back into the URL below.
+	const hydrated = useRef(false);
+	useEffect(() => {
+		if (hydrated.current) return;
+		hydrated.current = true;
+		const type = searchParams.get("type");
+		const status = searchParams.get("status");
+		const furnished = searchParams.get("furnished");
+		const q = searchParams.get("q");
+		const nitelik = searchParams.get("nitelik");
+		const loc = searchParams.get("loc");
+		if (!type && !status && !furnished && !q && !nitelik && !loc) return;
+		setFilters({
+			...(type === "for_rent" || type === "for_sale" ? { listing_type: type } : {}),
+			...(status === "vacant" || status === "occupied" || status === "sold" ? { status } : {}),
+			...(furnished === "yes" || furnished === "no" ? { furnished } : {}),
+			...(q ? { q } : {}),
+			...(nitelik ? { nitelik: nitelik.split(",").filter(Boolean) } : {}),
+			...(loc ? { location: loc.split(",").filter(Boolean) } : {}),
+		});
+	}, [searchParams, setFilters]);
+
+	// Mirror filter changes into the URL (replace, so history isn't spammed).
+	useEffect(() => {
+		if (!hydrated.current) return;
+		const qs = filtersToParams(filters);
+		const current = searchParams.toString();
+		if (qs !== current) router.replace(qs ? `/?${qs}` : "/", { scroll: false });
+	}, [filters, router, searchParams]);
 
 	// Normalize filters into a query object + a stable cache key. Navigating back
 	// to the same filters serves the cached list instantly and revalidates in the
@@ -58,6 +108,7 @@ export function PropertyDashboard() {
 				</Card>
 			) : (
 				<>
+					<AttentionPanel />
 					<DashboardStats />
 					<PropertyMap />
 					<PropertyFilters />

@@ -1,5 +1,6 @@
 "use client";
 
+import { humanizeError } from "@/src/lib/errors";
 import { useState } from "react";
 import { updateLease, type LeaseUpdate } from "@/src/lib/db/leases";
 import type { Lease } from "@/src/lib/db/types";
@@ -66,7 +67,7 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 			onSaved();
 			onClose();
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setError(humanizeError(e));
 		} finally {
 			setBusy(false);
 		}

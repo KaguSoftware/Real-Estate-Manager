@@ -1,5 +1,6 @@
 "use client";
 
+import { humanizeError } from "@/src/lib/errors";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
@@ -252,7 +253,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			}
 			onDone?.();
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setError(humanizeError(e));
 		} finally {
 			setBusy(false);
 		}
@@ -269,7 +270,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			onDone?.();
 		} catch (e) {
 			setConfirmingDelete(false);
-			setError(e instanceof Error ? e.message : String(e));
+			setError(humanizeError(e));
 		} finally {
 			setBusy(false);
 		}

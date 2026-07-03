@@ -1,5 +1,6 @@
 "use client";
 
+import { humanizeError } from "@/src/lib/errors";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -39,6 +40,35 @@ const PDFBlobProvider = dynamic(
 type Step = "type" | "property" | "client" | "details" | "preview";
 
 const STEPS: Step[] = ["type", "property", "client", "details", "preview"];
+
+// Wizard progress survives a refresh/accidental close via localStorage.
+const DRAFT_KEY = "docwizard:draft:v1";
+
+interface WizardDraft {
+	step: Step;
+	kind: DocKind;
+	propertyId: string | null;
+	clientId: string | null;
+	rentalState: RentalFormState;
+	salesState: SalesFormState;
+	savedAt: string;
+}
+
+function readDraft(): WizardDraft | null {
+	if (typeof window === "undefined") return null;
+	try {
+		const raw = window.localStorage.getItem(DRAFT_KEY);
+		if (!raw) return null;
+		const d = JSON.parse(raw) as WizardDraft;
+		return d && d.step && d.kind ? d : null;
+	} catch {
+		return null;
+	}
+}
+
+function clearDraft() {
+	try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+}
 
 function safeFilename(s: string) {
 	return s.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "document";
@@ -210,6 +240,36 @@ export function DocumentWizard() {
 	const [error, setError] = useState<string | null>(null);
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+	// Offer to resume a saved draft from a previous (interrupted) session.
+	const [pendingDraft, setPendingDraft] = useState<WizardDraft | null>(() => readDraft());
+	function resumeDraft() {
+		if (!pendingDraft) return;
+		setKind(pendingDraft.kind);
+		setPropertyId(pendingDraft.propertyId);
+		setClientId(pendingDraft.clientId);
+		setRentalState(pendingDraft.rentalState);
+		setSalesState(pendingDraft.salesState);
+		// Re-enter at the property step so the pickers reload their data; the
+		// details entered in later steps are already restored above.
+		setStep(pendingDraft.propertyId ? pendingDraft.step : "type");
+		setPendingDraft(null);
+	}
+	function discardDraft() {
+		clearDraft();
+		setPendingDraft(null);
+	}
+
+	// Persist progress once the user has invested real effort (details onwards).
+	useEffect(() => {
+		if (pendingDraft) return; // don't overwrite an unresumed draft
+		if (step !== "details" && step !== "preview") return;
+		const draft: WizardDraft = {
+			step, kind, propertyId, clientId, rentalState, salesState,
+			savedAt: new Date().toISOString(),
+		};
+		try { window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* ignore */ }
+	}, [pendingDraft, step, kind, propertyId, clientId, rentalState, salesState]);
+
 	// Details entered in steps 4–5 are lost on a refresh/close — warn first.
 	useEffect(() => {
 		if (step !== "details" && step !== "preview") return;
@@ -250,7 +310,7 @@ export function DocumentWizard() {
 		setError(null);
 		listEligiblePropertiesForDocType(kind)
 			.then(setProperties)
-			.catch((e) => setError(e instanceof Error ? e.message : String(e)))
+			.catch((e) => setError(humanizeError(e)))
 			.finally(() => setLoadingProperties(false));
 	}, [step, kind]);
 
@@ -261,7 +321,7 @@ export function DocumentWizard() {
 		setError(null);
 		listLeads()
 			.then(setClients)
-			.catch((e) => setError(e instanceof Error ? e.message : String(e)))
+			.catch((e) => setError(humanizeError(e)))
 			.finally(() => setLoadingClients(false));
 	}, [step]);
 
@@ -398,6 +458,7 @@ export function DocumentWizard() {
 				invalidateCache("tenants");
 				const filename = `kira-${safeFilename(tenant.full_name)}-${safeFilename(property.address_line)}.pdf`;
 				await exportToPDF("rental", rentalData, filename);
+				clearDraft();
 				toast.success("Lease created and contract downloaded.");
 				router.push(`/properties/${updated.id}`);
 				return;
@@ -431,12 +492,13 @@ export function DocumentWizard() {
 				invalidateCache("tenants");
 				const filename = `sales-${safeFilename(buyer.full_name)}-${safeFilename(property.address_line)}.pdf`;
 				await exportToPDF("sales", salesData, filename);
+				clearDraft();
 				toast.success("Sale recorded and agreement downloaded.");
 				router.push(`/properties/${updated.id}`);
 				return;
 			}
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setError(humanizeError(e));
 		} finally {
 			setSubmitting(false);
 		}
@@ -470,6 +532,22 @@ export function DocumentWizard() {
 				))}
 			</ol>
 
+			{pendingDraft && (
+				<Alert
+					tone="warning"
+					className="mb-4"
+					action={
+						<div className="flex items-center gap-2">
+							<Button size="sm" onClick={resumeDraft}>Resume</Button>
+							<Button size="sm" variant="ghost" onClick={discardDraft}>Discard</Button>
+						</div>
+					}
+				>
+					You have an unfinished {pendingDraft.kind === "rental" ? "rental" : "sales"} document from a
+					previous session.
+				</Alert>
+			)}
+
 			{error && <Alert className="mb-4">{error}</Alert>}
 
 			{/* Step 1: type */}
@@ -491,9 +569,12 @@ export function DocumentWizard() {
 							<p className="text-base font-bold text-slate-900">Sales Agreement</p>
 							<p className="text-sm text-slate-500 mt-1">Sell a for-sale property to a new buyer.</p>
 						</button>
-						<div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed">
+						<div className="p-5 rounded-2xl border border-slate-200 bg-slate-50">
 							<p className="text-base font-bold text-slate-900">Rent Receipt</p>
-							<p className="text-sm text-slate-500 mt-1">Coming soon.</p>
+							<p className="text-sm text-slate-500 mt-1">
+								Generated per payment — open a property&apos;s Payments list and use the receipt
+								action on a row.
+							</p>
 						</div>
 					</div>
 				</div>

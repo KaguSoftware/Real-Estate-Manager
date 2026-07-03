@@ -1,5 +1,6 @@
 "use client";
 
+import { humanizeError } from "@/src/lib/errors";
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
@@ -8,8 +9,9 @@ import { endLease, listLeasesForProperty } from "@/src/lib/db/leases";
 import { cancelSale, closeSale, getActiveSaleForProperty, listSalesForProperty } from "@/src/lib/db/sales";
 import { listPropertyImages } from "@/src/lib/db/propertyImages";
 import { invalidateCache } from "@/src/lib/useCachedResource";
-import { exportToPDF, type ListingPDFData } from "@/src/lib/pdf";
-import type { Lease, PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
+import { exportToPDF, type ListingPDFData, type ReceiptPDFData } from "@/src/lib/pdf";
+import { fmtMoney } from "@/src/lib/format";
+import type { Lease, Payment, PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
 import { PaymentList } from "@/src/components/payments/PaymentList";
 import {
 	AppShell, Button, Card, CardLabel, Badge, type BadgeTone,
@@ -39,7 +41,6 @@ async function toDataUrl(url: string): Promise<string | null> {
 	}
 }
 
-function fmtMoney(n: number, ccy: string) { return `${n.toFixed(2)} ${ccy}`; }
 
 interface Props {
 	propertyId: string;
@@ -72,7 +73,7 @@ export function PropertyDetail({ propertyId }: Props) {
 				setSale(null);
 			}
 		}
-		catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+		catch (e) { setError(humanizeError(e)); }
 		finally { setLoading(false); }
 	}, [propertyId]);
 
@@ -105,9 +106,31 @@ export function PropertyDetail({ propertyId }: Props) {
 			const safeName = data.address_line.replace(/[^\w\s-]/g, "").trim().slice(0, 60) || "listing";
 			await exportToPDF("listing", listing, safeName);
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setError(humanizeError(e));
 		} finally {
 			setSharing(false);
+		}
+	}
+
+	async function handleReceipt(payment: Payment) {
+		if (!data?.active_lease) return;
+		try {
+			const receipt: ReceiptPDFData = {
+				landlord_name: data.homeowner_name,
+				tenant_name: data.active_lease.tenant.full_name,
+				property_address: data.address_line,
+				city: data.city,
+				period_start: payment.period_start,
+				period_end: payment.period_end,
+				amount: Number(payment.amount_paid),
+				currency: data.active_lease.currency,
+				method: payment.method,
+				paid_at: payment.paid_at,
+				generatedAt: new Date().toISOString(),
+			};
+			await exportToPDF("receipt", receipt, `receipt-${payment.period_start}`);
+		} catch (e) {
+			toast.error(humanizeError(e));
 		}
 	}
 
@@ -125,6 +148,7 @@ export function PropertyDetail({ propertyId }: Props) {
 				await closeSale(sale.id);
 				toast.success("Sale closed.");
 				invalidateCache("stats");
+			invalidateCache("attention");
 			} else if (pendingAction === "cancel-sale" && sale) {
 				await cancelSale(sale.id);
 				const updated = await updateProperty(data.id, { status: "vacant" });
@@ -135,7 +159,7 @@ export function PropertyDetail({ propertyId }: Props) {
 			await reload();
 		} catch (e) {
 			setPendingAction(null);
-			const msg = e instanceof Error ? e.message : String(e);
+			const msg = humanizeError(e);
 			setError(msg);
 			toast.error(msg);
 		} finally {
@@ -395,6 +419,7 @@ export function PropertyDetail({ propertyId }: Props) {
 						currency={data.active_lease.currency}
 						monthlyRent={Number(data.active_lease.monthly_rent)}
 						onChanged={reload}
+						onReceipt={handleReceipt}
 					/>
 				</Card>
 			)}
@@ -504,7 +529,7 @@ function HistorySection<T>({
 			setLoading(true);
 			setError(null);
 			try { setItems(await fetch()); }
-			catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+			catch (e) { setError(humanizeError(e)); }
 			finally { setLoading(false); }
 		}
 	}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { listTenants } from "@/src/lib/db/tenants";
 import { useCachedResource } from "@/src/lib/useCachedResource";
@@ -8,16 +9,26 @@ import { AppShell, Card, Button, Alert, Input } from "@/src/components/ui";
 import { TenantTable } from "./TenantTable";
 import { TenantForm } from "./TenantForm";
 import type { Tenant } from "@/src/lib/db/types";
-import { Plus, Search } from "lucide-react";
+import { downloadCsv } from "@/src/lib/csv";
+import { Plus, Search, Download } from "lucide-react";
 
 export function TenantDashboard() {
 	const user = useAppStore((s) => s.user);
 	const [q, setQ] = useState("");
 	// Debounced copy of q drives the query so we don't refetch per keystroke.
 	const [debouncedQ, setDebouncedQ] = useState("");
+	// Open the create-tenant form when arriving via the global Add menu (/tenants?new=1),
+	// mirroring the LeadDashboard pattern: read once at mount, then strip the flag.
+	const router = useRouter();
+	const searchParams = useSearchParams();
+	const openNew = searchParams.get("new") === "1";
 	const [editing, setEditing] = useState<
 		{ mode: "create" } | { mode: "edit"; tenant: Tenant } | null
-	>(null);
+	>(() => (openNew ? { mode: "create" } : null));
+
+	useEffect(() => {
+		if (openNew) router.replace("/tenants");
+	}, [openNew, router]);
 
 	const debounceTimer = useRef<number | undefined>(undefined);
 	function onSearchChange(value: string) {
@@ -55,6 +66,20 @@ export function TenantDashboard() {
 								aria-label="Search tenants"
 							/>
 						</div>
+						<Button
+							variant="outline"
+							className="hidden sm:inline-flex"
+							onClick={() =>
+								downloadCsv(
+									"tenants",
+									["Name", "Phone", "Email", "National ID", "Notes", "Added"],
+									tenants.map((t) => [t.full_name, t.phone, t.email, t.national_id, t.notes, t.created_at?.slice(0, 10)]),
+								)
+							}
+						>
+							<Download className="w-4 h-4" />
+							CSV
+						</Button>
 						<Button className="hidden sm:inline-flex" onClick={() => setEditing({ mode: "create" })}>
 							<Plus className="w-4 h-4" />
 							Add tenant

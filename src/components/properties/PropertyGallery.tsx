@@ -1,5 +1,6 @@
 "use client";
 
+import { humanizeError } from "@/src/lib/errors";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import imageCompression from "browser-image-compression";
@@ -31,7 +32,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 		queueMicrotask(() => { if (!cancelled) setLoading(true); });
 		listPropertyImages(propertyId)
 			.then((rows) => { if (!cancelled) { setImages(rows); setFeaturedIdx(0); } })
-			.catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)); })
+			.catch((e: unknown) => { if (!cancelled) setError(humanizeError(e)); })
 			.finally(() => { if (!cancelled) setLoading(false); });
 		return () => { cancelled = true; };
 	}, [propertyId]);
@@ -56,7 +57,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 				const row = await uploadPropertyImage(propertyId, asFile);
 				setImages((prev) => [...prev, row]);
 			} catch (e) {
-				setError(e instanceof Error ? e.message : String(e));
+				setError(humanizeError(e));
 				break;
 			}
 		}
@@ -79,7 +80,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 			setFeaturedIdx((idx) => Math.max(0, Math.min(idx, next.length - 1)));
 			toast.success("Photo deleted.");
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setError(humanizeError(e));
 		} finally {
 			setDeleting(null);
 			setDeleteBusy(false);

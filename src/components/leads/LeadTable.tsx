@@ -5,6 +5,7 @@ import { useAppStore } from "@/src/store";
 import type { Lead } from "@/src/lib/db/types";
 import { LEAD_STATUS_META } from "./leadStatus";
 import { Badge, Card, SpinnerBlock, EmptyState } from "@/src/components/ui";
+import { WhatsAppButton } from "@/src/components/ui/WhatsAppButton";
 import { PhoneCall, Users } from "lucide-react";
 
 function isToday(dateStr: string | null): boolean {
@@ -114,7 +115,10 @@ export function LeadTable({ onEdit }: Props) {
 									className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
 								>
 									<td className="px-4 py-3 text-sm font-medium text-slate-800">{l.full_name}</td>
-									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{l.phone ?? "—"}</td>
+									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+										{l.phone ?? "—"}
+										{l.phone && <span className="ml-1"><WhatsAppButton phone={l.phone} name={l.full_name} /></span>}
+									</td>
 									<td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{l.interested_in ?? "—"}</td>
 									<td className="px-4 py-3"><StatusBadge status={l.status} /></td>
 									<td className="px-4 py-3 text-sm whitespace-nowrap">

@@ -1,5 +1,6 @@
 "use client";
 
+import { humanizeError } from "@/src/lib/errors";
 import { useCallback, useEffect, useState } from "react";
 import {
 	deletePayment,
@@ -13,7 +14,8 @@ import {
 	Button, FormField, Input, Alert, Spinner, ConfirmDialog, EmptyState, toast,
 } from "@/src/components/ui";
 import { positiveNumber, compactErrors } from "@/src/lib/validation";
-import { Pencil, Trash2, Receipt } from "lucide-react";
+import { downloadCsv } from "@/src/lib/csv";
+import { Pencil, Trash2, Receipt, Download } from "lucide-react";
 
 interface Props {
 	leaseId: string;
@@ -21,11 +23,11 @@ interface Props {
 	monthlyRent: number;
 	/** Called after a payment changes so parent can refresh the balance. */
 	onChanged?: () => void;
+	/** When provided, each row shows a "download receipt" action. */
+	onReceipt?: (payment: Payment) => void;
 }
 
-function fmt(n: number, ccy: string) {
-	return `${n.toFixed(2)} ${ccy}`;
-}
+import { fmtMoney as fmt } from "@/src/lib/format";
 
 function todayISO() { return new Date().toISOString().slice(0, 10); }
 function plusOneMonth(start: string) {
@@ -36,7 +38,7 @@ function plusOneMonth(start: string) {
 
 type FormMode = { mode: "create" } | { mode: "edit"; payment: Payment };
 
-export function PaymentList({ leaseId, currency, monthlyRent, onChanged }: Props) {
+export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onReceipt }: Props) {
 	const [rows, setRows] = useState<Payment[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged }: Props
 		try {
 			setRows(await listPaymentsForLease(leaseId));
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setError(humanizeError(e));
 		} finally { setLoading(false); }
 	}, [leaseId]);
 
@@ -120,11 +122,12 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged }: Props
 				toast.success("Payment updated.");
 			}
 			invalidateCache("stats");
+			invalidateCache("attention");
 			setForm(null);
 			await reload();
 			onChanged?.();
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setError(humanizeError(e));
 		} finally { setSubmitting(false); }
 	}
 
@@ -135,13 +138,14 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged }: Props
 		try {
 			await deletePayment(deleting.id);
 			invalidateCache("stats");
+			invalidateCache("attention");
 			toast.success("Payment deleted.");
 			setDeleting(null);
 			await reload();
 			onChanged?.();
 		} catch (e) {
 			setDeleting(null);
-			setError(e instanceof Error ? e.message : String(e));
+			setError(humanizeError(e));
 		} finally { setDeleteBusy(false); }
 	}
 
@@ -149,9 +153,31 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged }: Props
 		<div>
 			<div className="flex items-center justify-between mb-3">
 				<p className="text-sm font-semibold text-slate-700">{rows.length} payment{rows.length === 1 ? "" : "s"}</p>
-				<Button size="sm" variant={form ? "ghost" : "outline"} onClick={() => (form ? setForm(null) : openCreate())}>
-					{form ? "Cancel" : "+ Record payment"}
-				</Button>
+				<div className="flex items-center gap-1">
+					{rows.length > 0 && (
+						<Button
+							size="sm"
+							variant="ghost"
+							onClick={() =>
+								downloadCsv(
+									"payments",
+									["Period start", "Period end", "Amount due", "Amount paid", "Currency", "Method", "Paid at", "Notes"],
+									rows.map((p) => [
+										p.period_start, p.period_end, p.amount_due, p.amount_paid,
+										currency, p.method, p.paid_at?.slice(0, 10), p.notes,
+									]),
+								)
+							}
+							title="Export payments as CSV"
+						>
+							<Download className="w-4 h-4" />
+							CSV
+						</Button>
+					)}
+					<Button size="sm" variant={form ? "ghost" : "outline"} onClick={() => (form ? setForm(null) : openCreate())}>
+						{form ? "Cancel" : "+ Record payment"}
+					</Button>
+				</div>
 			</div>
 
 			{form && (
@@ -212,6 +238,17 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged }: Props
 								<p className="text-xs text-slate-400 whitespace-nowrap mr-2">
 									{p.paid_at ? new Date(p.paid_at).toLocaleDateString() : "—"}
 								</p>
+								{onReceipt && (
+									<button
+										type="button"
+										onClick={() => onReceipt(p)}
+										aria-label="Download receipt"
+										title="Download rent receipt (kira makbuzu)"
+										className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+									>
+										<Receipt className="w-4 h-4" />
+									</button>
+								)}
 								<button
 									type="button"
 									onClick={() => openEdit(p)}

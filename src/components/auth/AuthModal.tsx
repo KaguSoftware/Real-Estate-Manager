@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
@@ -10,6 +10,13 @@ interface AuthModalProps {
 
 type Tab = "signin" | "signup";
 type SignInMode = "password" | "magic";
+
+// Email links should always point at the deployed app, even when the sign-up
+// happens from a dev session; falls back to the current origin locally.
+function authCallbackUrl() {
+  const base = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+  return `${base.replace(/\/$/, "")}/auth/callback`;
+}
 
 export function AuthModal({ onClose }: AuthModalProps) {
   const [tab, setTab] = useState<Tab>("signin");
@@ -55,7 +62,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: { emailRedirectTo: authCallbackUrl() },
     });
     if (error) { setStatus("error"); setErrorMsg(error.message); }
     else { setStatus("done"); setSuccessMsg(`Magic link sent to ${email.trim()}. Check your inbox.`); }
@@ -74,7 +81,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: { emailRedirectTo: authCallbackUrl() },
     });
     if (error) { setStatus("error"); setErrorMsg(error.message); }
     else { setStatus("done"); setSuccessMsg("Check your email to confirm your account before signing in."); }
@@ -100,12 +107,12 @@ export function AuthModal({ onClose }: AuthModalProps) {
         {tabBtn("signup", "Sign Up")}
       </div>
 
-      {/* â”€â”€ Sign In tab â”€â”€ */}
+      {/* Sign In tab */}
       {tab === "signin" && (
         <>
           {status === "done" && successMsg ? (
             <div className="text-center space-y-3">
-              <div className="text-4xl">ðŸ“§</div>
+              <div className="text-4xl">📧</div>
               <p className="text-slate-700 font-medium">{successMsg}</p>
               <Button block variant="outline" onClick={onClose} className="mt-2">Done</Button>
             </div>
@@ -115,7 +122,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
                 <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
               </FormField>
               <FormField label="Password">
-                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
               </FormField>
               {status === "error" && <Alert>{errorMsg}</Alert>}
               <Button type="submit" block loading={status === "loading"}>Sign In</Button>
@@ -129,7 +136,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
           ) : (
             <form onSubmit={handleMagicLink} className="space-y-4">
               <p className="text-sm text-slate-500">
-                Enter your email and we&apos;ll send you a sign-in link â€” no password needed.
+                Enter your email and we&apos;ll send you a sign-in link — no password needed.
               </p>
               <FormField label="Email address">
                 <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
@@ -147,12 +154,12 @@ export function AuthModal({ onClose }: AuthModalProps) {
         </>
       )}
 
-      {/* â”€â”€ Sign Up tab â”€â”€ */}
+      {/* Sign Up tab */}
       {tab === "signup" && (
         <>
           {status === "done" ? (
             <div className="text-center space-y-3">
-              <div className="text-4xl">âœ‰ï¸</div>
+              <div className="text-4xl">✉️</div>
               <p className="text-slate-700 font-medium">{successMsg}</p>
               <Button block variant="outline" onClick={onClose} className="mt-2">Done</Button>
             </div>
@@ -162,10 +169,10 @@ export function AuthModal({ onClose }: AuthModalProps) {
                 <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
               </FormField>
               <FormField label="Password">
-                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
               </FormField>
               <FormField label="Confirm password">
-                <Input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+                <Input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" />
               </FormField>
               {status === "error" && <Alert>{errorMsg}</Alert>}
               <Button type="submit" block loading={status === "loading"}>Create Account</Button>

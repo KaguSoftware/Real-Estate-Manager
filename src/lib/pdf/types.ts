@@ -99,8 +99,20 @@ export interface SalesPDFData {
 	generatedAt: string; // ISO timestamp
 }
 
-// Stubbed for v2.
-export interface ReceiptPDFData { _stub?: true }
+/** Rent receipt (kira makbuzu) for a single recorded payment. */
+export interface ReceiptPDFData {
+	landlord_name: string;
+	tenant_name: string;
+	property_address: string;
+	city: string | null;
+	period_start: string;   // ISO date
+	period_end: string;     // ISO date
+	amount: number;
+	currency: string;
+	method: string | null;
+	paid_at: string | null; // ISO date
+	generatedAt: string;    // ISO timestamp
+}
 
 /**
  * Client-facing property listing — shared over WhatsApp instead of typing

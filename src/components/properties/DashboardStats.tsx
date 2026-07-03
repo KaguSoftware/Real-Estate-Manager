@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { getDashboardStats } from "@/src/lib/db/stats";
 import { useCachedResource } from "@/src/lib/useCachedResource";
@@ -18,7 +19,10 @@ function joinByCurrency(map: Record<string, number>): string | null {
 
 /** KPI strip above the dashboard map. */
 export function DashboardStats() {
+	const router = useRouter();
 	const user = useAppStore((s) => s.user);
+	const setFilters = useAppStore((s) => s.setFilters);
+	const resetFilters = useAppStore((s) => s.resetFilters);
 	const { data, loading } = useCachedResource(
 		user ? "stats" : null,
 		getDashboardStats,
@@ -49,12 +53,16 @@ export function DashboardStats() {
 				label="Properties"
 				value={String(properties.vacant + properties.occupied + properties.sold)}
 				detail={`${properties.occupied} occupied · ${properties.vacant} vacant${properties.sold ? ` · ${properties.sold} sold` : ""}`}
+				onClick={resetFilters}
+				hint="Show all properties"
 			/>
 			<StatCard
 				icon={KeyRound}
 				label="Monthly rent"
 				value={rent ?? "—"}
 				detail={rent ? "across active leases" : "no active leases"}
+				onClick={() => setFilters({ status: "occupied" })}
+				hint="Show occupied properties"
 			/>
 			<StatCard
 				icon={Wallet}
@@ -62,12 +70,16 @@ export function DashboardStats() {
 				value={outstanding ?? "0"}
 				detail={outstanding ? "unpaid across active leases" : "all settled"}
 				danger={!!outstanding}
+				onClick={() => setFilters({ status: "occupied" })}
+				hint="Show occupied properties"
 			/>
 			<StatCard
 				icon={Users}
 				label="Leads"
 				value={String(totalLeads)}
 				detail={`${activeLeads} active · ${leadsByStatus.closed} closed`}
+				onClick={() => router.push("/leads")}
+				hint="Open clients"
 			/>
 		</div>
 	);
@@ -79,15 +91,23 @@ function StatCard({
 	value,
 	detail,
 	danger,
+	onClick,
+	hint,
 }: {
 	icon: React.ComponentType<{ className?: string }>;
 	label: string;
 	value: string;
 	detail: string;
 	danger?: boolean;
+	onClick?: () => void;
+	hint?: string;
 }) {
 	return (
-		<div className="bg-white rounded-2xl border border-slate-200/80 shadow-card px-4 py-3.5 min-w-0">
+		<button
+			type="button"
+			onClick={onClick}
+			title={hint}
+			className="text-left bg-white rounded-2xl border border-slate-200/80 shadow-card px-4 py-3.5 min-w-0 hover:border-slate-300 hover:shadow-pop transition-all cursor-pointer">
 			<div className="flex items-center gap-1.5 mb-1">
 				<Icon className="w-3.5 h-3.5 text-slate-400" />
 				<p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
@@ -103,6 +123,6 @@ function StatCard({
 				{value}
 			</p>
 			<p className="text-xs text-slate-500 mt-0.5 truncate" title={detail}>{detail}</p>
-		</div>
+		</button>
 	);
 }

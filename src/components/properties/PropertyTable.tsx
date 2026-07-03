@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import type { Property } from "@/src/lib/db/types";
 import { Badge, Button, Card, SpinnerBlock, EmptyState, type BadgeTone } from "@/src/components/ui";
-import { Home } from "lucide-react";
+import { downloadCsv } from "@/src/lib/csv";
+import { Home, Download } from "lucide-react";
 
 type SortKey = "homeowner_name" | "address_line" | "size_sqm" | "list_price" | "updated_at";
 type SortDir = "asc" | "desc";
@@ -102,10 +103,32 @@ export function PropertyTable() {
 
 	return (
 		<>
-			<p className="px-1 mb-2 text-xs font-medium text-slate-400">
-				{properties.length} {properties.length === 1 ? "property" : "properties"}
-				{hasActiveFilter ? " matched" : ""}
-			</p>
+			<div className="px-1 mb-2 flex items-center justify-between">
+				<p className="text-xs font-medium text-slate-400">
+					{properties.length} {properties.length === 1 ? "property" : "properties"}
+					{hasActiveFilter ? " matched" : ""}
+				</p>
+				<button
+					type="button"
+					onClick={() =>
+						downloadCsv(
+							"properties",
+							["Homeowner", "Address", "City", "Neighborhood", "Type", "Listing", "Status", "Size (m²)", "Bedrooms", "Bathrooms", "Furnished", "Price", "Currency", "Notes"],
+							sorted.map((p) => [
+								p.homeowner_name, p.address_line, p.city, p.mahalle, p.nitelik,
+								p.listing_type === "for_rent" ? "For rent" : "For sale", p.status,
+								p.size_sqm, p.bedrooms, p.bathrooms,
+								p.furnished == null ? "" : p.furnished ? "yes" : "no",
+								p.list_price, p.currency, p.notes,
+							]),
+						)
+					}
+					className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-700 transition-colors"
+				>
+					<Download className="w-3.5 h-3.5" />
+					Export CSV
+				</button>
+			</div>
 
 			{/* Mobile: card list */}
 			<div className="block sm:hidden space-y-3">

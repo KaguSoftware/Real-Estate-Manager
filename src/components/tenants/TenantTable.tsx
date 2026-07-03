@@ -2,6 +2,7 @@
 
 import type { Tenant } from "@/src/lib/db/types";
 import { Card, SpinnerBlock, EmptyState } from "@/src/components/ui";
+import { WhatsAppButton } from "@/src/components/ui/WhatsAppButton";
 import { Users } from "lucide-react";
 
 interface Props {
@@ -76,7 +77,10 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 									className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
 								>
 									<td className="px-4 py-3 text-sm font-medium text-slate-800">{t.full_name}</td>
-									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{t.phone ?? "—"}</td>
+									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+										{t.phone ?? "—"}
+										{t.phone && <span className="ml-1"><WhatsAppButton phone={t.phone} name={t.full_name} /></span>}
+									</td>
 									<td className="px-4 py-3 text-sm text-slate-600">{t.email ?? "—"}</td>
 									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{t.national_id ?? "—"}</td>
 									<td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">{fmtDate(t.created_at)}</td>

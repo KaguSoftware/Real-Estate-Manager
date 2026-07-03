@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Home, Users, FilePlus2 } from "lucide-react";
+import { Plus, Home, Users, UserPlus, FilePlus2 } from "lucide-react";
 import { cn } from "./cn";
 
 interface AddItem {
@@ -16,6 +16,7 @@ const ITEMS: AddItem[] = [
 	// Clients are created via an in-page modal on /leads (no dedicated route);
 	// the ?new=1 flag tells LeadDashboard to open the create form on arrival.
 	{ href: "/leads?new=1", label: "Add client", icon: Users },
+	{ href: "/tenants?new=1", label: "Add tenant", icon: UserPlus },
 	{ href: "/documents/new", label: "New document", icon: FilePlus2 },
 ];
 
