@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "./cn";
+import { useFocusTrap } from "./useFocusTrap";
 
 interface SheetProps {
 	open: boolean;
@@ -23,6 +24,10 @@ interface SheetProps {
  * Closes on backdrop click and Escape.
  */
 export function Sheet({ open, onClose, title, footer, children, size = "md" }: SheetProps) {
+	const panelRef = useRef<HTMLDivElement>(null);
+	const titleId = useId();
+	useFocusTrap(panelRef, open);
+
 	useEffect(() => {
 		if (!open) return;
 		const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -46,8 +51,11 @@ export function Sheet({ open, onClose, title, footer, children, size = "md" }: S
 			onClick={onClose}
 		>
 			<div
+				ref={panelRef}
 				role="dialog"
 				aria-modal="true"
+				aria-labelledby={title ? titleId : undefined}
+				tabIndex={-1}
 				onClick={(e) => e.stopPropagation()}
 				className={cn(
 					// Mobile: fill the screen. Desktop: centered card.
@@ -59,7 +67,7 @@ export function Sheet({ open, onClose, title, footer, children, size = "md" }: S
 			>
 				{/* Sticky header */}
 				<div className="safe-top shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 h-14 border-b border-slate-100">
-					<h2 className="text-base font-bold text-slate-900 truncate">{title}</h2>
+					<h2 id={titleId} className="text-base font-bold text-slate-900 truncate">{title}</h2>
 					<button
 						onClick={onClose}
 						aria-label="Close"

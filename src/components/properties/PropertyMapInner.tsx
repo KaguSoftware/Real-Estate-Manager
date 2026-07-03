@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import type { Property } from "@/src/lib/db/types";
+import { PIN_SIZE, pinIcon, stackedPinIcon } from "./mapPin";
+import { ChevronRight } from "lucide-react";
 
 interface MappedProperty {
 	id: string;
@@ -14,44 +16,6 @@ interface MappedProperty {
 	homeowner_name: string;
 	price: string | null;
 	listingLabel: string;
-}
-
-// ── Pin geometry (lucide MapPin path) ───────────────────────────────────────
-const PIN_SIZE = 30;
-const PIN_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" width="${PIN_SIZE}" height="${PIN_SIZE}" viewBox="0 0 24 24" fill="#0f172a" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35))">
-  <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>
-  <circle cx="12" cy="10" r="3" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
-</svg>`;
-
-// Single pin (1 property at this spot).
-const pinIcon = L.divIcon({
-	html: PIN_SVG,
-	className: "property-pin-icon",
-	iconSize: L.point(PIN_SIZE, PIN_SIZE),
-	iconAnchor: L.point(PIN_SIZE / 2, PIN_SIZE),
-	tooltipAnchor: L.point(0, -PIN_SIZE),
-});
-
-// Pin with a small count badge (2+ properties at this spot).
-function stackedPinIcon(count: number): L.DivIcon {
-	const badge =
-		`<div style="` +
-		`position:absolute;top:-4px;right:-4px;` +
-		`min-width:18px;height:18px;padding:0 4px;` +
-		`display:flex;align-items:center;justify-content:center;` +
-		`border-radius:9999px;background:#0f172a;color:#fff;` +
-		`font-size:10px;font-weight:700;` +
-		`border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,0.35);` +
-		`pointer-events:none;` +
-		`">${count}</div>`;
-	return L.divIcon({
-		html: `<div style="position:relative;width:${PIN_SIZE}px;height:${PIN_SIZE}px">${PIN_SVG}${badge}</div>`,
-		className: "property-pin-icon",
-		iconSize: L.point(PIN_SIZE, PIN_SIZE),
-		iconAnchor: L.point(PIN_SIZE / 2, PIN_SIZE),
-		tooltipAnchor: L.point(0, -PIN_SIZE),
-	});
 }
 
 function escapeHtml(s: string): string {
@@ -103,6 +67,17 @@ function FitBounds({ cells }: { cells: Cell[] }) {
 			// Bad coords shouldn't crash the dashboard.
 		}
 	}, [cells, map]);
+	return null;
+}
+
+// ── Resize watcher ──────────────────────────────────────────────────────────
+// Leaflet caches the container size; tell it when the expand toggle changes it.
+function InvalidateOnResize({ signal }: { signal: unknown }) {
+	const map = useMap();
+	useEffect(() => {
+		const t = setTimeout(() => map.invalidateSize(), 220); // after the CSS transition
+		return () => clearTimeout(t);
+	}, [signal, map]);
 	return null;
 }
 
@@ -165,7 +140,7 @@ function CellMarkers({
 }
 
 // ── Dismissal hooks ─────────────────────────────────────────────────────────
-// Close the wheel on map pan/zoom/click — feels like a native UI.
+// Close the cluster popover on map pan/zoom/click.
 function MapInteractionWatcher({ onMapChange }: { onMapChange: () => void }) {
 	useMapEvents({
 		click: onMapChange,
@@ -175,24 +150,21 @@ function MapInteractionWatcher({ onMapChange }: { onMapChange: () => void }) {
 	return null;
 }
 
-// ── Radial selector ("weapon wheel") ────────────────────────────────────────
-function RadialSelector({
+// ── Cluster popover ─────────────────────────────────────────────────────────
+// A small card listing the co-located properties, anchored near the pin.
+function ClusterPopover({
 	cell,
 	screenPt,
+	containerSize,
 	onPick,
 	onClose,
 }: {
 	cell: Cell;
 	screenPt: { x: number; y: number };
+	containerSize: { w: number; h: number };
 	onPick: (id: string) => void;
 	onClose: () => void;
 }) {
-	const n = cell.items.length;
-	// Radius scales with count so the petals never overlap.
-	const radius = Math.min(110, 56 + n * 6);
-	const nodeSize = 44;
-	const startAngle = -Math.PI / 2; // 12 o'clock
-
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
 			if (e.key === "Escape") onClose();
@@ -201,120 +173,61 @@ function RadialSelector({
 		return () => window.removeEventListener("keydown", onKey);
 	}, [onClose]);
 
-	return (
-		<div
-			className="absolute inset-0 pointer-events-none"
-			style={{ zIndex: 500 }}
-			aria-hidden="false"
-		>
-			{/* Full-canvas click-catcher dismisses the wheel without blocking
-			    the markers themselves (we stopPropagation on the nodes below). */}
-			<div
-				className="absolute inset-0 pointer-events-auto"
-				onClick={onClose}
-				style={{ background: "transparent" }}
-			/>
+	// Keep the card inside the map box: prefer right of the pin, flip when tight.
+	const CARD_W = 264;
+	const left = Math.max(8, Math.min(screenPt.x + 14, containerSize.w - CARD_W - 8));
+	const top = Math.max(8, Math.min(screenPt.y - PIN_SIZE - 8, containerSize.h - 60));
 
-			{/* Center ring — purely visual; positioned at the cluster pin. */}
+	return (
+		<div className="absolute inset-0" style={{ zIndex: 500 }}>
+			{/* Click-catcher dismisses the popover. */}
+			<div className="absolute inset-0" onClick={onClose} />
+
 			<div
-				className="absolute pointer-events-none"
-				style={{
-					left: screenPt.x,
-					top: screenPt.y - PIN_SIZE / 2,
-					width: 0,
-					height: 0,
-				}}
+				role="listbox"
+				aria-label={`${cell.items.length} properties at this location`}
+				className="absolute bg-white rounded-2xl border border-slate-200 shadow-pop overflow-hidden animate-[popIn_.14s_ease-out]"
+				style={{ left, top, width: CARD_W, maxHeight: Math.min(280, containerSize.h - 16) }}
+				onClick={(e) => e.stopPropagation()}
 			>
-				<div
-					style={{
-						position: "absolute",
-						left: -radius - nodeSize / 2,
-						top: -radius - nodeSize / 2,
-						width: (radius + nodeSize / 2) * 2,
-						height: (radius + nodeSize / 2) * 2,
-						borderRadius: "9999px",
-						border: "1px dashed rgba(15, 23, 42, 0.25)",
-						background: "rgba(255, 255, 255, 0.55)",
-						backdropFilter: "blur(2px)",
-						WebkitBackdropFilter: "blur(2px)",
-						boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-						animation: "wheelIn 160ms ease-out",
-					}}
-				/>
+				<p className="px-3.5 pt-3 pb-2 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
+					{cell.items.length} properties here
+				</p>
+				<ul className="overflow-y-auto" style={{ maxHeight: 224 }}>
+					{cell.items.map((p) => (
+						<li key={p.id}>
+							<button
+								type="button"
+								onClick={() => onPick(p.id)}
+								className="w-full flex items-center gap-2 px-3.5 py-2.5 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors"
+							>
+								<span className="min-w-0 flex-1">
+									<span className="block text-sm font-semibold text-slate-800 truncate">{p.homeowner_name}</span>
+									<span className="block text-xs text-slate-500 truncate">
+										{[p.listingLabel, p.price].filter(Boolean).join(" · ")}
+									</span>
+								</span>
+								<ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+							</button>
+						</li>
+					))}
+				</ul>
 			</div>
 
-			{/* Petals — each property becomes a circular node on the ring. */}
-			{cell.items.map((p, i) => {
-				const angle = startAngle + (2 * Math.PI * i) / n;
-				const dx = Math.cos(angle) * radius;
-				const dy = Math.sin(angle) * radius;
-				const centerX = screenPt.x;
-				const centerY = screenPt.y - PIN_SIZE / 2;
-				const nodeLeft = centerX + dx - nodeSize / 2;
-				const nodeTop = centerY + dy - nodeSize / 2;
-
-				return (
-					<button
-						key={p.id}
-						type="button"
-						onClick={(e) => {
-							e.stopPropagation();
-							onPick(p.id);
-						}}
-						className="absolute pointer-events-auto group"
-						style={{
-							left: nodeLeft,
-							top: nodeTop,
-							width: nodeSize,
-							height: nodeSize,
-							borderRadius: "9999px",
-							background: "#0f172a",
-							color: "#fff",
-							border: "2px solid #fff",
-							boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
-							fontSize: 13,
-							fontWeight: 700,
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							cursor: "pointer",
-							transition: "transform 120ms ease-out, background 120ms ease-out",
-							animation: `petalIn 200ms ease-out ${i * 20}ms both`,
-						}}
-						title={`${p.homeowner_name} — ${p.address_line}`}
-						onMouseEnter={(e) => {
-							(e.currentTarget as HTMLButtonElement).style.transform = "scale(1.12)";
-							(e.currentTarget as HTMLButtonElement).style.background = "#1e293b";
-						}}
-						onMouseLeave={(e) => {
-							(e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-							(e.currentTarget as HTMLButtonElement).style.background = "#0f172a";
-						}}
-					>
-						{i + 1}
-					</button>
-				);
-			})}
-
-			{/* Inline keyframes — scoped to this component. */}
-			<style>{`
-				@keyframes wheelIn {
-					from { opacity: 0; transform: scale(0.6); }
-					to   { opacity: 1; transform: scale(1); }
-				}
-				@keyframes petalIn {
-					from { opacity: 0; transform: scale(0.2); }
-					to   { opacity: 1; transform: scale(1); }
-				}
-			`}</style>
+			<style>{`@keyframes popIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}`}</style>
 		</div>
 	);
 }
 
 // ── Top-level component ─────────────────────────────────────────────────────
-export function PropertyMapInner({ properties }: { properties: Property[] }) {
+export function PropertyMapInner({
+	properties,
+	heightClass = "h-64 sm:h-96",
+}: {
+	properties: Property[];
+	heightClass?: string;
+}) {
 	const router = useRouter();
-	const containerRef = useRef<HTMLDivElement | null>(null);
 
 	const points = useMemo<MappedProperty[]>(
 		() =>
@@ -340,10 +253,11 @@ export function PropertyMapInner({ properties }: { properties: Property[] }) {
 
 	const cells = useMemo(() => groupByCell(points), [points]);
 
-	const [openWheel, setOpenWheel] = useState<{
+	const [openCluster, setOpenCluster] = useState<{
 		cell: Cell;
 		screenPt: { x: number; y: number };
 	} | null>(null);
+	const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
 
 	const onClickCell = useCallback(
 		(cell: Cell, screenPt: { x: number; y: number }) => {
@@ -351,41 +265,54 @@ export function PropertyMapInner({ properties }: { properties: Property[] }) {
 				router.push(`/properties/${cell.items[0].id}`);
 				return;
 			}
-			setOpenWheel({ cell, screenPt });
+			setOpenCluster({ cell, screenPt });
 		},
 		[router],
 	);
 
-	const closeWheel = useCallback(() => setOpenWheel(null), []);
-	const pickFromWheel = useCallback(
+	const closeCluster = useCallback(() => setOpenCluster(null), []);
+	const pickFromCluster = useCallback(
 		(id: string) => {
-			setOpenWheel(null);
+			setOpenCluster(null);
 			router.push(`/properties/${id}`);
 		},
 		[router],
 	);
 
-	// Stable view config — keeps re-renders from snapping the camera back.
-	const initialCenterRef = useRef<[number, number]>(
-		points.length > 0 ? [points[0].lat, points[0].lon] : [41.015, 28.979], // İstanbul
-	);
-	const initialZoomRef = useRef<number>(points.length > 0 ? 11 : 6);
+	// Stable view config captured at first render — re-renders never snap the camera.
+	const [initialView] = useState(() => ({
+		center: (points.length > 0 ? [points[0].lat, points[0].lon] : [41.015, 28.979]) as [number, number],
+		zoom: points.length > 0 ? 11 : 6,
+	}));
 
 	// Defer mount by one tick so React 19 StrictMode double-invoke in dev
 	// commits the DOM before Leaflet binds.
 	const [mounted, setMounted] = useState(false);
-	useEffect(() => { setMounted(true); }, []);
+	useEffect(() => {
+		let cancelled = false;
+		queueMicrotask(() => { if (!cancelled) setMounted(true); });
+		return () => { cancelled = true; };
+	}, []);
 	if (!mounted) {
-		return <div className="h-56 sm:h-80 w-full rounded-2xl bg-slate-100 animate-pulse" />;
+		return <div className={`${heightClass} w-full rounded-2xl bg-slate-100 animate-pulse`} />;
 	}
 
 	return (
-		<div ref={containerRef} className="relative h-56 sm:h-80 w-full">
+		<div
+			className={`relative ${heightClass} w-full transition-[height] duration-200`}
+			ref={(el) => {
+				if (el) setContainerSize((s) =>
+					s.w === el.clientWidth && s.h === el.clientHeight
+						? s
+						: { w: el.clientWidth, h: el.clientHeight },
+				);
+			}}
+		>
 			<MapContainer
-				center={initialCenterRef.current}
-				zoom={initialZoomRef.current}
+				center={initialView.center}
+				zoom={initialView.zoom}
 				scrollWheelZoom
-				className="h-56 sm:h-80 w-full rounded-2xl"
+				className="h-full w-full rounded-2xl"
 				style={{ zIndex: 0 }}
 			>
 				{/* CartoDB Positron — light, near-monochrome tiles. No key needed. */}
@@ -396,16 +323,18 @@ export function PropertyMapInner({ properties }: { properties: Property[] }) {
 					maxZoom={20}
 				/>
 				<FitBounds cells={cells} />
+				<InvalidateOnResize signal={heightClass} />
 				<CellMarkers cells={cells} onClickCell={onClickCell} />
-				<MapInteractionWatcher onMapChange={closeWheel} />
+				<MapInteractionWatcher onMapChange={closeCluster} />
 			</MapContainer>
 
-			{openWheel && (
-				<RadialSelector
-					cell={openWheel.cell}
-					screenPt={openWheel.screenPt}
-					onPick={pickFromWheel}
-					onClose={closeWheel}
+			{openCluster && (
+				<ClusterPopover
+					cell={openCluster.cell}
+					screenPt={openCluster.screenPt}
+					containerSize={containerSize}
+					onPick={pickFromCluster}
+					onClose={closeCluster}
 				/>
 			)}
 		</div>

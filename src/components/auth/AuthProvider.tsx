@@ -29,6 +29,8 @@ async function resolveUser(supabase: ReturnType<typeof createClient>, id: string
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAppStore((s) => s.setUser);
+  const setProperties = useAppStore((s) => s.setProperties);
+  const setLeads = useAppStore((s) => s.setLeads);
 
   useEffect(() => {
     const supabase = createClient();
@@ -47,6 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Drop the SWR cache on real identity changes so one user never sees
         // another's cached rows. Token refresh keeps the same identity → keep cache.
         if (event === "SIGNED_IN" || event === "SIGNED_OUT") clearCache();
+        if (event === "SIGNED_OUT") {
+          // Single source of truth for store cleanup on sign-out.
+          setProperties([]);
+          setLeads([]);
+        }
         if (!u) { setUser(null); return; }
         setUser({ id: u.id, email: u.email ?? "" });
         resolveUser(supabase, u.id, u.email ?? "").then(setUser);
@@ -56,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [setUser]);
+  }, [setUser, setProperties, setLeads]);
 
   return <>{children}</>;
 }

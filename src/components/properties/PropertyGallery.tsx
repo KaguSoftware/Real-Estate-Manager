@@ -9,6 +9,7 @@ import {
 	deletePropertyImage,
 } from "@/src/lib/db/propertyImages";
 import type { PropertyImage } from "@/src/lib/db/types";
+import { Alert, ConfirmDialog, Spinner, toast } from "@/src/components/ui";
 
 interface Props {
 	propertyId: string;
@@ -25,7 +26,9 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 
 	useEffect(() => {
 		let cancelled = false;
-		setLoading(true);
+		// Async flag flip (not synchronous setState in the effect body) — same
+		// pattern as useCachedResource.
+		queueMicrotask(() => { if (!cancelled) setLoading(true); });
 		listPropertyImages(propertyId)
 			.then((rows) => { if (!cancelled) { setImages(rows); setFeaturedIdx(0); } })
 			.catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)); })
@@ -62,18 +65,24 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 		if (fileRef.current) fileRef.current.value = "";
 	}
 
-	async function handleDelete(img: PropertyImage) {
-		if (!confirm("Delete this photo?")) return;
+	const [deleting, setDeleting] = useState<PropertyImage | null>(null);
+	const [deleteBusy, setDeleteBusy] = useState(false);
+
+	async function handleDelete() {
+		if (!deleting) return;
+		setDeleteBusy(true);
 		try {
-			await deletePropertyImage(img);
-			setImages((prev) => {
-				const next = prev.filter((p) => p.id !== img.id);
-				// Keep the featured index in range.
-				setFeaturedIdx((idx) => Math.max(0, Math.min(idx, next.length - 1)));
-				return next;
-			});
+			await deletePropertyImage(deleting);
+			const next = images.filter((p) => p.id !== deleting.id);
+			setImages(next);
+			// Keep the featured index in range.
+			setFeaturedIdx((idx) => Math.max(0, Math.min(idx, next.length - 1)));
+			toast.success("Photo deleted.");
 		} catch (e) {
 			setError(e instanceof Error ? e.message : String(e));
+		} finally {
+			setDeleting(null);
+			setDeleteBusy(false);
 		}
 	}
 
@@ -95,7 +104,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 			<div className="relative w-full aspect-[4/3] sm:aspect-[16/9] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
 				{loading ? (
 					<div className="absolute inset-0 flex items-center justify-center">
-						<span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+						<Spinner />
 					</div>
 				) : featured ? (
 					<Image
@@ -128,11 +137,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 				)}
 			</div>
 
-			{error && (
-				<div className="mt-2 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
-					{error}
-				</div>
-			)}
+			{error && <Alert className="mt-2">{error}</Alert>}
 
 			{/* Thumbnail strip + uploader */}
 			{(hasImages || canEdit) && (
@@ -157,7 +162,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 							{canEdit && (
 								<button
 									type="button"
-									onClick={(e) => { e.stopPropagation(); handleDelete(img); }}
+									onClick={(e) => { e.stopPropagation(); setDeleting(img); }}
 									className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 text-white text-base leading-none flex items-center justify-center hover:bg-red-600 transition-colors"
 									aria-label="Delete photo"
 								>×</button>
@@ -178,6 +183,16 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 					)}
 				</div>
 			)}
+
+			<ConfirmDialog
+				open={deleting !== null}
+				title="Delete this photo?"
+				message="The photo is removed from storage permanently."
+				confirmLabel="Delete"
+				loading={deleteBusy}
+				onConfirm={handleDelete}
+				onCancel={() => setDeleting(null)}
+			/>
 		</section>
 	);
 }

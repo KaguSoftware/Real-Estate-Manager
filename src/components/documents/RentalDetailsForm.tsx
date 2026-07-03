@@ -111,6 +111,8 @@ export function computeDepositOverCap(deposit: number, monthlyRent: number) {
 interface Props {
 	state: RentalFormState;
 	onChange: <K extends keyof RentalFormState>(key: K, value: RentalFormState[K]) => void;
+	/** Field-level validation errors, keyed by field name (see validateRental). */
+	errors?: Record<string, string>;
 }
 
 const UTILITY_OPTIONS: { value: UtilityResponsibility; label: string }[] = [
@@ -139,7 +141,19 @@ function UtilitySelect({
 	);
 }
 
-export function RentalDetailsForm({ state, onChange }: Props) {
+/** Wizard-level validation for the rental details step. Keys map to FormField ids below. */
+export function validateRental(s: RentalFormState): Record<string, string> {
+	const errors: Record<string, string> = {};
+	if (!s.landlordName.trim()) errors.landlordName = "Landlord name is required.";
+	if (!s.tenantName.trim()) errors.tenantName = "Tenant name is required.";
+	if (!s.tenantPhone.trim() && !s.tenantEmail.trim())
+		errors.tenantContact = "Provide at least a phone or an email for the tenant.";
+	if (!(Number(s.monthlyRent) > 0)) errors.monthlyRent = "Monthly rent must be greater than zero.";
+	if (s.startDate.length !== 10) errors.startDate = "Start date is required.";
+	return errors;
+}
+
+export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 	const monthlyRent = Number(state.monthlyRent || 0);
 	const deposit = Number(state.deposit || 0);
 	const overCap = computeDepositOverCap(deposit, monthlyRent);
@@ -170,7 +184,7 @@ export function RentalDetailsForm({ state, onChange }: Props) {
 					A — Kiraya Veren (Landlord)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Adı Soyadı / Firma (Full name)">
+					<FormField label="Adı Soyadı / Firma (Full name)" id="landlordName" error={errors.landlordName}>
 						<Input required value={state.landlordName} onChange={set("landlordName")} />
 					</FormField>
 					<FormField label="Telefon (Phone)">
@@ -202,10 +216,10 @@ export function RentalDetailsForm({ state, onChange }: Props) {
 					B — Kiracı (Tenant)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Adı Soyadı / Firma (Full name)">
+					<FormField label="Adı Soyadı / Firma (Full name)" id="tenantName" error={errors.tenantName}>
 						<Input required value={state.tenantName} onChange={set("tenantName")} />
 					</FormField>
-					<FormField label="Telefon (Phone)">
+					<FormField label="Telefon (Phone)" id="tenantContact" error={errors.tenantContact}>
 						<Input type="tel" inputMode="tel" value={state.tenantPhone} onChange={set("tenantPhone")} />
 					</FormField>
 				</div>
@@ -283,7 +297,7 @@ export function RentalDetailsForm({ state, onChange }: Props) {
 							<option value="undefined">Belirsiz (Undefined)</option>
 						</Select>
 					</FormField>
-					<FormField label="Başlangıç (Start date)">
+					<FormField label="Başlangıç (Start date)" id="startDate" error={errors.startDate}>
 						<Input required type="date" value={state.startDate} onChange={set("startDate")} />
 					</FormField>
 					<FormField label="Para Birimi (Currency)">
@@ -295,7 +309,7 @@ export function RentalDetailsForm({ state, onChange }: Props) {
 					</FormField>
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Aylık Kira (Monthly rent)">
+					<FormField label="Aylık Kira (Monthly rent)" id="monthlyRent" error={errors.monthlyRent}>
 						<Input required type="number" inputMode="decimal" min="0" step="0.01" value={state.monthlyRent} onChange={set("monthlyRent")} />
 					</FormField>
 					<FormField label="Depozito (Deposit)">

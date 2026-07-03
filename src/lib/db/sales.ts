@@ -71,9 +71,8 @@ export async function getActiveSaleForProperty(
 	return { ...s, buyer: buyer as Tenant };
 }
 
-export async function closeSale(id: string, _closeDate: string): Promise<Sale> {
+export async function closeSale(id: string): Promise<Sale> {
 	const { supabase } = await requireUser();
-	// closeDate kept in the signature for future audit-log use; today we just flip status.
 	const { data, error } = await supabase
 		.from("sales")
 		.update({ status: "closed" as SaleStatus })
@@ -84,12 +83,27 @@ export async function closeSale(id: string, _closeDate: string): Promise<Sale> {
 	return data as Sale;
 }
 
-export async function listSalesForProperty(propertyId: string): Promise<Sale[]> {
+/** Cancel an in-progress sale — caller is responsible for resetting the property status. */
+export async function cancelSale(id: string): Promise<Sale> {
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
-		.from("sales").select("*")
+		.from("sales")
+		.update({ status: "cancelled" as SaleStatus })
+		.eq("id", id)
+		.select()
+		.single();
+	if (error) throw error;
+	return data as Sale;
+}
+
+export async function listSalesForProperty(
+	propertyId: string,
+): Promise<(Sale & { buyer: Tenant | null })[]> {
+	const { supabase } = await requireUser();
+	const { data, error } = await supabase
+		.from("sales").select("*, buyer:tenants(*)")
 		.eq("property_id", propertyId)
 		.order("sale_date", { ascending: false });
 	if (error) throw error;
-	return (data ?? []) as Sale[];
+	return (data ?? []) as (Sale & { buyer: Tenant | null })[];
 }

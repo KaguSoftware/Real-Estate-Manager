@@ -73,6 +73,36 @@ export async function getActiveLeaseForProperty(
 	return { ...l, tenant: tenant as Tenant };
 }
 
+/** Fields an existing lease can safely change without touching its identity. */
+export type LeaseUpdate = Partial<
+	Pick<
+		LeaseInput,
+		| "monthly_rent"
+		| "deposit"
+		| "currency"
+		| "start_date"
+		| "end_date"
+		| "term"
+		| "payment_day"
+		| "payment_method"
+		| "bank_account"
+		| "rent_increase_note"
+		| "special_conditions"
+	>
+>;
+
+export async function updateLease(id: string, patch: LeaseUpdate): Promise<Lease> {
+	const { supabase } = await requireUser();
+	const { data, error } = await supabase
+		.from("leases")
+		.update(patch)
+		.eq("id", id)
+		.select()
+		.single();
+	if (error) throw error;
+	return data as Lease;
+}
+
 export async function endLease(id: string, endDate: string): Promise<Lease> {
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
@@ -85,14 +115,16 @@ export async function endLease(id: string, endDate: string): Promise<Lease> {
 	return data as Lease;
 }
 
-export async function listLeasesForProperty(propertyId: string): Promise<Lease[]> {
+export async function listLeasesForProperty(
+	propertyId: string,
+): Promise<(Lease & { tenant: Tenant | null })[]> {
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
-		.from("leases").select("*")
+		.from("leases").select("*, tenant:tenants!leases_tenant_id_fkey(*)")
 		.eq("property_id", propertyId)
 		.order("start_date", { ascending: false });
 	if (error) throw error;
-	return (data ?? []) as Lease[];
+	return (data ?? []) as (Lease & { tenant: Tenant | null })[];
 }
 
 /** Compute an end_date when term is fixed; null for undefined. */

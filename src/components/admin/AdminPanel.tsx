@@ -11,7 +11,7 @@
 import { useEffect, useState } from "react";
 import { adminListUsers, adminSetUserRole } from "@/src/lib/db/profiles";
 import type { ProfileRow, GlobalRole } from "@/src/lib/db/types";
-import { AppShell, Card, CardLabel, Select, cn } from "@/src/components/ui";
+import { AppShell, Card, CardLabel, Select, Spinner, Alert, toast, cn } from "@/src/components/ui";
 
 export function AdminPanel() {
 	const [users, setUsers] = useState<ProfileRow[]>([]);
@@ -33,6 +33,7 @@ export function AdminPanel() {
 		try {
 			await adminSetUserRole({ userId, role });
 			setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, app_role: role } : u)));
+			toast.success("Role updated.");
 		} catch (e) {
 			setRoleError(e instanceof Error ? e.message : "Failed to update role");
 		} finally {
@@ -42,6 +43,25 @@ export function AdminPanel() {
 
 	function formatDate(iso: string) {
 		return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+	}
+
+	function roleSelect(user: ProfileRow) {
+		return (
+			<div className="flex items-center gap-2">
+				<Select
+					value={user.app_role}
+					disabled={updatingRole === user.id}
+					onChange={(e) => handleRoleChange(user.id, e.target.value as GlobalRole)}
+					className="h-10 w-auto"
+					aria-label={`Role for ${user.email}`}
+				>
+					<option value="member">Member</option>
+					<option value="admin">Admin</option>
+					<option value="client">Client</option>
+				</Select>
+				{updatingRole === user.id && <Spinner size="sm" />}
+			</div>
+		);
 	}
 
 	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400";
@@ -55,23 +75,36 @@ export function AdminPanel() {
 
 				{loading ? (
 					<div className="flex justify-center py-12">
-						<span className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+						<Spinner size="sm" />
 					</div>
 				) : error ? (
-					<p className="text-sm text-red-600 px-6 py-4">{error}</p>
+					<Alert className="m-4 sm:m-6">{error}</Alert>
 				) : (
 					<>
-						{roleError && (
-							<div className="mx-4 sm:mx-6 mt-4 p-3 rounded-xl bg-red-50 border border-red-200">
-								<p className="text-sm text-red-700">{roleError}</p>
-							</div>
-						)}
-						<div className="overflow-x-auto">
-							<table className="w-full text-sm">
+						{roleError && <Alert className="mx-4 sm:mx-6 mt-4">{roleError}</Alert>}
+
+						{/* Mobile: card list */}
+						<ul className="block sm:hidden divide-y divide-slate-100">
+							{users.map((user) => (
+								<li key={user.id} className="p-4 space-y-2">
+									<div className="min-w-0">
+										<p className="text-sm font-semibold text-slate-800 truncate">{user.email}</p>
+										<p className="text-xs text-slate-400 mt-0.5">
+											{user.display_name ?? "—"} · joined {formatDate(user.created_at)}
+										</p>
+									</div>
+									{roleSelect(user)}
+								</li>
+							))}
+						</ul>
+
+						{/* Desktop: table */}
+						<div className="hidden sm:block overflow-x-auto">
+							<table className="w-full min-w-140 text-sm">
 								<thead>
 									<tr className="border-b border-slate-100 bg-slate-50/60">
 										<th className={headerCls}>Email</th>
-										<th className={cn(headerCls, "hidden sm:table-cell")}>Name</th>
+										<th className={headerCls}>Name</th>
 										<th className={headerCls}>Role</th>
 										<th className={cn(headerCls, "hidden md:table-cell")}>Joined</th>
 									</tr>
@@ -80,24 +113,8 @@ export function AdminPanel() {
 									{users.map((user) => (
 										<tr key={user.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
 											<td className="px-4 py-3 text-sm text-slate-700 max-w-50 truncate">{user.email}</td>
-											<td className="px-4 py-3 text-sm text-slate-500 hidden sm:table-cell">{user.display_name ?? "—"}</td>
-											<td className="px-4 py-3">
-												<div className="flex items-center gap-2">
-													<Select
-														value={user.app_role}
-														disabled={updatingRole === user.id}
-														onChange={(e) => handleRoleChange(user.id, e.target.value as GlobalRole)}
-														className="h-10 w-auto"
-													>
-														<option value="member">Member</option>
-														<option value="admin">Admin</option>
-														<option value="client">Client</option>
-													</Select>
-													{updatingRole === user.id && (
-														<span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin inline-block" />
-													)}
-												</div>
-											</td>
+											<td className="px-4 py-3 text-sm text-slate-500">{user.display_name ?? "—"}</td>
+											<td className="px-4 py-3">{roleSelect(user)}</td>
 											<td className="px-4 py-3 text-sm text-slate-400 hidden md:table-cell whitespace-nowrap">
 												{formatDate(user.created_at)}
 											</td>

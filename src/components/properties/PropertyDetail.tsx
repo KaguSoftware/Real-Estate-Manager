@@ -1,19 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { getProperty, updateProperty } from "@/src/lib/db/properties";
-import { endLease } from "@/src/lib/db/leases";
-import { getActiveSaleForProperty } from "@/src/lib/db/sales";
+import { endLease, listLeasesForProperty } from "@/src/lib/db/leases";
+import { cancelSale, closeSale, getActiveSaleForProperty, listSalesForProperty } from "@/src/lib/db/sales";
 import { listPropertyImages } from "@/src/lib/db/propertyImages";
+import { invalidateCache } from "@/src/lib/useCachedResource";
 import { exportToPDF, type ListingPDFData } from "@/src/lib/pdf";
-import type { PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
+import type { Lease, PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
 import { PaymentList } from "@/src/components/payments/PaymentList";
-import { AppShell, Button, Card, CardLabel, Badge, type BadgeTone } from "@/src/components/ui";
+import {
+	AppShell, Button, Card, CardLabel, Badge, type BadgeTone,
+	ConfirmDialog, Alert, Spinner, toast,
+} from "@/src/components/ui";
 import { PropertyGallery } from "./PropertyGallery";
 import { PropertyForm } from "./PropertyForm";
-import { Pencil, TriangleAlert, Plus, Share2 } from "lucide-react";
+import { LeaseEditSheet } from "./LeaseEditSheet";
+import { LocationPicker } from "./LocationPicker";
+import { Pencil, Plus, Share2, ChevronDown, CheckCircle2, XCircle, History, ExternalLink } from "lucide-react";
 
 /** Fetch a public image URL and return it as a data URL so @react-pdf embeds
  *  it reliably (avoids intermittent remote-fetch/CORS failures during render). */
@@ -48,8 +54,11 @@ export function PropertyDetail({ propertyId }: Props) {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [editing, setEditing] = useState(false);
-	const [endingLease, setEndingLease] = useState(false);
 	const [sharing, setSharing] = useState(false);
+	const [editingLease, setEditingLease] = useState(false);
+	// Which confirmation is open, and whether its action is running.
+	const [pendingAction, setPendingAction] = useState<null | "end-lease" | "close-sale" | "cancel-sale">(null);
+	const [actionBusy, setActionBusy] = useState(false);
 
 	const reload = useCallback(async () => {
 		setLoading(true);
@@ -102,25 +111,43 @@ export function PropertyDetail({ propertyId }: Props) {
 		}
 	}
 
-	async function handleEndLease() {
-		if (!data?.active_lease) return;
-		if (!confirm(`End the active lease for ${data.active_lease.tenant.full_name}? Property will become vacant.`)) return;
-		setEndingLease(true);
+	async function runPendingAction() {
+		if (!data || !pendingAction) return;
+		setActionBusy(true);
+		setError(null);
 		try {
-			await endLease(data.active_lease.id, new Date().toISOString().slice(0, 10));
-			const updated = await updateProperty(data.id, { status: "vacant" });
-			upsertProperty(updated);
+			if (pendingAction === "end-lease" && data.active_lease) {
+				await endLease(data.active_lease.id, new Date().toISOString().slice(0, 10));
+				const updated = await updateProperty(data.id, { status: "vacant" });
+				upsertProperty(updated);
+				toast.success("Lease ended — property is vacant again.");
+			} else if (pendingAction === "close-sale" && sale) {
+				await closeSale(sale.id);
+				toast.success("Sale closed.");
+				invalidateCache("stats");
+			} else if (pendingAction === "cancel-sale" && sale) {
+				await cancelSale(sale.id);
+				const updated = await updateProperty(data.id, { status: "vacant" });
+				upsertProperty(updated);
+				toast.success("Sale cancelled — property is vacant again.");
+			}
+			setPendingAction(null);
 			await reload();
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
-		} finally { setEndingLease(false); }
+			setPendingAction(null);
+			const msg = e instanceof Error ? e.message : String(e);
+			setError(msg);
+			toast.error(msg);
+		} finally {
+			setActionBusy(false);
+		}
 	}
 
 	if (loading && !data) {
 		return (
 			<AppShell title="Property">
 				<div className="py-16 flex justify-center">
-					<span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+					<Spinner />
 				</div>
 			</AppShell>
 		);
@@ -129,7 +156,7 @@ export function PropertyDetail({ propertyId }: Props) {
 	if (error && !data) {
 		return (
 			<AppShell title="Property">
-				<div className="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
+				<Alert>{error}</Alert>
 				<Button variant="ghost" size="sm" className="mt-4" onClick={() => router.push("/")}>← Back to properties</Button>
 			</AppShell>
 		);
@@ -153,22 +180,24 @@ export function PropertyDetail({ propertyId }: Props) {
 			{/* Gallery */}
 			<PropertyGallery propertyId={propertyId} />
 
-			{data.latitude == null && (
-				<div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800 flex items-start gap-2">
-					<TriangleAlert className="w-4 h-4 shrink-0 mt-0.5" />
-					<span>
-						This property isn&apos;t on the map yet — we couldn&apos;t pin its address automatically.
-						Tap <strong>Edit</strong> and paste a Google Maps link to add it.
-					</span>
-				</div>
+			{data.latitude == null && !editing && (
+				<Alert
+					tone="warning"
+					className="mb-4"
+					action={
+						<Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+							Set location
+						</Button>
+					}
+				>
+					This property isn&apos;t on the map yet. Set its location to show it on the dashboard map.
+				</Alert>
 			)}
 
-			{error && (
-				<div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
-			)}
+			{error && <Alert className="mb-4">{error}</Alert>}
 
-			{/* Two-column on lg+, stacked below */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+			{/* Two-column on md+, stacked below */}
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
 				{/* Property info */}
 				<Card>
 					<div className="flex items-center justify-between gap-2 mb-4">
@@ -245,6 +274,19 @@ export function PropertyDetail({ propertyId }: Props) {
 									<Field label="Sale date" value={sale.sale_date} />
 									<Field label="Target close" value={sale.target_close_date ?? "—"} />
 								</dl>
+
+								{sale.status === "active" && (
+									<div className="flex flex-col sm:flex-row gap-2 pt-1">
+										<Button block onClick={() => setPendingAction("close-sale")}>
+											<CheckCircle2 className="w-4 h-4" />
+											Close sale
+										</Button>
+										<Button variant="danger" block onClick={() => setPendingAction("cancel-sale")}>
+											<XCircle className="w-4 h-4" />
+											Cancel sale
+										</Button>
+									</div>
+								)}
 							</div>
 						) : data.status === "sold" ? (
 							<div className="text-center py-6">
@@ -272,9 +314,15 @@ export function PropertyDetail({ propertyId }: Props) {
 										</p>
 									)}
 								</div>
-								<Badge tone="emerald">
-									{data.active_lease.term === "undefined" ? "Open" : data.active_lease.term}
-								</Badge>
+								<div className="flex items-center gap-2">
+									<Badge tone="emerald">
+										{data.active_lease.term === "undefined" ? "Open" : data.active_lease.term}
+									</Badge>
+									<Button size="sm" variant="ghost" onClick={() => setEditingLease(true)}>
+										<Pencil className="w-4 h-4" />
+										Edit
+									</Button>
+								</div>
 							</div>
 
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -298,8 +346,8 @@ export function PropertyDetail({ propertyId }: Props) {
 								/>
 							</div>
 
-							<Button variant="danger" block onClick={handleEndLease} loading={endingLease}>
-								{endingLease ? "Ending…" : "End lease"}
+							<Button variant="danger" block onClick={() => setPendingAction("end-lease")}>
+								End lease
 							</Button>
 						</div>
 					) : (
@@ -314,6 +362,30 @@ export function PropertyDetail({ propertyId }: Props) {
 				</Card>
 			</div>
 
+			{/* Location — read-only mini-map */}
+			{data.latitude != null && data.longitude != null && (
+				<Card className="mt-4 sm:mt-5">
+					<div className="flex items-center justify-between gap-2 mb-4">
+						<CardLabel>Location</CardLabel>
+						<a
+							href={`https://www.google.com/maps?q=${data.latitude},${data.longitude}`}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-2"
+						>
+							Open in Google Maps
+							<ExternalLink className="w-3.5 h-3.5" />
+						</a>
+					</div>
+					<LocationPicker
+						value={{ lat: Number(data.latitude), lon: Number(data.longitude) }}
+						onChange={() => {}}
+						readOnly
+						heightClass="h-48 sm:h-56"
+					/>
+				</Card>
+			)}
+
 			{/* Payments — full width */}
 			{data.active_lease && (
 				<Card className="mt-4 sm:mt-5">
@@ -326,7 +398,175 @@ export function PropertyDetail({ propertyId }: Props) {
 					/>
 				</Card>
 			)}
+
+			{/* History — past leases / sales */}
+			{data.listing_type === "for_rent" ? (
+				<HistorySection<Lease & { tenant: Tenant | null }>
+					title="Lease history"
+					fetch={async () =>
+						(await listLeasesForProperty(data.id)).filter((l) => l.status !== "active")
+					}
+					render={(l) => (
+						<HistoryRow
+							key={l.id}
+							primary={l.tenant?.full_name ?? "Unknown tenant"}
+							secondary={`${l.start_date} → ${l.end_date ?? "open"}`}
+							amount={fmtMoney(Number(l.monthly_rent), l.currency) + " / mo"}
+							badge={<Badge tone={l.status === "ended" ? "slate" : "red"}>{l.status}</Badge>}
+						/>
+					)}
+				/>
+			) : (
+				<HistorySection<Sale & { buyer: Tenant | null }>
+					title="Sale history"
+					fetch={async () =>
+						(await listSalesForProperty(data.id)).filter((s) => s.status !== "active")
+					}
+					render={(s) => (
+						<HistoryRow
+							key={s.id}
+							primary={s.buyer?.full_name ?? "Unknown buyer"}
+							secondary={s.sale_date}
+							amount={fmtMoney(Number(s.sale_price), s.currency)}
+							badge={
+								<Badge tone={s.status === "closed" ? "emerald" : "slate"}>{s.status}</Badge>
+							}
+						/>
+					)}
+				/>
+			)}
+
+			{/* Lease edit sheet — mounted only while open so it always starts from fresh values. */}
+			{data.active_lease && editingLease && (
+				<LeaseEditSheet
+					open
+					lease={data.active_lease}
+					onClose={() => setEditingLease(false)}
+					onSaved={reload}
+				/>
+			)}
+
+			<ConfirmDialog
+				open={pendingAction === "end-lease"}
+				title="End this lease?"
+				message={
+					data.active_lease
+						? `The lease for ${data.active_lease.tenant.full_name} will end today and the property becomes vacant. Payment history is kept.`
+						: undefined
+				}
+				confirmLabel="End lease"
+				loading={actionBusy}
+				onConfirm={runPendingAction}
+				onCancel={() => setPendingAction(null)}
+			/>
+			<ConfirmDialog
+				open={pendingAction === "close-sale"}
+				title="Close this sale?"
+				message="Marks the sale as completed. The property stays sold."
+				confirmLabel="Close sale"
+				tone="primary"
+				loading={actionBusy}
+				onConfirm={runPendingAction}
+				onCancel={() => setPendingAction(null)}
+			/>
+			<ConfirmDialog
+				open={pendingAction === "cancel-sale"}
+				title="Cancel this sale?"
+				message="The agreement is voided and the property returns to Vacant. This cannot be undone."
+				confirmLabel="Cancel sale"
+				loading={actionBusy}
+				onConfirm={runPendingAction}
+				onCancel={() => setPendingAction(null)}
+			/>
 		</AppShell>
+	);
+}
+
+/** Collapsible, lazily-fetched history list. */
+function HistorySection<T>({
+	title,
+	fetch,
+	render,
+}: {
+	title: string;
+	fetch: () => Promise<T[]>;
+	render: (item: T) => React.ReactNode;
+}) {
+	const [open, setOpen] = useState(false);
+	const [items, setItems] = useState<T[] | null>(null);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	async function toggle() {
+		const next = !open;
+		setOpen(next);
+		if (next && items === null && !loading) {
+			setLoading(true);
+			setError(null);
+			try { setItems(await fetch()); }
+			catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+			finally { setLoading(false); }
+		}
+	}
+
+	return (
+		<Card className="mt-4 sm:mt-5">
+			<button
+				type="button"
+				onClick={toggle}
+				aria-expanded={open}
+				className="w-full flex items-center justify-between gap-2 text-left"
+			>
+				<span className="flex items-center gap-2">
+					<History className="w-4 h-4 text-slate-400" />
+					<CardLabel>{title}</CardLabel>
+					{items !== null && (
+						<span className="text-xs font-semibold text-slate-400">({items.length})</span>
+					)}
+				</span>
+				<ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+			</button>
+
+			{open && (
+				<div className="mt-4">
+					{loading && (
+						<div className="py-6 flex justify-center"><Spinner /></div>
+					)}
+					{error && <Alert>{error}</Alert>}
+					{items !== null && items.length === 0 && (
+						<p className="text-sm text-slate-500 text-center py-4">No past records for this property.</p>
+					)}
+					{items !== null && items.length > 0 && (
+						<ul className="divide-y divide-slate-100">{items.map(render)}</ul>
+					)}
+				</div>
+			)}
+		</Card>
+	);
+}
+
+function HistoryRow({
+	primary,
+	secondary,
+	amount,
+	badge,
+}: {
+	primary: string;
+	secondary: string;
+	amount: string;
+	badge: React.ReactNode;
+}) {
+	return (
+		<li className="py-3 flex flex-wrap items-center justify-between gap-2">
+			<div className="min-w-0">
+				<p className="text-sm font-semibold text-slate-800 truncate">{primary}</p>
+				<p className="text-xs text-slate-500 mt-0.5">{secondary}</p>
+			</div>
+			<div className="flex items-center gap-3">
+				<span className="text-sm font-semibold text-slate-700">{amount}</span>
+				{badge}
+			</div>
+		</li>
 	);
 }
 

@@ -75,6 +75,7 @@ export const useAppStore = create<AppState>((set) => ({
 			// A create/update may change which filtered queries this row belongs to,
 			// so drop all cached property lists; the next visit refetches fresh.
 			invalidateCache("properties");
+			invalidateCache("stats");
 			const idx = s.properties.findIndex((x) => x.id === p.id);
 			return {
 				properties:
@@ -86,6 +87,7 @@ export const useAppStore = create<AppState>((set) => ({
 	removeProperty: (id) =>
 		set((s) => {
 			invalidateCache("properties");
+			invalidateCache("stats");
 			return { properties: s.properties.filter((p) => p.id !== id) };
 		}),
 	isLoadingProperties: false,
@@ -101,6 +103,7 @@ export const useAppStore = create<AppState>((set) => ({
 	upsertLead: (l) =>
 		set((s) => {
 			invalidateCache("leads");
+			invalidateCache("stats");
 			const idx = s.leads.findIndex((x) => x.id === l.id);
 			return {
 				leads:
@@ -112,6 +115,7 @@ export const useAppStore = create<AppState>((set) => ({
 	removeLead: (id) =>
 		set((s) => {
 			invalidateCache("leads");
+			invalidateCache("stats");
 			return { leads: s.leads.filter((l) => l.id !== id) };
 		}),
 	isLoadingLeads: false,

@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { createClient } from "@/src/lib/supabase/client";
-import { Sheet, Button, FormField, Input, cn } from "@/src/components/ui";
+import { Sheet, Button, FormField, Input, Alert, cn } from "@/src/components/ui";
 
 interface AuthModalProps {
   onClose: () => void;
@@ -100,12 +100,12 @@ export function AuthModal({ onClose }: AuthModalProps) {
         {tabBtn("signup", "Sign Up")}
       </div>
 
-      {/* ── Sign In tab ── */}
+      {/* â”€â”€ Sign In tab â”€â”€ */}
       {tab === "signin" && (
         <>
           {status === "done" && successMsg ? (
             <div className="text-center space-y-3">
-              <div className="text-4xl">📧</div>
+              <div className="text-4xl">ðŸ“§</div>
               <p className="text-slate-700 font-medium">{successMsg}</p>
               <Button block variant="outline" onClick={onClose} className="mt-2">Done</Button>
             </div>
@@ -115,9 +115,9 @@ export function AuthModal({ onClose }: AuthModalProps) {
                 <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
               </FormField>
               <FormField label="Password">
-                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
               </FormField>
-              {status === "error" && <p className="text-sm text-red-600">{errorMsg}</p>}
+              {status === "error" && <Alert>{errorMsg}</Alert>}
               <Button type="submit" block loading={status === "loading"}>Sign In</Button>
               <div className="text-center">
                 <button type="button" onClick={() => { setSignInMode("magic"); reset(); }}
@@ -129,12 +129,12 @@ export function AuthModal({ onClose }: AuthModalProps) {
           ) : (
             <form onSubmit={handleMagicLink} className="space-y-4">
               <p className="text-sm text-slate-500">
-                Enter your email and we&apos;ll send you a sign-in link — no password needed.
+                Enter your email and we&apos;ll send you a sign-in link â€” no password needed.
               </p>
               <FormField label="Email address">
                 <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
               </FormField>
-              {status === "error" && <p className="text-sm text-red-600">{errorMsg}</p>}
+              {status === "error" && <Alert>{errorMsg}</Alert>}
               <Button type="submit" block loading={status === "loading"}>Send magic link</Button>
               <div className="text-center">
                 <button type="button" onClick={() => { setSignInMode("password"); reset(); }}
@@ -147,12 +147,12 @@ export function AuthModal({ onClose }: AuthModalProps) {
         </>
       )}
 
-      {/* ── Sign Up tab ── */}
+      {/* â”€â”€ Sign Up tab â”€â”€ */}
       {tab === "signup" && (
         <>
           {status === "done" ? (
             <div className="text-center space-y-3">
-              <div className="text-4xl">✉️</div>
+              <div className="text-4xl">âœ‰ï¸</div>
               <p className="text-slate-700 font-medium">{successMsg}</p>
               <Button block variant="outline" onClick={onClose} className="mt-2">Done</Button>
             </div>
@@ -162,12 +162,12 @@ export function AuthModal({ onClose }: AuthModalProps) {
                 <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
               </FormField>
               <FormField label="Password">
-                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
               </FormField>
               <FormField label="Confirm password">
-                <Input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" />
+                <Input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
               </FormField>
-              {status === "error" && <p className="text-sm text-red-600">{errorMsg}</p>}
+              {status === "error" && <Alert>{errorMsg}</Alert>}
               <Button type="submit" block loading={status === "loading"}>Create Account</Button>
             </form>
           )}

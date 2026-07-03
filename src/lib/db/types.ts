@@ -1,5 +1,5 @@
 // Database row types for the real estate schema.
-// Matches the columns defined in supabase/migrations/0006_real_estate.sql.
+// Matches the columns defined in supabase/migrations/ (0001_init.sql onward).
 
 export type GlobalRole     = "admin" | "member" | "client";
 export type ListingType    = "for_rent" | "for_sale";

@@ -75,13 +75,27 @@ export const initialSalesFormState = (property: Property | null): SalesFormState
 interface Props {
 	state: SalesFormState;
 	onChange: <K extends keyof SalesFormState>(key: K, value: SalesFormState[K]) => void;
+	/** Field-level validation errors, keyed by field name (see validateSales). */
+	errors?: Record<string, string>;
+}
+
+/** Wizard-level validation for the sales details step. Keys map to FormField ids below. */
+export function validateSales(s: SalesFormState): Record<string, string> {
+	const errors: Record<string, string> = {};
+	if (!s.sellerName.trim()) errors.sellerName = "Seller name is required.";
+	if (!s.buyerName.trim()) errors.buyerName = "Buyer name is required.";
+	if (!s.buyerPhone.trim() && !s.buyerEmail.trim())
+		errors.buyerContact = "Provide at least a phone or an email for the buyer.";
+	if (!(Number(s.salePrice) > 0)) errors.salePrice = "Sale price must be greater than zero.";
+	if (s.saleDate.length !== 10) errors.saleDate = "Sale date is required.";
+	return errors;
 }
 
 function fmtMoney(n: number) {
 	return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-export function SalesDetailsForm({ state, onChange }: Props) {
+export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 	const salePrice = Number(state.salePrice || 0);
 	const buyerRate  = Number(state.buyerCommissionRate || 0);
 	const sellerRate = Number(state.sellerCommissionRate || 0);
@@ -109,7 +123,7 @@ export function SalesDetailsForm({ state, onChange }: Props) {
 					A — Mal Sahibi (Seller)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Adı Soyadı / Firma (Full name)">
+					<FormField label="Adı Soyadı / Firma (Full name)" id="sellerName" error={errors.sellerName}>
 						<Input required value={state.sellerName} onChange={set("sellerName")} />
 					</FormField>
 					<FormField label="Telefon (Phone)">
@@ -141,10 +155,10 @@ export function SalesDetailsForm({ state, onChange }: Props) {
 					B — Alıcı (Buyer)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Adı Soyadı / Firma (Full name)">
+					<FormField label="Adı Soyadı / Firma (Full name)" id="buyerName" error={errors.buyerName}>
 						<Input required value={state.buyerName} onChange={set("buyerName")} />
 					</FormField>
-					<FormField label="Telefon (Phone)">
+					<FormField label="Telefon (Phone)" id="buyerContact" error={errors.buyerContact}>
 						<Input type="tel" inputMode="tel" value={state.buyerPhone} onChange={set("buyerPhone")} />
 					</FormField>
 				</div>
@@ -174,7 +188,7 @@ export function SalesDetailsForm({ state, onChange }: Props) {
 					Satış Bilgileri (Sale info)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-					<FormField label="Satış Bedeli (Sale price)">
+					<FormField label="Satış Bedeli (Sale price)" id="salePrice" error={errors.salePrice}>
 						<Input required type="number" inputMode="decimal" min="0" step="0.01" value={state.salePrice} onChange={set("salePrice")} />
 					</FormField>
 					<FormField label="Para Birimi (Currency)">
@@ -184,7 +198,7 @@ export function SalesDetailsForm({ state, onChange }: Props) {
 							<option value="EUR">EUR (€)</option>
 						</Select>
 					</FormField>
-					<FormField label="Sözleşme Tarihi (Sale date)">
+					<FormField label="Sözleşme Tarihi (Sale date)" id="saleDate" error={errors.saleDate}>
 						<Input required type="date" value={state.saleDate} onChange={set("saleDate")} />
 					</FormField>
 				</div>

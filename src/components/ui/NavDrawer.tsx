@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/src/lib/supabase/client";
 import { useAppStore } from "@/src/store";
 import { cn } from "./cn";
-import { Home, Users, FilePlus2, Shield, LogOut, X } from "lucide-react";
+import { useFocusTrap } from "./useFocusTrap";
+import { Home, Users, ContactRound, FilePlus2, Shield, LogOut, X } from "lucide-react";
 
 interface NavItem {
 	href: string;
@@ -18,15 +19,17 @@ interface NavItem {
 const NAV: NavItem[] = [
 	{ href: "/", label: "Properties", icon: Home },
 	{ href: "/leads", label: "Clients", icon: Users },
+	{ href: "/tenants", label: "Tenants", icon: ContactRound },
 	{ href: "/documents/new", label: "New document", icon: FilePlus2 },
 	{ href: "/admin", label: "Admin", icon: Shield, adminOnly: true },
 ];
 
 export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const user = useAppStore((s) => s.user);
-	const setUser = useAppStore((s) => s.setUser);
-	const setProperties = useAppStore((s) => s.setProperties);
 	const pathname = usePathname();
+	const router = useRouter();
+	const panelRef = useRef<HTMLElement>(null);
+	useFocusTrap(panelRef, open);
 
 	useEffect(() => {
 		if (!open) return;
@@ -37,10 +40,11 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
 	async function handleSignOut() {
 		const supabase = createClient();
+		// Store + cache clearing happens centrally in AuthProvider's
+		// SIGNED_OUT handler — no per-slice cleanup here.
 		await supabase.auth.signOut();
-		setUser(null);
-		setProperties([]);
 		onClose();
+		router.push("/");
 	}
 
 	const isAdmin = user?.app_role === "admin";
@@ -58,6 +62,12 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 			/>
 			{/* Drawer panel */}
 			<aside
+				ref={panelRef}
+				role="dialog"
+				aria-modal="true"
+				aria-label="Navigation menu"
+				tabIndex={-1}
+				inert={!open}
 				className={cn(
 					"fixed inset-y-0 left-0 z-50 w-[82%] max-w-xs bg-white shadow-pop flex flex-col",
 					"transition-transform duration-200 ease-out safe-top safe-bottom",

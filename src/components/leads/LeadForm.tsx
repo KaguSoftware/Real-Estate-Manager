@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { createLead, updateLead, deleteLead, type LeadInput } from "@/src/lib/db/leads";
 import type { Lead, LeadStatus, ListingType } from "@/src/lib/db/types";
-import { Sheet, Button, FormField, Input, Textarea, Select } from "@/src/components/ui";
+import { Sheet, Button, FormField, Input, Textarea, Select, Alert, ConfirmDialog, toast } from "@/src/components/ui";
+import { validEmail, compactErrors } from "@/src/lib/validation";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "./leadStatus";
 import { Trash2, Search } from "lucide-react";
 
@@ -45,6 +46,8 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+	const [confirmingDelete, setConfirmingDelete] = useState(false);
 
 	function buildInput(): LeadInput {
 		return {
@@ -64,7 +67,12 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 
 	async function handleSubmit(e?: React.FormEvent) {
 		e?.preventDefault();
-		if (!full_name.trim()) { setError("Name is required."); return; }
+		const errors = compactErrors({
+			full_name: full_name.trim() ? undefined : "Name is required.",
+			email: validEmail(email),
+		});
+		setFieldErrors(errors);
+		if (Object.keys(errors).length > 0) return;
 		setBusy(true);
 		setError(null);
 		try {
@@ -73,6 +81,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 				? await createLead(input)
 				: await updateLead(initial!.id, input);
 			upsertLead(row);
+			toast.success(mode === "create" ? "Lead added." : "Lead updated.");
 			onDone();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
@@ -83,13 +92,14 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 
 	async function handleDelete() {
 		if (!initial) return;
-		if (!confirm(`Delete lead "${initial.full_name}"? This can't be undone.`)) return;
 		setBusy(true);
 		try {
 			await deleteLead(initial.id);
 			removeLead(initial.id);
+			toast.success("Lead deleted.");
 			onDone();
 		} catch (err) {
+			setConfirmingDelete(false);
 			setError(err instanceof Error ? err.message : String(err));
 			setBusy(false);
 		}
@@ -119,7 +129,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 			footer={
 				<div className="flex items-center gap-2">
 					{mode === "edit" && (
-						<Button variant="danger" size="md" onClick={handleDelete} disabled={busy} aria-label="Delete lead">
+						<Button variant="danger" size="md" onClick={() => setConfirmingDelete(true)} disabled={busy} aria-label="Delete lead">
 							<Trash2 className="w-4 h-4" />
 						</Button>
 					)}
@@ -131,20 +141,18 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 			}
 		>
 			<form onSubmit={handleSubmit} className="space-y-5">
-				{error && (
-					<div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
-				)}
+				{error && <Alert>{error}</Alert>}
 
 				{/* Contact */}
 				<GroupTitle>Contact</GroupTitle>
-				<FormField label="Name">
+				<FormField label="Name" error={fieldErrors.full_name}>
 					<Input value={full_name} onChange={(e) => setFullName(e.target.value)} placeholder="Client name" autoFocus />
 				</FormField>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Phone">
 						<Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+90 5xx xxx xx xx" />
 					</FormField>
-					<FormField label="Email">
+					<FormField label="Email" error={fieldErrors.email}>
 						<Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="optional" />
 					</FormField>
 				</div>
@@ -202,6 +210,16 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 					<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything worth remembering…" />
 				</FormField>
 			</form>
+
+			<ConfirmDialog
+				open={confirmingDelete}
+				title="Delete this lead?"
+				message={initial ? `"${initial.full_name}" will be removed permanently.` : undefined}
+				confirmLabel="Delete"
+				loading={busy}
+				onConfirm={handleDelete}
+				onCancel={() => setConfirmingDelete(false)}
+			/>
 		</Sheet>
 	);
 }
