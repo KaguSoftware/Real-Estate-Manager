@@ -1,9 +1,9 @@
 "use client";
 
-import { Component, type ReactNode } from "react";
+import { Component, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useAppStore } from "@/src/store";
-import { MapPin, MapPinOff } from "lucide-react";
+import { MapPin, MapPinOff, Maximize2, Minimize2 } from "lucide-react";
 
 // Defensive boundary: if Leaflet throws (e.g. StrictMode double-mount, bad
 // coords slipping through, tile-layer init race), we'd rather lose the map
@@ -12,13 +12,12 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: bool
 	state = { failed: false };
 	static getDerivedStateFromError() { return { failed: true }; }
 	componentDidCatch(err: unknown) {
-		// eslint-disable-next-line no-console
 		console.error("PropertyMap crashed:", err);
 	}
 	render() {
 		if (this.state.failed) {
 			return (
-				<div className="h-56 sm:h-80 w-full flex items-center justify-center text-center px-6">
+				<div className="h-64 sm:h-96 w-full flex items-center justify-center text-center px-6">
 					<div className="flex flex-col items-center">
 						<MapPinOff className="w-7 h-7 text-slate-400 mb-2" />
 						<p className="text-sm font-semibold text-slate-700">Map unavailable</p>
@@ -38,7 +37,7 @@ const PropertyMapInner = dynamic(
 	{
 		ssr: false,
 		loading: () => (
-			<div className="h-56 sm:h-80 w-full rounded-2xl bg-slate-100 animate-pulse" />
+			<div className="h-64 sm:h-96 w-full rounded-2xl bg-slate-100 animate-pulse" />
 		),
 	},
 );
@@ -50,6 +49,7 @@ function isValidCoord(n: unknown): boolean {
 
 export function PropertyMap() {
 	const properties = useAppStore((s) => s.properties);
+	const [expanded, setExpanded] = useState(false);
 	const mappable = properties.filter(
 		(p) =>
 			isValidCoord(p.latitude) &&
@@ -59,9 +59,9 @@ export function PropertyMap() {
 	);
 
 	return (
-		<section className="mb-4 bg-white rounded-2xl border border-slate-200/80 shadow-card overflow-hidden">
+		<section className="relative mb-4 bg-white rounded-2xl border border-slate-200/80 shadow-card overflow-hidden">
 			{mappable.length === 0 ? (
-				<div className="h-56 sm:h-80 w-full flex items-center justify-center text-center px-6">
+				<div className="h-64 sm:h-96 w-full flex items-center justify-center text-center px-6">
 					<div className="flex flex-col items-center">
 						<MapPin className="w-7 h-7 text-slate-400 mb-2" />
 						<p className="text-sm font-semibold text-slate-700">No mapped properties yet</p>
@@ -71,9 +71,22 @@ export function PropertyMap() {
 					</div>
 				</div>
 			) : (
-				<MapErrorBoundary>
-					<PropertyMapInner properties={mappable} />
-				</MapErrorBoundary>
+				<>
+					<MapErrorBoundary>
+						<PropertyMapInner
+							properties={mappable}
+							heightClass={expanded ? "h-[70vh]" : "h-64 sm:h-96"}
+						/>
+					</MapErrorBoundary>
+					<button
+						type="button"
+						onClick={() => setExpanded((e) => !e)}
+						aria-label={expanded ? "Collapse map" : "Expand map"}
+						className="absolute top-3 right-3 z-10 h-10 w-10 inline-flex items-center justify-center rounded-xl bg-white/90 backdrop-blur border border-slate-200 text-slate-600 shadow-soft hover:bg-white hover:text-slate-900 transition-colors"
+					>
+						{expanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+					</button>
+				</>
 			)}
 		</section>
 	);

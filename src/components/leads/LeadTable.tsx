@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import { useAppStore } from "@/src/store";
 import type { Lead } from "@/src/lib/db/types";
 import { LEAD_STATUS_META } from "./leadStatus";
-import { Badge, Card } from "@/src/components/ui";
-import { PhoneCall } from "lucide-react";
+import { Badge, Card, SpinnerBlock, EmptyState } from "@/src/components/ui";
+import { PhoneCall, Users } from "lucide-react";
 
 function isToday(dateStr: string | null): boolean {
 	if (!dateStr) return false;
@@ -47,18 +47,17 @@ export function LeadTable({ onEdit }: Props) {
 	);
 
 	if (isLoading) {
-		return (
-			<div className="flex justify-center py-12">
-				<span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-			</div>
-		);
+		return <SpinnerBlock />;
 	}
 
 	if (leads.length === 0) {
 		return (
-			<Card className="p-8 sm:p-12 text-center">
-				<p className="text-sm text-slate-500">No leads yet.</p>
-				<p className="text-xs text-slate-400 mt-1">Tap <span className="font-semibold">Add</span> to add your first client.</p>
+			<Card>
+				<EmptyState
+					icon={Users}
+					title="No leads yet"
+					hint="Tap Add to record your first client."
+				/>
 			</Card>
 		);
 	}
@@ -97,7 +96,7 @@ export function LeadTable({ onEdit }: Props) {
 			{/* Desktop: table */}
 			<Card padded={false} className="hidden sm:block overflow-hidden">
 				<div className="overflow-x-auto">
-					<table className="w-full text-sm">
+					<table className="w-full min-w-140 text-sm">
 						<thead className="bg-slate-50/60 border-b border-slate-100">
 							<tr>
 								<th className={headerCls}>Name</th>

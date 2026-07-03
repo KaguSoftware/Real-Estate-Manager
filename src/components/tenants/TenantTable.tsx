@@ -1,0 +1,91 @@
+"use client";
+
+import type { Tenant } from "@/src/lib/db/types";
+import { Card, SpinnerBlock, EmptyState } from "@/src/components/ui";
+import { Users } from "lucide-react";
+
+interface Props {
+	tenants: Tenant[];
+	loading: boolean;
+	onEdit: (tenant: Tenant) => void;
+}
+
+function fmtDate(d: string) {
+	return new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+export function TenantTable({ tenants, loading, onEdit }: Props) {
+	if (loading) return <SpinnerBlock />;
+
+	if (tenants.length === 0) {
+		return (
+			<Card>
+				<EmptyState
+					icon={Users}
+					title="No tenants yet"
+					hint="Tenants are created here or automatically when you generate a rental or sales agreement."
+				/>
+			</Card>
+		);
+	}
+
+	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400";
+
+	return (
+		<>
+			{/* Mobile: card list */}
+			<div className="block sm:hidden space-y-3">
+				{tenants.map((t) => (
+					<button
+						key={t.id}
+						type="button"
+						onClick={() => onEdit(t)}
+						className="w-full text-left bg-white border border-slate-200/80 rounded-2xl shadow-card p-4 active:bg-slate-50 transition-colors"
+					>
+						<p className="text-base font-bold text-slate-900 truncate">{t.full_name}</p>
+						{(t.phone || t.email) && (
+							<p className="text-sm text-slate-500 mt-0.5 truncate">
+								{t.phone ?? ""}
+								{t.phone && t.email ? " · " : ""}
+								{t.email ?? ""}
+							</p>
+						)}
+						<p className="text-xs text-slate-400 mt-2">Added {fmtDate(t.created_at)}</p>
+					</button>
+				))}
+			</div>
+
+			{/* Desktop: table */}
+			<Card padded={false} className="hidden sm:block overflow-hidden">
+				<div className="overflow-x-auto">
+					<table className="w-full min-w-140 text-sm">
+						<thead className="bg-slate-50/60 border-b border-slate-100">
+							<tr>
+								<th className={headerCls}>Name</th>
+								<th className={headerCls}>Phone</th>
+								<th className={headerCls}>Email</th>
+								<th className={headerCls}>National ID</th>
+								<th className={headerCls}>Added</th>
+							</tr>
+						</thead>
+						<tbody>
+							{tenants.map((t) => (
+								<tr
+									key={t.id}
+									onClick={() => onEdit(t)}
+									className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
+								>
+									<td className="px-4 py-3 text-sm font-medium text-slate-800">{t.full_name}</td>
+									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{t.phone ?? "—"}</td>
+									<td className="px-4 py-3 text-sm text-slate-600">{t.email ?? "—"}</td>
+									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{t.national_id ?? "—"}</td>
+									<td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">{fmtDate(t.created_at)}</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+			</Card>
+		</>
+	);
+}

@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Noto_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import { AuthProvider } from "@/src/components/auth/AuthProvider";
+import { ToastHost } from "@/src/components/ui/Toast";
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-latin" });
 const notoArabic = Noto_Sans_Arabic({ subsets: ["arabic"], weight: ["400", "500", "600", "700", "900"], variable: "--font-arabic" });
@@ -31,6 +32,7 @@ export default function RootLayout({
 				style={{ fontFamily: "var(--font-latin), var(--font-arabic), sans-serif" }}
 			>
 				<AuthProvider>{children}</AuthProvider>
+				<ToastHost />
 			</body>
 		</html>
 	);

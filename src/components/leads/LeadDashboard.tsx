@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { listLeads, type LeadFilter } from "@/src/lib/db/leads";
 import { useCachedResource } from "@/src/lib/useCachedResource";
-import { AppShell, Card } from "@/src/components/ui";
+import { AppShell, Card, Alert } from "@/src/components/ui";
 import { LeadFilters } from "./LeadFilters";
 import { LeadTable } from "./LeadTable";
 import { LeadForm } from "./LeadForm";
@@ -68,11 +68,7 @@ export function LeadDashboard() {
 				<>
 					<LeadFilters onAdd={() => setEditing({ mode: "create" })} />
 
-					{error && (
-						<div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
-							{error}
-						</div>
-					)}
+					{error && <Alert className="mb-4">{error}</Alert>}
 
 					<LeadTable onEdit={(lead) => setEditing({ mode: "edit", lead })} />
 

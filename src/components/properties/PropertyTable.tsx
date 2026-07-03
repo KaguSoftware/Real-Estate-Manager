@@ -4,7 +4,8 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import type { Property } from "@/src/lib/db/types";
-import { Badge, Button, Card, type BadgeTone } from "@/src/components/ui";
+import { Badge, Button, Card, SpinnerBlock, EmptyState, type BadgeTone } from "@/src/components/ui";
+import { Home } from "lucide-react";
 
 type SortKey = "homeowner_name" | "address_line" | "size_sqm" | "list_price" | "updated_at";
 type SortDir = "asc" | "desc";
@@ -69,25 +70,28 @@ export function PropertyTable() {
 	function prefetch(id: string) { router.prefetch(`/properties/${id}`); }
 
 	if (isLoading) {
-		return (
-			<div className="flex justify-center py-12">
-				<span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-			</div>
-		);
+		return <SpinnerBlock />;
 	}
 
 	if (properties.length === 0) {
 		return hasActiveFilter ? (
-			<Card className="p-8 sm:p-12 text-center">
-				<p className="text-sm text-slate-500">No properties match your filters.</p>
-				<Button variant="outline" size="sm" className="mt-3" onClick={resetFilters}>
-					Clear filters
-				</Button>
+			<Card>
+				<EmptyState
+					title="No properties match your filters"
+					action={
+						<Button variant="outline" size="sm" onClick={resetFilters}>
+							Clear filters
+						</Button>
+					}
+				/>
 			</Card>
 		) : (
-			<Card className="p-8 sm:p-12 text-center">
-				<p className="text-sm text-slate-500">No properties yet.</p>
-				<p className="text-xs text-slate-400 mt-1">Tap <span className="font-semibold">Add</span> to create your first listing.</p>
+			<Card>
+				<EmptyState
+					icon={Home}
+					title="No properties yet"
+					hint="Tap Add to create your first listing."
+				/>
 			</Card>
 		);
 	}
@@ -133,7 +137,7 @@ export function PropertyTable() {
 			{/* Desktop: table */}
 			<Card padded={false} className="hidden sm:block overflow-hidden">
 				<div className="overflow-x-auto">
-					<table className="w-full text-sm">
+					<table className="w-full min-w-160 text-sm">
 						<thead className="bg-slate-50/60 border-b border-slate-100">
 							<tr>
 								<th className={headerCls} onClick={() => toggle("homeowner_name")}>Homeowner {sortArrow("homeowner_name")}</th>

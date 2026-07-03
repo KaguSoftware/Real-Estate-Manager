@@ -1,19 +1,17 @@
-// TODO: Replace this placeholder with generated types once you have created the
-// Supabase project and run the migration.
+// Supabase Database generic — currently a permissive placeholder.
 //
-// To regenerate:
+// The app's real row types live in src/lib/db/types.ts (hand-maintained,
+// verified against supabase/migrations/) and are applied at the data-layer
+// boundary in src/lib/db/*. The clients in ./client.ts and ./server.ts are
+// intentionally untyped; queries are cast to those manual types.
+//
+// To switch to generated types (requires a Supabase access token):
 //   npx supabase gen types typescript --project-id <your-project-id> > src/lib/supabase/types.ts
-//
-// Or using the local CLI:
-//   npx supabase gen types typescript --local > src/lib/supabase/types.ts
+// then pass the generic: createBrowserClient<Database>(...) in client.ts/server.ts.
 
-// Placeholder shape that satisfies the supabase-js Database generic constraint.
 // The `public` schema key with Tables/Views/Functions is required — without it
 // createBrowserClient<Database> would resolve the schema to `never` and make
 // all .from() / .rpc() calls type as `never`.
-//
-// Replace this entire file with the output of:
-//   npx supabase gen types typescript --project-id <your-project-id>
 export type Database = {
   public: {
     Tables: Record<string, never>

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { listProperties, type PropertyFilter } from "@/src/lib/db/properties";
 import { useCachedResource } from "@/src/lib/useCachedResource";
-import { AppShell, Card } from "@/src/components/ui";
+import { AppShell, Card, Alert } from "@/src/components/ui";
 import { PropertyFilters } from "./PropertyFilters";
 import { PropertyTable } from "./PropertyTable";
 import { PropertyMap } from "./PropertyMap";
+import { DashboardStats } from "./DashboardStats";
 import { Plus } from "lucide-react";
 
 export function PropertyDashboard() {
@@ -57,14 +58,11 @@ export function PropertyDashboard() {
 				</Card>
 			) : (
 				<>
+					<DashboardStats />
 					<PropertyMap />
 					<PropertyFilters />
 
-					{error && (
-						<div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
-							{error}
-						</div>
-					)}
+					{error && <Alert className="mb-4">{error}</Alert>}
 
 					<PropertyTable />
 

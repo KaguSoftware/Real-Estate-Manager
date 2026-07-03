@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useId, isValidElement, cloneElement } from "react";
 import { TrashIcon } from "lucide-react";
 import { cn } from "./cn";
 
@@ -7,28 +7,74 @@ interface FormFieldProps {
 	label: string;
 	children: React.ReactNode;
 	hint?: string;
+	/** Inline validation error — red border on the child input + message below. */
+	error?: string;
+	/** Explicit control id; auto-generated when omitted. */
+	id?: string;
 	onDelete?: () => void;
 }
 
-/** Labeled field wrapper. Calmer label (text-xs, not 10px), more breathing room. */
-export const FormField = ({ label, children, hint, onDelete }: FormFieldProps) => {
+const errorInputClass = "border-red-300 focus:border-red-400 focus:ring-red-100";
+
+/**
+ * Labeled field wrapper. Wires label↔input (htmlFor/id), and when `error` is
+ * set adds aria-invalid/aria-describedby + red border to a single-element child.
+ */
+export const FormField = ({ label, children, hint, error, id, onDelete }: FormFieldProps) => {
+	const autoId = useId();
+	const fieldId = id ?? autoId;
+	const errorId = `${fieldId}-error`;
+	const hintId = `${fieldId}-hint`;
+
+	// Decorate the child only when it's a single element (Input/Select/Textarea).
+	// Multi-node children (e.g. custom rows) render untouched.
+	let content = children;
+	if (isValidElement(children)) {
+		const child = children as React.ReactElement<{
+			id?: string;
+			className?: string;
+			"aria-invalid"?: boolean;
+			"aria-describedby"?: string;
+		}>;
+		const describedBy =
+			[error ? errorId : null, hint ? hintId : null].filter(Boolean).join(" ") || undefined;
+		content = cloneElement(child, {
+			id: child.props.id ?? fieldId,
+			"aria-invalid": error ? true : undefined,
+			"aria-describedby": describedBy ?? child.props["aria-describedby"],
+			className: error ? cn(child.props.className, errorInputClass) : child.props.className,
+		});
+	}
+
 	return (
 		<div className="w-full">
 			<div className="flex items-center justify-between mb-1.5">
-				<label className="block text-xs font-semibold text-slate-600">{label}</label>
+				<label htmlFor={fieldId} className="block text-xs font-semibold text-slate-600">
+					{label}
+				</label>
 				{onDelete && (
 					<button
 						type="button"
 						onClick={onDelete}
 						className="text-slate-300 hover:text-red-500 transition-colors p-1 -m-1"
 						title="Remove field"
+						aria-label={`Remove ${label}`}
 					>
 						<TrashIcon size={14} />
 					</button>
 				)}
 			</div>
-			{children}
-			{hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+			{content}
+			{error && (
+				<p id={errorId} className="mt-1 text-xs font-medium text-red-600">
+					{error}
+				</p>
+			)}
+			{hint && !error && (
+				<p id={hintId} className="mt-1 text-xs text-slate-400">
+					{hint}
+				</p>
+			)}
 		</div>
 	);
 };

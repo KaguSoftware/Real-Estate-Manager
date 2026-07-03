@@ -15,16 +15,19 @@ import { PDFDocument } from "@/src/lib/pdf";
 import type { Property, Lead } from "@/src/lib/db/types";
 import { PropertyPickerCardList } from "./PropertyPickerCardList";
 import { ClientPickerCardList } from "./ClientPickerCardList";
-import { Button, cn } from "@/src/components/ui";
+import { Button, cn, Alert, Spinner, toast } from "@/src/components/ui";
+import { invalidateCache } from "@/src/lib/useCachedResource";
 import {
 	SalesDetailsForm,
 	initialSalesFormState,
 	computeCommission,
+	validateSales,
 	type SalesFormState,
 } from "./SalesDetailsForm";
 import {
 	RentalDetailsForm,
 	initialRentalFormState,
+	validateRental,
 	type RentalFormState,
 } from "./RentalDetailsForm";
 
@@ -184,16 +187,48 @@ export function DocumentWizard() {
 	const [rentalState, setRentalState] = useState<RentalFormState>(() => initialRentalFormState(null));
 	function patchRental<K extends keyof RentalFormState>(key: K, value: RentalFormState[K]) {
 		setRentalState((s) => ({ ...s, [key]: value }));
+		clearFieldError(key === "tenantPhone" || key === "tenantEmail" ? "tenantContact" : key);
 	}
 
 	// Step 3 — sales state (init via SalesDetailsForm helper once a property is picked)
 	const [salesState, setSalesState] = useState<SalesFormState>(() => initialSalesFormState(null));
 	function patchSales<K extends keyof SalesFormState>(key: K, value: SalesFormState[K]) {
 		setSalesState((s) => ({ ...s, [key]: value }));
+		clearFieldError(key === "buyerPhone" || key === "buyerEmail" ? "buyerContact" : key);
+	}
+
+	function clearFieldError(key: string) {
+		setFieldErrors((e) => {
+			if (!(key in e)) return e;
+			const next = { ...e };
+			delete next[key];
+			return next;
+		});
 	}
 
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+	// Details entered in steps 4–5 are lost on a refresh/close — warn first.
+	useEffect(() => {
+		if (step !== "details" && step !== "preview") return;
+		const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+		window.addEventListener("beforeunload", warn);
+		return () => window.removeEventListener("beforeunload", warn);
+	}, [step]);
+
+	/** Validate the details step; on failure show inline errors and scroll to the first one. */
+	function goToPreview() {
+		const errors = kind === "rental" ? validateRental(rentalState) : validateSales(salesState);
+		setFieldErrors(errors);
+		const first = Object.keys(errors)[0];
+		if (first) {
+			document.getElementById(first)?.scrollIntoView({ behavior: "smooth", block: "center" });
+			return;
+		}
+		setStep("preview");
+	}
 
 	// The PDF embeds web fonts fetched over HTTP. BlobProvider renders eagerly,
 	// so without this gate its first pass can run before the fonts arrive and
@@ -360,8 +395,10 @@ export function DocumentWizard() {
 				});
 				const updated = await updateProperty(property.id, { status: "occupied" });
 				upsertProperty(updated);
+				invalidateCache("tenants");
 				const filename = `kira-${safeFilename(tenant.full_name)}-${safeFilename(property.address_line)}.pdf`;
 				await exportToPDF("rental", rentalData, filename);
+				toast.success("Lease created and contract downloaded.");
 				router.push(`/properties/${updated.id}`);
 				return;
 			}
@@ -391,8 +428,10 @@ export function DocumentWizard() {
 				});
 				const updated = await updateProperty(property.id, { status: "sold" });
 				upsertProperty(updated);
+				invalidateCache("tenants");
 				const filename = `sales-${safeFilename(buyer.full_name)}-${safeFilename(property.address_line)}.pdf`;
 				await exportToPDF("sales", salesData, filename);
+				toast.success("Sale recorded and agreement downloaded.");
 				router.push(`/properties/${updated.id}`);
 				return;
 			}
@@ -403,23 +442,6 @@ export function DocumentWizard() {
 		}
 	}
 
-	const rentalValid =
-		!!property &&
-		rentalState.landlordName.trim().length > 0 &&
-		rentalState.tenantName.trim().length > 0 &&
-		(rentalState.tenantEmail.trim().length > 0 || rentalState.tenantPhone.trim().length > 0) &&
-		Number(rentalState.monthlyRent) > 0 &&
-		rentalState.startDate.length === 10;
-
-	const salesValid =
-		!!property &&
-		salesState.sellerName.trim().length > 0 &&
-		salesState.buyerName.trim().length > 0 &&
-		(salesState.buyerEmail.trim().length > 0 || salesState.buyerPhone.trim().length > 0) &&
-		Number(salesState.salePrice) > 0 &&
-		salesState.saleDate.length === 10;
-
-	const detailsValid = kind === "rental" ? rentalValid : salesValid;
 	const previewData: RentalPDFData | SalesPDFData | null =
 		kind === "rental" ? rentalData : salesData;
 	const previewLabel = kind === "rental" ? "Kira sözleşmesi önizleme" : "Sales agreement preview";
@@ -448,9 +470,7 @@ export function DocumentWizard() {
 				))}
 			</ol>
 
-			{error && (
-				<div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
-			)}
+			{error && <Alert className="mb-4">{error}</Alert>}
 
 			{/* Step 1: type */}
 			{step === "type" && (
@@ -484,9 +504,7 @@ export function DocumentWizard() {
 				<div className="space-y-4">
 					<h2 className="text-lg font-bold text-slate-900">Pick a property</h2>
 					{loadingProperties ? (
-						<div className="flex justify-center py-8">
-							<span className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-						</div>
+						<div className="flex justify-center py-8"><Spinner size="sm" /></div>
 					) : (
 						<PropertyPickerCardList
 							properties={properties}
@@ -517,9 +535,7 @@ export function DocumentWizard() {
 						</p>
 					</div>
 					{loadingClients ? (
-						<div className="flex justify-center py-8">
-							<span className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-						</div>
+						<div className="flex justify-center py-8"><Spinner size="sm" /></div>
 					) : (
 						<ClientPickerCardList
 							clients={clients}
@@ -546,11 +562,15 @@ export function DocumentWizard() {
 						<p className="text-sm text-slate-500 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
 					</div>
 
-					<RentalDetailsForm state={rentalState} onChange={patchRental} />
+					<RentalDetailsForm state={rentalState} onChange={patchRental} errors={fieldErrors} />
+
+					{Object.keys(fieldErrors).length > 0 && (
+						<Alert>Some required fields are missing — check the highlighted fields above.</Alert>
+					)}
 
 					<div className="flex justify-between gap-2 pt-4">
 						<Button variant="ghost" onClick={() => setStep("client")}>← Back</Button>
-						<Button onClick={() => setStep("preview")} disabled={!detailsValid}>Preview →</Button>
+						<Button onClick={goToPreview}>Preview →</Button>
 					</div>
 				</div>
 			)}
@@ -562,11 +582,15 @@ export function DocumentWizard() {
 						<p className="text-sm text-slate-500 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
 					</div>
 
-					<SalesDetailsForm state={salesState} onChange={patchSales} />
+					<SalesDetailsForm state={salesState} onChange={patchSales} errors={fieldErrors} />
+
+					{Object.keys(fieldErrors).length > 0 && (
+						<Alert>Some required fields are missing — check the highlighted fields above.</Alert>
+					)}
 
 					<div className="flex justify-between gap-2 pt-4">
 						<Button variant="ghost" onClick={() => setStep("client")}>← Back</Button>
-						<Button onClick={() => setStep("preview")} disabled={!detailsValid}>Preview →</Button>
+						<Button onClick={goToPreview}>Preview →</Button>
 					</div>
 				</div>
 			)}
@@ -577,17 +601,13 @@ export function DocumentWizard() {
 					<h2 className="text-lg font-bold text-slate-900">Review &amp; generate</h2>
 					<div className="h-[60vh] sm:h-[72vh] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
 						{!fontsLoaded ? (
-							<div className="h-full flex items-center justify-center">
-								<span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-							</div>
+							<div className="h-full flex items-center justify-center"><Spinner /></div>
 						) : (
 						<PDFBlobProvider document={<PDFDocument kind={kind} data={previewData} />}>
 							{({ url, loading, error: blobError }) => {
 								if (loading || !url) {
 									return (
-										<div className="h-full flex items-center justify-center">
-											<span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-										</div>
+										<div className="h-full flex items-center justify-center"><Spinner /></div>
 									);
 								}
 								if (blobError) {

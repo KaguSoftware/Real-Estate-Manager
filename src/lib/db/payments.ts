@@ -47,6 +47,23 @@ export async function recordPayment(input: PaymentInput): Promise<Payment> {
 	return data as Payment;
 }
 
+export async function updatePayment(
+	id: string,
+	patch: Partial<Omit<PaymentInput, "lease_id">>,
+): Promise<Payment> {
+	const { supabase } = await requireUser();
+	const { data, error } = await supabase
+		.from("payments").update(patch).eq("id", id).select().single();
+	if (error) throw error;
+	return data as Payment;
+}
+
+export async function deletePayment(id: string): Promise<void> {
+	const { supabase } = await requireUser();
+	const { error } = await supabase.from("payments").delete().eq("id", id);
+	if (error) throw error;
+}
+
 export async function getLeaseBalance(leaseId: string): Promise<LeaseBalance> {
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase

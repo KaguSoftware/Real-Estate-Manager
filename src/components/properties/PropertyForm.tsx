@@ -10,10 +10,11 @@ import {
 	type PropertyInput,
 } from "@/src/lib/db/properties";
 import type { Property, ListingType, PropertyStatus } from "@/src/lib/db/types";
-import { FormField, Input, Textarea, Select, Button } from "@/src/components/ui";
-import { geocodeAddress } from "@/src/lib/geocode";
-import { resolveAndParseMapsUrl, splitPlaceName, type ResolveResult } from "@/src/lib/maps-url";
-import { MapPin, Loader2, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
+import { FormField, Input, Textarea, Select, Button, Alert, ConfirmDialog, toast } from "@/src/components/ui";
+import type { ReverseAddress } from "@/src/lib/geocode";
+import { splitPlaceName, type ResolveResult } from "@/src/lib/maps-url";
+import { LocationPicker, type LatLon } from "./LocationPicker";
+import { Trash2 } from "lucide-react";
 
 interface Props {
 	mode: "create" | "edit";
@@ -127,14 +128,13 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const [mevkii,    setMevkii]    = useState(initial?.mevkii    ?? "");
 
 	const [busy, setBusy] = useState(false);
+	const [locating, setLocating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-	// Google Maps URL paste path. When set, parsedCoords short-circuits the
-	// Nominatim fallback in handleSubmit.
-	const [mapsUrl, setMapsUrl] = useState("");
-	const [mapsBusy, setMapsBusy] = useState(false);
-	const [mapsHint, setMapsHint] = useState<string | null>(null);
-	const [parsedCoords, setParsedCoords] = useState<{ lat: number; lon: number } | null>(
+	// Pin coordinates — set from a maps link, a map tap/drag, or the eager
+	// geocode that runs at save time when the pin is still empty.
+	const [coords, setCoords] = useState<LatLon | null>(
 		initial?.latitude != null && initial?.longitude != null
 			? { lat: Number(initial.latitude), lon: Number(initial.longitude) }
 			: null,
@@ -142,58 +142,26 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 
 	const addressPreview = joinAddress({ mahalle, street, buildingNo, apartmentNo, district });
 
-	async function handleParseMapsUrl() {
-		const url = mapsUrl.trim();
-		if (!url) {
-			setMapsHint(null);
-			setParsedCoords(null);
-			return;
-		}
-		// In-flight guard: ignore re-triggers (paste + blur can both fire) while a
-		// parse is already running.
-		if (mapsBusy) return;
-		setMapsBusy(true);
-		setMapsHint("Parsing link…");
-		try {
-			const result = await resolveAndParseMapsUrl(url);
+	/** Fill empty address fields from a reverse-geocoded/parsed result. */
+	function autofillAddress(result: ResolveResult) {
+		const f = mapsToFormFields(result);
+		const fill = (val: string | undefined, current: string, setter: (v: string) => void) => {
+			if (val && !current.trim()) setter(val);
+		};
+		fill(f.mahalle, mahalle, setMahalle);
+		fill(f.street, street, setStreet);
+		fill(f.buildingNo, buildingNo, setBuildingNo);
+		fill(f.apartmentNo, apartmentNo, setApartmentNo);
+		fill(f.district, district, setDistrict);
+		fill(f.city, city, setCity);
+		// Mirror into the tapu section where it's still blank.
+		fill(f.mahalle, tapuMahalle, setTapuMahalle);
+		fill(f.mevkii, mevkii, setMevkii);
+	}
 
-			const hasCoords = result.lat != null && result.lon != null;
-			if (hasCoords) setParsedCoords({ lat: result.lat!, lon: result.lon! });
-			else setParsedCoords(null);
-
-			// Autofill — empty fields only, never clobber what the user typed.
-			const f = mapsToFormFields(result);
-			let filled = 0;
-			const fill = (val: string | undefined, current: string, setter: (v: string) => void) => {
-				if (val && !current.trim()) { setter(val); filled++; }
-			};
-			fill(f.mahalle, mahalle, setMahalle);
-			fill(f.street, street, setStreet);
-			fill(f.buildingNo, buildingNo, setBuildingNo);
-			fill(f.apartmentNo, apartmentNo, setApartmentNo);
-			fill(f.district, district, setDistrict);
-			fill(f.city, city, setCity);
-			// Mirror into the tapu section where it's still blank.
-			fill(f.mahalle, tapuMahalle, setTapuMahalle);
-			fill(f.mevkii, mevkii, setMevkii);
-
-			// Three-tier hint.
-			if (hasCoords) {
-				const at = `Pinned at ${result.lat!.toFixed(5)}, ${result.lon!.toFixed(5)}`;
-				if (filled > 0) {
-					setMapsHint(`${at} · filled ${filled} field${filled === 1 ? "" : "s"}`);
-				} else if (result.address || result.placeName) {
-					setMapsHint(`${at} — please check the address fields.`);
-				} else {
-					setMapsHint(`${at} — couldn't auto-read the address, please fill it in.`);
-				}
-			} else {
-				const base = result.error ?? "Could not read this link.";
-				setMapsHint(filled > 0 ? `${base} Filled ${filled} field${filled === 1 ? "" : "s"} from the link name; location not pinned.` : base);
-			}
-		} finally {
-			setMapsBusy(false);
-		}
+	function handleLocationChange(next: LatLon | null, address?: ReverseAddress | null) {
+		setCoords(next);
+		if (next && address) autofillAddress({ lat: next.lat, lon: next.lon, address });
 	}
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -228,24 +196,35 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			mevkii:    mevkii.trim()       || null,
 		};
 
-		// Coordinates: prefer a pasted Google Maps URL (precise, user-confirmed).
-		// Otherwise fall back to Nominatim with the address-section mahalle —
-		// `tapuMahalle` is the title-deed value, often blank and not the one in
-		// the joined address.
+		// Coordinates: prefer the pin (maps link / map tap — precise and
+		// user-confirmed). Otherwise geocode the typed address eagerly, with
+		// visible progress, so the user sees the outcome instead of a silent miss.
 		let geocodeMissed = false;
-		if (parsedCoords) {
-			input.latitude = parsedCoords.lat;
-			input.longitude = parsedCoords.lon;
+		if (coords) {
+			input.latitude = coords.lat;
+			input.longitude = coords.lon;
 		} else {
-			const geo = await geocodeAddress({
-				address_line: joined,
-				mahalle: mahalle.trim() || tapuMahalle.trim() || null,
-				mevkii: input.mevkii,
-				city: input.city,
-			});
+			setLocating(true);
+			const geo = await (async () => {
+				try {
+					const params = new URLSearchParams({ q: joined });
+					const m = mahalle.trim() || tapuMahalle.trim();
+					if (m) params.set("mahalle", m);
+					if (input.mevkii) params.set("mevkii", input.mevkii);
+					if (input.city) params.set("city", input.city);
+					const res = await fetch(`/api/geocode?${params}`);
+					if (!res.ok) return null;
+					return (await res.json()) as { lat: number; lon: number };
+				} catch {
+					return null;
+				}
+			})();
+			setLocating(false);
 			if (geo) {
 				input.latitude = geo.lat;
 				input.longitude = geo.lon;
+				// Drop the pin so the user sees where the address landed.
+				setCoords({ lat: geo.lat, lon: geo.lon });
 			} else {
 				geocodeMissed = true;
 				if (mode === "create") {
@@ -264,12 +243,9 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					: await updateProperty(initial!.id, input);
 			upsertProperty(row);
 			if (geocodeMissed && row.latitude == null) {
-				// Surface a hint in this form for edit mode (user is staying here);
-				// on create the user lands on the detail page where the banner shows.
-				setMapsHint(
-					"Saved without coordinates — Nominatim couldn't find this address. " +
-						"Paste a Google Maps link above and re-save to put this property on the map.",
-				);
+				toast.info("Saved without a map location — set the pin on the map to place this property.");
+			} else {
+				toast.success(mode === "create" ? "Property created." : "Property updated.");
 			}
 			if (mode === "create") {
 				router.push(`/properties/${row.id}`);
@@ -284,14 +260,15 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 
 	async function handleDelete() {
 		if (!initial) return;
-		if (!confirm(`Delete "${initial.address_line}"? This cannot be undone.`)) return;
 		setBusy(true);
 		try {
 			await deleteProperty(initial.id);
 			removeProperty(initial.id);
+			toast.success("Property deleted.");
 			router.push("/");
 			onDone?.();
 		} catch (e) {
+			setConfirmingDelete(false);
 			setError(e instanceof Error ? e.message : String(e));
 		} finally {
 			setBusy(false);
@@ -316,46 +293,9 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			<div className="space-y-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
 				<p className="text-xs font-bold uppercase tracking-wider text-slate-500">Address</p>
 
-				{/* Google Maps link — paste to extract coords + autofill empty fields. */}
-				<FormField label="Google Maps link (optional)">
-					<div className="flex flex-col sm:flex-row gap-2">
-						<Input
-							type="url"
-							value={mapsUrl}
-							onChange={(e) => {
-								setMapsUrl(e.target.value);
-								if (parsedCoords) setParsedCoords(null);
-								if (mapsHint) setMapsHint(null);
-							}}
-							onPaste={(e) => {
-								const pasted = e.clipboardData.getData("text");
-								if (pasted) {
-									setMapsUrl(pasted);
-									setTimeout(() => { void handleParseMapsUrl(); }, 0);
-									e.preventDefault();
-								}
-							}}
-							onBlur={() => { if (mapsUrl.trim() && !parsedCoords) void handleParseMapsUrl(); }}
-							placeholder="https://maps.app.goo.gl/…"
-						/>
-						<Button
-							type="button"
-							variant="secondary"
-							onClick={handleParseMapsUrl}
-							disabled={mapsBusy || !mapsUrl.trim()}
-							className="shrink-0"
-						>
-							{mapsBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-							Parse
-						</Button>
-					</div>
-					{mapsHint && (
-						<p className={`mt-1.5 text-xs inline-flex items-center gap-1 ${parsedCoords ? "text-emerald-700" : "text-amber-700"}`}>
-							{parsedCoords ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
-							<span>{mapsHint}</span>
-						</p>
-					)}
-				</FormField>
+				{/* Location — paste a maps link or tap/drag the pin. Reverse-geocoded
+				    address parts autofill the empty fields below. */}
+				<LocationPicker value={coords} onChange={handleLocationChange} />
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Mahalle (Neighborhood)">
@@ -457,13 +397,11 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 				</FormField>
 			</div>
 
-			{error && (
-				<div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>
-			)}
+			{error && <Alert>{error}</Alert>}
 
 			<div className="flex items-center justify-between gap-2 pt-2">
 				{mode === "edit" ? (
-					<Button type="button" variant="danger" size="md" onClick={handleDelete} disabled={busy} aria-label="Delete property">
+					<Button type="button" variant="danger" size="md" onClick={() => setConfirmingDelete(true)} disabled={busy} aria-label="Delete property">
 						<Trash2 className="w-4 h-4" />
 						<span className="hidden sm:inline">Delete</span>
 					</Button>
@@ -474,10 +412,22 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 						<Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
 					)}
 					<Button type="submit" loading={busy}>
-						{mode === "create" ? "Create property" : "Save changes"}
+						{locating
+							? "Locating address…"
+							: mode === "create" ? "Create property" : "Save changes"}
 					</Button>
 				</div>
 			</div>
+
+			<ConfirmDialog
+				open={confirmingDelete}
+				title="Delete this property?"
+				message={initial ? `"${initial.address_line}" and its photos, leases and payment history will be removed. This cannot be undone.` : undefined}
+				confirmLabel="Delete property"
+				loading={busy}
+				onConfirm={handleDelete}
+				onCancel={() => setConfirmingDelete(false)}
+			/>
 		</form>
 	);
 }

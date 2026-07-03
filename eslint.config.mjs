@@ -8,7 +8,8 @@ const eslintConfig = defineConfig([
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
-    ".next/**",
+    // Anchored + nested (a stray frontend/.next build cache exists in the tree).
+    "**/.next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
