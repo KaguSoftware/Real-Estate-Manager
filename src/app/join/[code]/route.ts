@@ -1,20 +1,26 @@
 /**
  * /join/[code] — invite-link landing. Stores the code in a short-lived cookie
- * and forwards to /onboarding, which auto-accepts it once the visitor is
- * signed in (or right away if they already are). Works for both flows:
- * email invites (auth.admin.inviteUserByEmail redirects here) and the
- * shareable team link.
+ * and forwards the visitor onward:
+ *   - signed out → /signup, which shows "You've been invited to join <Team>"
+ *   - signed in  → /onboarding, which auto-accepts the pending code
+ * Works for both flows: email invites (auth.admin.inviteUserByEmail redirects
+ * here) and the shareable team link.
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/src/lib/supabase/server";
 
 export async function GET(
 	request: NextRequest,
 	{ params }: { params: Promise<{ code: string }> },
 ) {
 	const { code } = await params;
+
+	const supabase = await createClient();
+	const { data: { user } } = await supabase.auth.getUser();
+
 	const url = request.nextUrl.clone();
-	url.pathname = "/onboarding";
+	url.pathname = user ? "/onboarding" : "/signup";
 	url.search = "";
 
 	const res = NextResponse.redirect(url);

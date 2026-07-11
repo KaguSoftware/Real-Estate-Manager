@@ -28,6 +28,16 @@ export async function proxy(request: NextRequest) {
   if (!user) return supabaseResponse // unauthenticated UX is handled client-side
 
   const { pathname } = request.nextUrl
+
+  // Already signed in — /login and /signup have nothing to offer; send them
+  // home (the no-team rule below then bounces team-less users to /onboarding).
+  if (pathname.startsWith('/login') || pathname.startsWith('/signup')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    url.search = ''
+    return NextResponse.redirect(url)
+  }
+
   const allowedWithoutTeam = NO_TEAM_ALLOWED.some((re) => re.test(pathname))
 
   // Single indexed PK lookup; RLS-safe (user can always read their own row).

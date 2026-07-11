@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Menu } from "lucide-react";
 import { useAppStore } from "@/src/store";
-import { AuthModal } from "@/src/components/auth/AuthModal";
+import { NotificationBell } from "@/src/components/notifications/NotificationBell";
 import { NavDrawer } from "./NavDrawer";
 import { Button } from "./Button";
 import { AddMenu } from "./AddMenu";
@@ -27,8 +28,8 @@ interface AppShellProps {
  */
 export function AppShell({ title, subtitle, actions, children, width = "5xl" }: AppShellProps) {
 	const user = useAppStore((s) => s.user);
+	const team = useAppStore((s) => s.team);
 	const [drawerOpen, setDrawerOpen] = useState(false);
-	const [showAuth, setShowAuth] = useState(false);
 
 	const maxW = width === "7xl" ? "max-w-7xl" : width === "3xl" ? "max-w-3xl" : "max-w-5xl";
 
@@ -51,6 +52,7 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 
 					<div className="flex items-center gap-2">
 						{actions}
+						{user && team && <NotificationBell />}
 						{user && <AddMenu />}
 						{user ? (
 							<button
@@ -61,7 +63,7 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 								{user.email.charAt(0)}
 							</button>
 						) : (
-							<Button size="sm" onClick={() => setShowAuth(true)}>Sign in</Button>
+							<Link href="/login"><Button size="sm">Sign in</Button></Link>
 						)}
 					</div>
 				</div>
@@ -72,7 +74,6 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 			<main className={cn("mx-auto py-4 sm:py-6 safe-x", maxW)}>{children}</main>
 
 			<NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-			{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
 		</div>
 	);
 }

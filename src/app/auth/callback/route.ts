@@ -25,11 +25,21 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
 
+  // Team-less users (fresh signups confirming their email) go straight to the
+  // onboarding wizard instead of bouncing through / and the middleware.
+  async function destination() {
+    const { data } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .maybeSingle();
+    return data ? next : "/onboarding";
+  }
+
   if (code) {
     // PKCE flow
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${siteUrl}${next}`);
+      return NextResponse.redirect(`${siteUrl}${await destination()}`);
     }
   } else if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({
@@ -37,7 +47,7 @@ export async function GET(request: NextRequest) {
       type: type as "email",
     });
     if (!error) {
-      return NextResponse.redirect(`${siteUrl}${next}`);
+      return NextResponse.redirect(`${siteUrl}${await destination()}`);
     }
   }
 

@@ -11,7 +11,7 @@ import { CheckCircle2 } from "lucide-react";
 import { useAppStore } from "@/src/store";
 import { createClient } from "@/src/lib/supabase/client";
 import { fetchTeamContext } from "@/src/lib/db/teams";
-import { AppShell, Card, CardLabel, Badge, Button, Alert, SpinnerBlock } from "@/src/components/ui";
+import { AppShell, Card, CardLabel, Badge, Button, Alert, SpinnerBlock, toast } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
 
 interface Plan {
@@ -46,8 +46,17 @@ export default function BillingPage() {
 			.eq("is_active", true)
 			.order("price_monthly", { ascending: true })
 			.then(({ data }) => setPlans((data ?? []) as Plan[]));
-		// Refresh subscription state on arrival (e.g. back from checkout).
-		fetchTeamContext().then(setTeam).catch(() => {});
+		// Refresh subscription state on arrival (e.g. back from checkout) and
+		// celebrate when the checkout actually flipped the subscription on.
+		const wasActive = useAppStore.getState().team?.subscription_status === "active";
+		fetchTeamContext()
+			.then((t) => {
+				setTeam(t);
+				if (t?.subscription_status === "active" && !wasActive) {
+					toast.success("Subscription activated 🎉");
+				}
+			})
+			.catch(() => {});
 	}, [setTeam]);
 
 	async function subscribe(planId: string) {

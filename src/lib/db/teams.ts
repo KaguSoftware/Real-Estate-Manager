@@ -100,9 +100,25 @@ export async function fetchTeamContext(): Promise<TeamContext | null> {
 	};
 }
 
-export async function createTeam(name: string): Promise<string> {
+export type TeamSizeBracket = "solo" | "2-5" | "6-20" | "20+";
+
+export interface CreateTeamInput {
+	name: string;
+	sizeBracket?: TeamSizeBracket;
+	city?: string;
+	country?: string;
+	referralSource?: string;
+}
+
+export async function createTeam(input: CreateTeamInput): Promise<string> {
 	const { supabase } = await requireUser();
-	const { data, error } = await supabase.rpc("create_team", { team_name: name });
+	const { data, error } = await supabase.rpc("create_team", {
+		team_name: input.name,
+		size_bracket: input.sizeBracket ?? null,
+		city: input.city ?? null,
+		country: input.country ?? null,
+		referral_source: input.referralSource ?? null,
+	});
 	if (error) throw error;
 	return data as string;
 }

@@ -1,186 +1,39 @@
 "use client";
 
-import { humanizeError } from "@/src/lib/errors";
+// In-app auth sheet. The actual forms (and the post-auth redirect logic that
+// sends team-less users to /onboarding) live in AuthForm, shared with the
+// dedicated /login and /signup pages.
+
 import { useState } from "react";
-import { createClient } from "@/src/lib/supabase/client";
-import { Sheet, Button, FormField, Input, Alert, cn } from "@/src/components/ui";
+import { Sheet, cn } from "@/src/components/ui";
+import { AuthForm, type AuthMode } from "./AuthForm";
 
 interface AuthModalProps {
-  onClose: () => void;
-}
-
-type Tab = "signin" | "signup";
-type SignInMode = "password" | "magic";
-
-// Email links should always point at the deployed app, even when the sign-up
-// happens from a dev session; falls back to the current origin locally.
-function authCallbackUrl() {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-  return `${base.replace(/\/$/, "")}/auth/callback`;
+	onClose: () => void;
 }
 
 export function AuthModal({ onClose }: AuthModalProps) {
-  const [tab, setTab] = useState<Tab>("signin");
-  const [signInMode, setSignInMode] = useState<SignInMode>("password");
+	const [mode, setMode] = useState<AuthMode>("login");
 
-  // Shared
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+	const tabBtn = (m: AuthMode, label: string) => (
+		<button
+			onClick={() => setMode(m)}
+			className={cn(
+				"flex-1 h-9 text-sm font-semibold rounded-lg transition-colors",
+				mode === m ? "bg-white text-slate-800 shadow-soft" : "text-slate-500 hover:text-slate-700",
+			)}
+		>
+			{label}
+		</button>
+	);
 
-  function reset() {
-    setEmail("");
-    setPassword("");
-    setConfirmPassword("");
-    setStatus("idle");
-    setErrorMsg("");
-    setSuccessMsg("");
-  }
-
-  function switchTab(t: Tab) {
-    setTab(t);
-    setSignInMode("password");
-    reset();
-  }
-
-  async function handleSignIn(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus("loading");
-    setErrorMsg("");
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); }
-    else { setStatus("done"); onClose(); }
-  }
-
-  async function handleMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus("loading");
-    setErrorMsg("");
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: authCallbackUrl() },
-    });
-    if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); }
-    else { setStatus("done"); setSuccessMsg(`Magic link sent to ${email.trim()}. Check your inbox.`); }
-  }
-
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault();
-    if (password !== confirmPassword) {
-      setStatus("error");
-      setErrorMsg("Passwords do not match.");
-      return;
-    }
-    setStatus("loading");
-    setErrorMsg("");
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: { emailRedirectTo: authCallbackUrl() },
-    });
-    if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); }
-    else { setStatus("done"); setSuccessMsg("Check your email to confirm your account before signing in."); }
-  }
-
-  const tabBtn = (t: Tab, label: string) => (
-    <button
-      onClick={() => switchTab(t)}
-      className={cn(
-        "flex-1 h-9 text-sm font-semibold rounded-lg transition-colors",
-        tab === t ? "bg-white text-slate-800 shadow-soft" : "text-slate-500 hover:text-slate-700",
-      )}
-    >
-      {label}
-    </button>
-  );
-
-  return (
-    <Sheet open onClose={onClose} title="Account">
-      {/* Tabs */}
-      <div className="flex gap-1 mb-5 bg-slate-100 rounded-xl p-1">
-        {tabBtn("signin", "Sign In")}
-        {tabBtn("signup", "Sign Up")}
-      </div>
-
-      {/* Sign In tab */}
-      {tab === "signin" && (
-        <>
-          {status === "done" && successMsg ? (
-            <div className="text-center space-y-3">
-              <div className="text-4xl">📧</div>
-              <p className="text-slate-700 font-medium">{successMsg}</p>
-              <Button block variant="outline" onClick={onClose} className="mt-2">Done</Button>
-            </div>
-          ) : signInMode === "password" ? (
-            <form onSubmit={handleSignIn} className="space-y-4">
-              <FormField label="Email address">
-                <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-              </FormField>
-              <FormField label="Password">
-                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-              </FormField>
-              {status === "error" && <Alert>{errorMsg}</Alert>}
-              <Button type="submit" block loading={status === "loading"}>Sign In</Button>
-              <div className="text-center">
-                <button type="button" onClick={() => { setSignInMode("magic"); reset(); }}
-                  className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2">
-                  Send magic link instead
-                </button>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleMagicLink} className="space-y-4">
-              <p className="text-sm text-slate-500">
-                Enter your email and we&apos;ll send you a sign-in link — no password needed.
-              </p>
-              <FormField label="Email address">
-                <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-              </FormField>
-              {status === "error" && <Alert>{errorMsg}</Alert>}
-              <Button type="submit" block loading={status === "loading"}>Send magic link</Button>
-              <div className="text-center">
-                <button type="button" onClick={() => { setSignInMode("password"); reset(); }}
-                  className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2">
-                  Back to password sign in
-                </button>
-              </div>
-            </form>
-          )}
-        </>
-      )}
-
-      {/* Sign Up tab */}
-      {tab === "signup" && (
-        <>
-          {status === "done" ? (
-            <div className="text-center space-y-3">
-              <div className="text-4xl">✉️</div>
-              <p className="text-slate-700 font-medium">{successMsg}</p>
-              <Button block variant="outline" onClick={onClose} className="mt-2">Done</Button>
-            </div>
-          ) : (
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <FormField label="Email address">
-                <Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-              </FormField>
-              <FormField label="Password">
-                <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-              </FormField>
-              <FormField label="Confirm password">
-                <Input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" />
-              </FormField>
-              {status === "error" && <Alert>{errorMsg}</Alert>}
-              <Button type="submit" block loading={status === "loading"}>Create Account</Button>
-            </form>
-          )}
-        </>
-      )}
-    </Sheet>
-  );
+	return (
+		<Sheet open onClose={onClose} title="Account">
+			<div className="flex gap-1 mb-5 bg-slate-100 rounded-xl p-1">
+				{tabBtn("login", "Sign In")}
+				{tabBtn("signup", "Sign Up")}
+			</div>
+			<AuthForm key={mode} mode={mode} standalone={false} onClose={onClose} />
+		</Sheet>
+	);
 }

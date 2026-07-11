@@ -14,6 +14,8 @@ export interface Profile {
 	id: string;
 	email: string;
 	display_name: string | null;
+	full_name: string | null;
+	phone: string | null;
 	app_role: GlobalRole;
 	created_at: string;
 	updated_at: string;
