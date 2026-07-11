@@ -1,6 +1,8 @@
-# Kagu Real Estate
+# Kagu Emlak
 
-A property-management + client-CRM app for a Turkish real-estate agency: listings with tapu (title-deed) fields, leads with preference matching, tenants, leases (kira sözleşmesi), rent payments, and client-ready PDF contracts with Arabic/RTL support.
+A multi-tenant SaaS for Turkish real-estate agencies: listings with tapu (title-deed) fields, leads with preference matching, tenants, leases (kira sözleşmesi), rent payments, and client-ready PDF contracts with Arabic/RTL support. Fully Turkish UI with light/dark themes, 14-day team trials, and iyzico subscription billing (provider wiring pending API keys).
+
+> **Launching?** Work through [LAUNCH_RUNBOOK.md](LAUNCH_RUNBOOK.md) — the ordered checklist of dashboard/env steps that code can't do.
 
 ## Stack
 
@@ -14,7 +16,7 @@ A property-management + client-CRM app for a Turkish real-estate agency: listing
 
 ## Getting started
 
-1. Set up Supabase (project, migrations `supabase/migrations/0001`–`0009` in order, magic-link auth) — see [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
+1. Set up Supabase (project, migrations `supabase/migrations/0001`–`0015` in order, magic-link auth) — see [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
 2. `cp .env.example .env.local` and fill in the Supabase URL/keys.
 3. Install and run:
 

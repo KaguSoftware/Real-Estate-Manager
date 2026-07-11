@@ -22,6 +22,12 @@ Migrations live in `supabase/migrations/` and must run **in numeric order**:
 | `0007_rental_kira.sql` | Turkish kira-sözleşmesi lease fields (guarantor, utilities, inventory) |
 | `0008_profile_settings.sql` | per-user `profiles.settings` JSONB (attention thresholds) |
 | `0009_documents_bucket.sql` | private `documents` storage bucket for generated contract PDFs |
+| `0010_multitenant.sql` | teams, memberships, invites, plans/subscriptions/billing, team-scoped RLS (**truncates business data**) |
+| `0011_onboarding_notifications.sql` | onboarding fields + in-app notifications |
+| `0012_team_branding.sql` | team logo (`team-logos` bucket) + PDF palette |
+| `0013_profiles_role_guard.sql` | privilege-escalation fix (`app_role` pinned) |
+| `0014_seats_lifecycle_hardening.sql` | seat limits, team delete/leave/transfer, `search_path` pins |
+| `0015_turkish_notifications_cron.sql` | Turkish notification copy + `run_trial_checks()` cron RPC |
 
 ### Option A — SQL Editor (quickest)
 
