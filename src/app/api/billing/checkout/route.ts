@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/src/lib/supabase/server";
 import { getPaymentProvider } from "@/src/lib/billing";
+import { isRateLimited } from "@/src/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
 	const supabase = await createClient();
@@ -14,6 +15,10 @@ export async function POST(request: NextRequest) {
 
 	const { data: teamId } = await supabase.rpc("user_team_id");
 	if (!teamId) return NextResponse.json({ error: "No team" }, { status: 403 });
+	// Per-team checkout cap (10/min) — cheap guard against accidental/abusive spamming.
+	if (await isRateLimited(`checkout:${teamId}`, 10, 60_000)) {
+		return NextResponse.json({ error: "Too many requests — try again shortly" }, { status: 429 });
+	}
 	const { data: isOwner } = await supabase.rpc("is_team_owner", { t: teamId });
 	if (!isOwner) {
 		return NextResponse.json({ error: "Only the team owner can manage billing" }, { status: 403 });

@@ -10,19 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/src/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-
-// Simple in-memory rate limit: max 20 invites per user per hour per instance.
-const sent = new Map<string, { count: number; reset: number }>();
-function rateLimited(userId: string): boolean {
-	const now = Date.now();
-	const entry = sent.get(userId);
-	if (!entry || entry.reset < now) {
-		sent.set(userId, { count: 1, reset: now + 3_600_000 });
-		return false;
-	}
-	entry.count += 1;
-	return entry.count > 20;
-}
+import { isRateLimited } from "@/src/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
 	const supabase = await createClient();
@@ -34,7 +22,8 @@ export async function POST(request: NextRequest) {
 	if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
 		return NextResponse.json({ error: "A valid email is required" }, { status: 400 });
 	}
-	if (rateLimited(user.id)) {
+	// Max 20 invites per user per hour (distributed when Upstash is configured).
+	if (await isRateLimited(`invite:${user.id}`, 20, 3_600_000)) {
 		return NextResponse.json({ error: "Too many invites — try again later" }, { status: 429 });
 	}
 

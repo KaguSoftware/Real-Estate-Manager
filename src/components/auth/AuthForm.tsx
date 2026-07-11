@@ -18,7 +18,7 @@ import { useAppStore } from "@/src/store";
 import { toast, Button, FormField, Input, Alert } from "@/src/components/ui";
 
 export type AuthMode = "login" | "signup";
-type SignInMode = "password" | "magic";
+type SignInMode = "password" | "magic" | "forgot";
 
 // Must match the cookie set by /join/[code]/route.ts
 export const PENDING_INVITE_COOKIE = "kagu_pending_invite";
@@ -108,6 +108,20 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 		else { setStatus("done"); setSuccessMsg(`Magic link sent to ${email.trim()}. Check your inbox.`); }
 	}
 
+	async function handleForgot(e: React.FormEvent) {
+		e.preventDefault();
+		setStatus("loading");
+		setErrorMsg("");
+		const supabase = createClient();
+		// The recovery link lands on /auth/callback, which exchanges the code and
+		// then forwards to /reset-password to set a new password.
+		const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+			redirectTo: `${authCallbackUrl()}?next=/reset-password`,
+		});
+		if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); }
+		else { setStatus("done"); setSuccessMsg(`If an account exists for ${email.trim()}, a reset link is on its way.`); }
+	}
+
 	async function handleSignUp(e: React.FormEvent) {
 		e.preventDefault();
 		if (password !== confirmPassword) {
@@ -161,14 +175,18 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 						</FormField>
 						{status === "error" && <Alert>{errorMsg}</Alert>}
 						<Button type="submit" block loading={status === "loading"}>Sign In</Button>
-						<div className="text-center">
+						<div className="text-center space-x-3">
 							<button type="button" onClick={() => setSignInMode("magic")}
 								className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2">
 								Send magic link instead
 							</button>
+							<button type="button" onClick={() => { setSignInMode("forgot"); setStatus("idle"); setErrorMsg(""); }}
+								className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2">
+								Forgot password?
+							</button>
 						</div>
 					</form>
-				) : (
+				) : signInMode === "magic" ? (
 					<form onSubmit={handleMagicLink} className="space-y-4">
 						<p className="text-sm text-slate-500">
 							Enter your email and we&apos;ll send you a sign-in link — no password needed.
@@ -178,6 +196,23 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 						</FormField>
 						{status === "error" && <Alert>{errorMsg}</Alert>}
 						<Button type="submit" block loading={status === "loading"}>Send magic link</Button>
+						<div className="text-center">
+							<button type="button" onClick={() => setSignInMode("password")}
+								className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2">
+								Back to password sign in
+							</button>
+						</div>
+					</form>
+				) : (
+					<form onSubmit={handleForgot} className="space-y-4">
+						<p className="text-sm text-slate-500">
+							Enter your email and we&apos;ll send you a link to reset your password.
+						</p>
+						<FormField label="Email address">
+							<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+						</FormField>
+						{status === "error" && <Alert>{errorMsg}</Alert>}
+						<Button type="submit" block loading={status === "loading"}>Send reset link</Button>
 						<div className="text-center">
 							<button type="button" onClick={() => setSignInMode("password")}
 								className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2">

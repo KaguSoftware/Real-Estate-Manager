@@ -8,7 +8,7 @@ import { getTeamLogoUrl } from "@/src/lib/db/teams";
 import { useAppStore } from "@/src/store";
 import { cn } from "./cn";
 import { useFocusTrap } from "./useFocusTrap";
-import { LayoutDashboard, Home, Users, ContactRound, FilePlus2, Shield, UsersRound, CreditCard, LogOut, X } from "lucide-react";
+import { LayoutDashboard, Home, Users, ContactRound, FilePlus2, Shield, UsersRound, CreditCard, UserCog, LogOut, X } from "lucide-react";
 
 interface NavItem {
 	href: string;
@@ -25,6 +25,7 @@ const NAV: NavItem[] = [
 	{ href: "/documents/new", label: "New document", icon: FilePlus2 },
 	{ href: "/team", label: "Team", icon: UsersRound },
 	{ href: "/settings/billing", label: "Billing", icon: CreditCard },
+	{ href: "/settings/profile", label: "Profile", icon: UserCog },
 	{ href: "/admin", label: "Admin", icon: Shield, adminOnly: true },
 ];
 

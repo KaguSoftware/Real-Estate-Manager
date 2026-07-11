@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseLongMapsUrl } from "@/src/lib/maps-url";
 import { reverseGeocode } from "@/src/lib/geocode";
+import { isRateLimited, clientIp } from "@/src/lib/rateLimit";
 
 // SSRF guard: only follow links to Google's own hosts. Includes long-URL hosts so
 // already-expanded links can still round-trip here for reverse geocoding.
@@ -23,7 +24,46 @@ const DESKTOP_UA =
 
 const COORD_RE = /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/;
 
+const MAX_REDIRECTS = 8;
+const FETCH_TIMEOUT_MS = 8000;
+
+// Follows redirects one hop at a time, re-checking the host against the allowlist
+// on every hop. Google short-links can otherwise redirect anywhere, so a plain
+// `redirect: "follow"` would let this route reach arbitrary (incl. internal) hosts.
+async function fetchAllowedOnly(start: URL): Promise<Response> {
+	let current = start;
+	for (let i = 0; i <= MAX_REDIRECTS; i++) {
+		if (!ALLOWED_HOSTS.has(current.hostname)) {
+			throw new Error("Redirect to a host that is not allowed");
+		}
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+		let res: Response;
+		try {
+			res = await fetch(current.toString(), {
+				redirect: "manual",
+				headers: { "User-Agent": DESKTOP_UA },
+				signal: controller.signal,
+			});
+		} finally {
+			clearTimeout(timer);
+		}
+		if (res.status >= 300 && res.status < 400) {
+			const loc = res.headers.get("location");
+			if (!loc) return res;
+			current = new URL(loc, current); // validated at the top of the next iteration
+			continue;
+		}
+		return res;
+	}
+	throw new Error("Too many redirects");
+}
+
 export async function GET(req: NextRequest) {
+	// This route makes an outbound fetch per call — cap per-IP to blunt SSRF probing / abuse.
+	if (await isRateLimited(`resolve-maps:${clientIp(req)}`, 20, 60_000)) {
+		return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+	}
 	const raw = req.nextUrl.searchParams.get("url");
 	if (!raw) {
 		return NextResponse.json({ error: "Missing ?url" }, { status: 400 });
@@ -40,14 +80,12 @@ export async function GET(req: NextRequest) {
 		return NextResponse.json({ error: "Host not allowed" }, { status: 400 });
 	}
 
-	// Follow redirects and grab the final URL + a bounded slice of the body.
+	// Follow redirects (host-checked per hop) and grab the final URL + a bounded
+	// slice of the body.
 	let finalUrl = parsed.toString();
 	let body = "";
 	try {
-		const res = await fetch(parsed.toString(), {
-			redirect: "follow",
-			headers: { "User-Agent": DESKTOP_UA },
-		});
+		const res = await fetchAllowedOnly(parsed);
 		finalUrl = res.url || finalUrl;
 		// Coords / the real maps URL often live in the HTML even when finalUrl is a
 		// consent page. Cap the read so we don't buffer megabytes.

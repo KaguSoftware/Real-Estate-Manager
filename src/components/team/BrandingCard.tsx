@@ -29,6 +29,10 @@ export function BrandingCard() {
 
 	if (!team) return null;
 	const logoUrl = getTeamLogoUrl(team.logo_path);
+	// Branding writes are gated by team_is_writable() in RLS; when the trial has
+	// lapsed with no active subscription, an upload would come back as a raw
+	// "no permission" error. Surface the paywall reason instead and lock the controls.
+	const locked = !team.is_writable;
 
 	async function refreshTeam() {
 		try { setTeam(await fetchTeamContext()); } catch { /* stale team is fine */ }
@@ -91,6 +95,15 @@ export function BrandingCard() {
 
 			{error && <div className="mt-3"><Alert tone="error">{error}</Alert></div>}
 
+			{locked && (
+				<div className="mt-3">
+					<Alert tone="warning">
+						Your trial has ended. Reactivate your subscription to change your logo
+						and document colors.
+					</Alert>
+				</div>
+			)}
+
 			<div className="mt-4 flex items-center gap-4">
 				<div className="h-16 w-32 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden">
 					{logoUrl ? (
@@ -102,11 +115,11 @@ export function BrandingCard() {
 				</div>
 				<div className="flex flex-col gap-2">
 					<input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={onPickLogo} />
-					<Button variant="outline" size="sm" loading={busy === "logo"} onClick={() => fileRef.current?.click()}>
+					<Button variant="outline" size="sm" disabled={locked} loading={busy === "logo"} onClick={() => fileRef.current?.click()}>
 						<ImagePlus className="w-4 h-4" /> {logoUrl ? "Replace logo" : "Upload logo"}
 					</Button>
 					{logoUrl && (
-						<Button variant="ghost" size="sm" loading={busy === "remove"} onClick={onRemoveLogo}>
+						<Button variant="ghost" size="sm" disabled={locked} loading={busy === "remove"} onClick={onRemoveLogo}>
 							<Trash2 className="w-4 h-4" /> Remove
 						</Button>
 					)}
@@ -122,7 +135,7 @@ export function BrandingCard() {
 							key={p.id}
 							type="button"
 							onClick={() => onPalette(p.id)}
-							disabled={busy !== null}
+							disabled={busy !== null || locked}
 							aria-pressed={team.brand_palette === p.id}
 							className={cn(
 								"flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-colors",

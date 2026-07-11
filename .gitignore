@@ -42,3 +42,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# internal audit notes — not for the repo
+PRODUCTION_READINESS.md
+
+# Sentry Config File
+.env.sentry-build-plugin

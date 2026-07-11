@@ -6,7 +6,10 @@ import { mockProvider } from "./mock";
 export function getPaymentProvider(): PaymentProvider {
 	const name = process.env.BILLING_PROVIDER ?? "iyzico";
 	if (name === "mock") {
-		if (process.env.NODE_ENV === "production" && process.env.ALLOW_MOCK_BILLING !== "1") {
+		// The mock provider authenticates webhooks by a query param and trusts the
+		// team_id in the URL, so anyone reaching /api/billing/webhook could forge a
+		// subscription. It must never be reachable in production — no env escape hatch.
+		if (process.env.NODE_ENV === "production") {
 			throw new Error("mock billing provider is disabled in production");
 		}
 		return mockProvider;

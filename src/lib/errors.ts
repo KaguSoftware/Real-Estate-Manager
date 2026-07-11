@@ -1,6 +1,7 @@
 // Map raw Supabase/Postgres errors to messages a non-technical user can act on.
 
 import { useAppStore } from "@/src/store";
+import { reportError } from "./reportError";
 
 interface PgLikeError {
 	code?: string;
@@ -55,5 +56,9 @@ export function humanizeError(e: unknown): string {
 		return "Couldn't reach the server. Check your connection and try again.";
 	if (/row-level security/i.test(raw)) return "You don't have permission to do that.";
 
+	// Nothing matched — this is an unexpected failure. Report it (Sentry when
+	// configured) before showing the generic fallback so prod breakage surfaces
+	// to us, not only to customers.
+	reportError(e);
 	return raw || "Something went wrong. Please try again.";
 }

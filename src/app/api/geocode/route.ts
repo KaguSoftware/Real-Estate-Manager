@@ -8,8 +8,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { geocodeAddress, reverseGeocode } from "@/src/lib/geocode";
+import { isRateLimited, clientIp } from "@/src/lib/rateLimit";
 
 export async function GET(req: NextRequest) {
+	// Per-IP abuse limit (30/min) on top of the upstream 1 req/s politeness throttle.
+	if (await isRateLimited(`geocode:${clientIp(req)}`, 30, 60_000)) {
+		return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+	}
 	const p = req.nextUrl.searchParams;
 
 	const latRaw = p.get("lat");

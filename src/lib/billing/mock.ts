@@ -15,7 +15,9 @@ export const mockProvider: PaymentProvider = {
 		url.searchParams.set("mock", "1");
 		url.searchParams.set("team_id", teamId);
 		url.searchParams.set("plan_id", planId);
-		url.searchParams.set("return_to", returnUrl);
+		// Relative path only — the webhook route rejects absolute URLs to avoid
+		// becoming an open redirect.
+		url.searchParams.set("return_to", new URL(returnUrl).pathname + new URL(returnUrl).search);
 		return { url: url.toString() };
 	},
 

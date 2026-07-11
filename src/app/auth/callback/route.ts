@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as string | null;
-  const next = searchParams.get("next") ?? "/";
+  // Force a same-origin relative path: reject absolute URLs and protocol-relative
+  // (`//host`) or backslash (`/\host`) tricks so `next` can't become an open redirect.
+  const nextParam = searchParams.get("next");
+  const next = nextParam && /^\/(?![/\\])/.test(nextParam) ? nextParam : "/";
 
   // Use NEXT_PUBLIC_SITE_URL if set (production), otherwise fall back to request origin.
   // This avoids http:// vs https:// mismatches on Vercel.

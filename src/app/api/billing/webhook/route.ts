@@ -78,9 +78,12 @@ async function handle(request: NextRequest): Promise<NextResponse> {
 	}
 
 	// Mock-provider "checkout" arrives as a browser GET — bounce back to the app.
-	const returnTo = request.nextUrl.searchParams.get("return_to");
-	if (request.method === "GET" && returnTo?.startsWith("http")) {
-		return NextResponse.redirect(returnTo) as unknown as NextResponse;
+	// Only same-origin relative paths are allowed, never an absolute URL, so this
+	// cannot be turned into an open redirect.
+	if (request.method === "GET") {
+		const returnTo = request.nextUrl.searchParams.get("return_to");
+		const safePath = returnTo && /^\/(?!\/)/.test(returnTo) ? returnTo : "/settings/billing";
+		return NextResponse.redirect(new URL(safePath, request.nextUrl.origin)) as unknown as NextResponse;
 	}
 	return NextResponse.json({ ok: true });
 }

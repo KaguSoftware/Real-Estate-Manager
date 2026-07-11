@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes a signed-in user may visit BEFORE they belong to a team.
-const NO_TEAM_ALLOWED = [/^\/onboarding/, /^\/join\//, /^\/auth\//, /^\/api\//]
+const NO_TEAM_ALLOWED = [/^\/onboarding/, /^\/join\//, /^\/auth\//, /^\/api\//, /^\/reset-password/]
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
