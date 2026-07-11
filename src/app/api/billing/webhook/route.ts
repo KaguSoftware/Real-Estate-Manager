@@ -22,7 +22,7 @@ function service() {
 	);
 }
 
-async function applyEvent(event: NormalizedEvent): Promise<void> {
+async function applyEvent(event: NormalizedEvent, providerName: string): Promise<void> {
 	const db = service();
 
 	// Idempotency ledger — replayed events are no-ops.
@@ -37,7 +37,7 @@ async function applyEvent(event: NormalizedEvent): Promise<void> {
 		throw ledgerErr;
 	}
 
-	const patch: Record<string, unknown> = {};
+	const patch: Record<string, unknown> = { provider: providerName };
 	switch (event.type) {
 		case "payment_succeeded":
 			patch.status = "active";
@@ -47,9 +47,23 @@ async function applyEvent(event: NormalizedEvent): Promise<void> {
 				patch.provider_subscription_id = event.providerSubscriptionId;
 			}
 			break;
-		case "payment_failed":
+		case "payment_failed": {
 			patch.status = "past_due";
+			// team_is_writable grants past_due teams current_period_end + 7 days.
+			// A renewal failure arrives when current_period_end ≈ now, so leaving it
+			// untouched would collapse the advertised grace to zero — float it to
+			// now() (never backwards) so the 7 days actually run from the failure.
+			const { data: sub } = await db
+				.from("subscriptions")
+				.select("current_period_end")
+				.eq("team_id", event.teamId)
+				.maybeSingle();
+			const existing = sub?.current_period_end ? new Date(sub.current_period_end).getTime() : 0;
+			if (existing < Date.now()) {
+				patch.current_period_end = new Date().toISOString();
+			}
 			break;
+		}
 		case "subscription_canceled":
 			patch.status = "canceled";
 			break;
@@ -70,7 +84,7 @@ async function handle(request: NextRequest): Promise<NextResponse> {
 	}
 
 	try {
-		await applyEvent(event);
+		await applyEvent(event, provider.name);
 	} catch (e) {
 		// Non-200 → provider retries; idempotency ledger makes retries safe.
 		console.error("billing webhook failed", e);

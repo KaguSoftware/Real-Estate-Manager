@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 80" fill="none">
-  <!-- Gen -->
-  <text x="8" y="62" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-style="italic" font-size="58" fill="#2233CC">Gen</text>
-  <!-- Lightning bolt replacing the B -->
-  <polygon points="118,8 103,44 115,44 100,72 125,36 112,36 128,8" fill="#CCFF00"/>
-  <!-- uzz -->
-  <text x="122" y="62" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-style="italic" font-size="58" fill="#2233CC">uzz</text>
-</svg>

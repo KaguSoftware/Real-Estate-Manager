@@ -18,3 +18,10 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      # Catches build-only breakage (RSC boundaries, metadata, Sentry plugin).
+      # Dummy Supabase env lets `next build` prerender without a real project;
+      # SENTRY_AUTH_TOKEN is absent in CI so source-map upload is skipped.
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
