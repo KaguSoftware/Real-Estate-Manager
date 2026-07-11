@@ -223,11 +223,19 @@ export async function leaveTeam(): Promise<void> {
 	if (error) throw error;
 }
 
-/** Owner-only (RPC), irreversible: cascades every table + storage objects. */
+/** Owner-only, irreversible: cascades every table, then storage cleanup.
+ *  Goes through /api/team/delete because storage removal needs the service
+ *  role (the delete_team RPC can't touch storage.objects — migration 0016). */
 export async function deleteTeam(): Promise<void> {
-	const { supabase } = await requireUser();
-	const { error } = await supabase.rpc("delete_team", { confirmation: "DELETE" });
-	if (error) throw error;
+	const res = await fetch("/api/team/delete", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ confirmation: "DELETE" }),
+	});
+	if (!res.ok) {
+		const json = (await res.json().catch(() => null)) as { error?: string } | null;
+		throw new Error(json?.error || "Ekip silinemedi");
+	}
 }
 
 export async function renameTeam(name: string): Promise<void> {
