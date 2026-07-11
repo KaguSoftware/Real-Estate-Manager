@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * ThemeToggle — dark (default, signature look) / light, persisted in
- * localStorage("kagu-theme"). Dark needs no attribute; light is an explicit
- * data-theme="estate". An inline boot script in the root layout applies the
- * stored choice before hydration, so there is never a flash.
+ * ThemeToggle — light (default) / dark, persisted in
+ * localStorage("kagu-theme"). Light needs no attribute; dark is an explicit
+ * data-theme="estate-dark". An inline boot script in the root layout applies
+ * the stored choice before hydration, so there is never a flash.
  */
 
 import { useState, useSyncExternalStore } from "react";
@@ -17,32 +17,32 @@ const STORAGE_KEY = "kagu-theme";
 
 export function applyTheme(pref: ThemePref) {
 	const root = document.documentElement;
-	if (pref === "light") root.setAttribute("data-theme", "estate");
+	if (pref === "dark") root.setAttribute("data-theme", "estate-dark");
 	else root.removeAttribute("data-theme");
 }
 
 const OPTIONS: { value: ThemePref; label: string; Icon: typeof Sun }[] = [
-	{ value: "dark", label: "Koyu", Icon: Moon },
 	{ value: "light", label: "Açık", Icon: Sun },
+	{ value: "dark", label: "Koyu", Icon: Moon },
 ];
 
 const emptySubscribe = () => () => {};
 function readStoredPref(): ThemePref {
-	return localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
+	return localStorage.getItem(STORAGE_KEY) === "dark" ? "dark" : "light";
 }
 
 export function ThemeToggle({ className }: { className?: string }) {
-	// Server snapshot renders "dark" (the default); the client snapshot
+	// Server snapshot renders "light" (the default); the client snapshot
 	// supplies the stored choice right after hydration (the visual theme is
 	// already correct pre-hydration via the boot script). Picks made in this
 	// session live in local state layered over the stored value.
-	const stored = useSyncExternalStore(emptySubscribe, readStoredPref, () => "dark" as ThemePref);
+	const stored = useSyncExternalStore(emptySubscribe, readStoredPref, () => "light" as ThemePref);
 	const [override, setOverride] = useState<ThemePref | null>(null);
 	const pref = override ?? stored;
 
 	function onPick(next: ThemePref) {
 		setOverride(next);
-		if (next === "light") localStorage.setItem(STORAGE_KEY, "light");
+		if (next === "dark") localStorage.setItem(STORAGE_KEY, "dark");
 		else localStorage.removeItem(STORAGE_KEY);
 		applyTheme(next);
 	}

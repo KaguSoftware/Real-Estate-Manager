@@ -1,18 +1,21 @@
 @import "tailwindcss";
-@plugin "daisyui";
+/* Stock daisyUI themes off — otherwise built-in "dark" ships a
+   prefers-color-scheme:dark block that would override our light default for
+   system-dark users. Only estate / estate-dark below exist. */
+@plugin "daisyui" {
+	themes: false;
+}
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Modern-luxury design language: warm near-black surfaces with champagne
-   gold accents (default, "estate-dark") and an ivory + bronze light
-   counterpart ("estate"). Sharper radii, deep soft shadows, serif display
-   headings (see .font-display / --font-display in layout.tsx).
-   Dark is the signature look — applied when no data-theme attribute is set;
-   light is an explicit choice via data-theme="estate" (ThemeToggle).
+   Modern-luxury design language: warm ivory surfaces with bronze-gold
+   accents (default, "estate") and a near-black + champagne dark
+   counterpart ("estate-dark"). Sharper radii, deep soft shadows, serif
+   display headings (see .font-display / --font-display in layout.tsx).
+   Light is the default — applied when no data-theme attribute is set;
+   dark is an explicit choice via data-theme="estate-dark" (ThemeToggle).
    ───────────────────────────────────────────────────────────────────────── */
 @plugin "daisyui/theme" {
 	name: "estate-dark";
-	default: true;
-	prefersdark: true;
 	color-scheme: dark;
 
 	/* Warm charcoal surface ramp */
@@ -50,10 +53,11 @@
 	--noise: 0;
 }
 
-/* Light counterpart: warm ivory surfaces, bronze-gold accent. Explicit
-   opt-in only (data-theme="estate"). */
+/* Default light theme: warm ivory surfaces, bronze-gold accent. Applies
+   when no data-theme attribute is set. */
 @plugin "daisyui/theme" {
 	name: "estate";
+	default: true;
 	prefersdark: false;
 	color-scheme: light;
 
@@ -92,21 +96,21 @@
 }
 
 /* Design tokens used by the shared UI primitives. Shadow depth is themed via
-   the custom properties below (dark default; lighter under "estate"). */
+   the custom properties below (light default; deeper under "estate-dark"). */
 @theme {
 	--shadow-soft: var(--lx-shadow-soft);
 	--shadow-card: var(--lx-shadow-card);
 	--shadow-pop: var(--lx-shadow-pop);
 }
 :root {
-	--lx-shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.3);
-	--lx-shadow-card: 0 2px 6px 0 rgb(0 0 0 / 0.25), 0 12px 32px -12px rgb(0 0 0 / 0.4);
-	--lx-shadow-pop: 0 16px 48px -8px rgb(0 0 0 / 0.6);
-}
-[data-theme="estate"] {
 	--lx-shadow-soft: 0 1px 2px 0 rgb(63 51 24 / 0.06), 0 1px 3px 0 rgb(63 51 24 / 0.07);
 	--lx-shadow-card: 0 1px 3px 0 rgb(63 51 24 / 0.07), 0 6px 20px -6px rgb(63 51 24 / 0.1);
 	--lx-shadow-pop: 0 10px 36px -6px rgb(63 51 24 / 0.22);
+}
+[data-theme="estate-dark"] {
+	--lx-shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+	--lx-shadow-card: 0 2px 6px 0 rgb(0 0 0 / 0.25), 0 12px 32px -12px rgb(0 0 0 / 0.4);
+	--lx-shadow-pop: 0 16px 48px -8px rgb(0 0 0 / 0.6);
 }
 
 /* Serif display face for headings/large numerals — the luxury signature. */
@@ -117,9 +121,9 @@
 	}
 }
 
-/* Leaflet tiles: OSM only ships light tiles — recolor them whenever the
-   light theme is not explicitly active (dark is the default). */
-:root:not([data-theme="estate"]) .leaflet-tile {
+/* Leaflet tiles: OSM only ships light tiles — recolor them only when the
+   dark theme is explicitly active. */
+[data-theme="estate-dark"] .leaflet-tile {
 	filter: brightness(0.7) invert(1) hue-rotate(180deg) saturate(0.55) contrast(0.9) sepia(0.12);
 }
 

@@ -36,14 +36,14 @@ export const viewport: Viewport = {
 	width: "device-width",
 	initialScale: 1,
 	viewportFit: "cover",
-	// Dark is the signature default; the boot script swaps this for explicit
-	// light users before paint.
-	themeColor: "#211d14",
+	// Light is the default; the boot script swaps this for explicit dark
+	// users before paint.
+	themeColor: "#f4f1ea",
 };
 
-// Dark is the default (no attribute needed). Only an explicit "light" choice
+// Light is the default (no attribute needed). Only an explicit "dark" choice
 // sets the attribute — before first paint, so there is no flash.
-const themeBootScript = `try{if(localStorage.getItem("kagu-theme")==="light")document.documentElement.setAttribute("data-theme","estate");}catch(e){}`;
+const themeBootScript = `try{if(localStorage.getItem("kagu-theme")==="dark")document.documentElement.setAttribute("data-theme","estate-dark");}catch(e){}`;
 
 export default function RootLayout({
 	children,

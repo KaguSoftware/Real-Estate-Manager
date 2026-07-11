@@ -13,7 +13,7 @@ import { useAppStore } from "@/src/store";
 import { createClient } from "@/src/lib/supabase/client";
 import { getMyProfile, updateMyProfile } from "@/src/lib/db/profiles";
 import type { ProfileRow } from "@/src/lib/db/types";
-import { AppShell, Card, CardLabel, Button, FormField, Input, Alert, SpinnerBlock, ConfirmDialog, toast } from "@/src/components/ui";
+import { AppShell, Card, CardLabel, Badge, Button, FormField, Input, Alert, SpinnerBlock, ConfirmDialog, toast } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
 
 export default function ProfileSettingsPage() {
@@ -107,75 +107,102 @@ export default function ProfileSettingsPage() {
 	}
 
 	const isOwner = team?.role === "owner";
+	const displayName = (profile?.full_name ?? "").trim();
+	const initial = (displayName || profile?.email || "?").charAt(0).toUpperCase();
 
 	return (
-		<AppShell title="Profiliniz" subtitle={team?.name}>
-			<div className="max-w-md space-y-4">
-				<Card>
-					<CardLabel>Hesap</CardLabel>
-					{!loaded ? (
-						<SpinnerBlock />
-					) : (
-						<form onSubmit={onSubmit} className="mt-3 space-y-4">
-							<FormField label="E-posta">
-								<Input type="email" value={profile?.email ?? ""} disabled readOnly />
-							</FormField>
-							<FormField label="Ad Soyad">
-								<Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Adınız" />
-							</FormField>
-							<FormField label="Telefon">
-								<Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+90 5xx xxx xx xx" />
-							</FormField>
+		<AppShell title="Profiliniz" subtitle={team?.name} width="3xl">
+			{!loaded ? (
+				<SpinnerBlock />
+			) : (
+				<div className="space-y-4 sm:space-y-5">
+					{/* Identity header — who is signed in, at a glance. */}
+					<Card className="flex items-center gap-4 sm:gap-5">
+						<div
+							aria-hidden
+							className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 rounded-full bg-primary text-primary-content ring-1 ring-primary/40 ring-offset-2 ring-offset-base-100 flex items-center justify-center font-display text-2xl font-semibold select-none"
+						>
+							{initial}
+						</div>
+						<div className="min-w-0 flex-1">
+							<p className="font-display text-xl sm:text-2xl font-semibold text-base-content truncate leading-tight">
+								{displayName || "İsimsiz kullanıcı"}
+							</p>
+							<p className="text-sm text-base-content/60 truncate">{profile?.email}</p>
+						</div>
+						{team && (
+							<Badge tone={isOwner ? "indigo" : "slate"} className="shrink-0">
+								{isOwner ? "Ekip sahibi" : "Danışman"}
+							</Badge>
+						)}
+					</Card>
+
+					<Card>
+						<CardLabel>Hesap bilgileri</CardLabel>
+						<form onSubmit={onSubmit} className="mt-4 space-y-4">
+							<div className="grid gap-4 sm:grid-cols-2">
+								<FormField label="Ad Soyad">
+									<Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Adınız" autoComplete="name" />
+								</FormField>
+								<FormField label="Telefon">
+									<Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+90 5xx xxx xx xx" autoComplete="tel" />
+								</FormField>
+							</div>
 							{error && <Alert tone="error">{error}</Alert>}
-							<Button type="submit" loading={status === "loading"}>Kaydet</Button>
+							<div className="flex justify-end pt-1">
+								<Button type="submit" loading={status === "loading"}>Kaydet</Button>
+							</div>
 						</form>
-					)}
-				</Card>
+					</Card>
 
-				<Card>
-					<CardLabel>Şifre değiştir</CardLabel>
-					<form onSubmit={onChangePassword} className="mt-3 space-y-4">
-						<FormField label="Yeni şifre">
-							<Input
-								type="password"
-								value={pw1}
-								onChange={(e) => setPw1(e.target.value)}
-								autoComplete="new-password"
-								placeholder="En az 8 karakter"
-							/>
-						</FormField>
-						<FormField label="Yeni şifre (tekrar)">
-							<Input
-								type="password"
-								value={pw2}
-								onChange={(e) => setPw2(e.target.value)}
-								autoComplete="new-password"
-							/>
-						</FormField>
-						{pwError && <Alert tone="error">{pwError}</Alert>}
-						<Button type="submit" variant="outline" loading={pwBusy} disabled={!pw1 && !pw2}>
-							Şifreyi güncelle
-						</Button>
-					</form>
-				</Card>
+					<Card>
+						<CardLabel>Şifre değiştir</CardLabel>
+						<form onSubmit={onChangePassword} className="mt-4 space-y-4">
+							<div className="grid gap-4 sm:grid-cols-2">
+								<FormField label="Yeni şifre" hint="En az 8 karakter">
+									<Input
+										type="password"
+										value={pw1}
+										onChange={(e) => setPw1(e.target.value)}
+										autoComplete="new-password"
+									/>
+								</FormField>
+								<FormField label="Yeni şifre (tekrar)">
+									<Input
+										type="password"
+										value={pw2}
+										onChange={(e) => setPw2(e.target.value)}
+										autoComplete="new-password"
+									/>
+								</FormField>
+							</div>
+							{pwError && <Alert tone="error">{pwError}</Alert>}
+							<div className="flex justify-end pt-1">
+								<Button type="submit" variant="outline" loading={pwBusy} disabled={!pw1 && !pw2}>
+									Şifreyi güncelle
+								</Button>
+							</div>
+						</form>
+					</Card>
 
-				<Card>
-					<CardLabel>Tehlikeli bölge</CardLabel>
-					<p className="mt-2 text-sm text-base-content/70">
-						Hesabınızı kalıcı olarak siler. Bu işlem geri alınamaz.
-						{isOwner && " Ekip sahibi olduğunuz için önce ekibi silmeniz veya sahipliği devretmeniz gerekir (Ekip sayfasından)."}
-					</p>
-					{deleteError && <div className="mt-3"><Alert tone="error">{deleteError}</Alert></div>}
-					<Button
-						variant="outline"
-						size="sm"
-						className="mt-3 text-error border-error/40 hover:bg-error/10"
-						onClick={() => setConfirmDelete(true)}
-					>
-						Hesabımı sil
-					</Button>
-				</Card>
-			</div>
+					<Card className="border-error/30">
+						<CardLabel className="text-error/90">Tehlikeli bölge</CardLabel>
+						<div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<p className="text-sm font-semibold text-base-content">Hesabımı sil</p>
+								<p className="mt-0.5 text-sm text-base-content/60">
+									Hesabınızı kalıcı olarak siler. Bu işlem geri alınamaz.
+									{isOwner && " Ekip sahibi olduğunuz için önce ekibi silmeniz veya sahipliği devretmeniz gerekir (Ekip sayfasından)."}
+								</p>
+							</div>
+							<Button variant="danger" size="sm" className="shrink-0 self-start sm:self-center" onClick={() => setConfirmDelete(true)}>
+								Hesabımı sil
+							</Button>
+						</div>
+						{deleteError && <div className="mt-3"><Alert tone="error">{deleteError}</Alert></div>}
+					</Card>
+				</div>
+			)}
 
 			<ConfirmDialog
 				open={confirmDelete}
