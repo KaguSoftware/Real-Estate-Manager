@@ -4,7 +4,7 @@ import { View, Text } from "@react-pdf/renderer";
 import { styles } from "../styles";
 import {
 	DocHeader, HeroAddress, SectionTitle, CardGrid, Card, KVList,
-	SignatureBlock, PageFooter, formatDate,
+	SignatureBlock, formatDate,
 } from "./common";
 
 import type { ReceiptPDFData } from "../types";
@@ -54,8 +54,6 @@ export function RentReceipt({ data }: { data: ReceiptPDFData }) {
 					{ role: "Tenant / Kiracı", name: data.tenant_name },
 				]}
 			/>
-
-			<PageFooter />
 		</View>
 	);
 }

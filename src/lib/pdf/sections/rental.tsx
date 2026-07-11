@@ -1,10 +1,11 @@
-import { View, Text } from "@react-pdf/renderer";
+import { View, Text, Image } from "@react-pdf/renderer";
 import { styles, colors } from "../styles";
+import { useBranding } from "../branding";
 import {
+	SectionChip,
 	TextSection,
 	ClausesList,
 	SignatureBlock,
-	PageFooter,
 	Table,
 	formatDate,
 } from "./common";
@@ -33,16 +34,6 @@ export function depositOverCap(deposit: number, monthlyRent: number) {
 	return monthlyRent > 0 && deposit > monthlyRent * 3;
 }
 
-function SectionChip({ letter, title }: { letter: string; title: string }) {
-	return (
-		<View style={styles.salesSectionChip}>
-			<Text style={styles.salesSectionChipText}>
-				{letter ? `${letter}  ·  ${title}` : title}
-			</Text>
-		</View>
-	);
-}
-
 /**
  * One field row inside a PartyCard. Each field is wrapped in a `<View>` with a
  * `minHeight` floor (mirroring propGridCell) rather than being a bare `<Text>`.
@@ -53,10 +44,11 @@ function SectionChip({ letter, title }: { letter: string; title: string }) {
  * can never collapse to zero height even if react-pdf regresses.
  */
 function CardLabelValue({ label, value }: { label: string; value: string }) {
+	const { palette } = useBranding();
 	return (
 		<>
 			<View style={styles.salesCardFieldLabel}>
-				<Text style={styles.salesCardLabel}>{label}</Text>
+				<Text style={[styles.salesCardLabel, { color: palette.primary }]}>{label}</Text>
 			</View>
 			<View style={styles.salesCardFieldValue}>
 				<Text style={styles.salesCardValue}>{value}</Text>
@@ -74,13 +66,14 @@ function CardLine({ children }: { children: string }) {
 }
 
 function PartyCard({ party, roleLabel }: { party: PartyInfo; roleLabel: string }) {
+	const { palette } = useBranding();
 	return (
 		// wrap={false} keeps the bordered card from splitting across a page break.
-		<View style={styles.salesCard} wrap={false}>
+		<View style={[styles.salesCard, { borderColor: palette.muted, borderLeftColor: palette.primary }]} wrap={false}>
 			<CardLabelValue label={`${roleLabel} — Adı Soyadı / Firma`} value={party.full_name || "—"} />
 
 			<View style={styles.salesCardFieldLabel}>
-				<Text style={styles.salesCardLabel}>Adresi</Text>
+				<Text style={[styles.salesCardLabel, { color: palette.primary }]}>Adresi</Text>
 			</View>
 			<CardLine>{party.address || "—"}</CardLine>
 
@@ -153,13 +146,20 @@ export function RentalAgreement({ data }: { data: RentalPDFData }) {
 
 	const overCap = depositOverCap(lease.deposit, lease.monthly_rent);
 	const hasInventory = inventory.length > 0;
+	const { palette, logoDataUrl } = useBranding();
 
 	return (
 		<View>
 			{/* Title bar (bleeds beyond page padding via negative margins) */}
-			<View style={styles.salesHero}>
+			<View style={[styles.salesHero, { backgroundColor: palette.primary }]}>
 				<Text style={styles.salesHeroTitle}>Konut Kira Sözleşmesi</Text>
-				<Text style={styles.salesHeroDate}>Düzenleme: {formatDate(generatedAt)}</Text>
+				<View style={{ alignItems: "flex-end" }}>
+					{logoDataUrl ? (
+						// eslint-disable-next-line jsx-a11y/alt-text
+						<Image src={logoDataUrl} style={{ maxHeight: 24, maxWidth: 100, objectFit: "contain", marginBottom: 3 }} />
+					) : null}
+					<Text style={[styles.salesHeroDate, { color: palette.muted }]}>Düzenleme: {formatDate(generatedAt)}</Text>
+				</View>
 			</View>
 
 			{/* A — Kiraya Veren */}
@@ -185,8 +185,8 @@ export function RentalAgreement({ data }: { data: RentalPDFData }) {
 			{/* D — Taşınmaz */}
 			<View style={styles.section}>
 				<SectionChip letter="D" title="Taşınmaza Ait Bilgiler" />
-				<View style={styles.propBlock} wrap={false}>
-					<Text style={styles.propAddressLabel}>Adresi</Text>
+				<View style={[styles.propBlock, { borderColor: palette.muted, borderLeftColor: palette.primary }]} wrap={false}>
+					<Text style={[styles.propAddressLabel, { color: palette.primary }]}>Adresi</Text>
 					<Text style={styles.propAddressValue}>{property.address || "—"}</Text>
 
 					<View style={styles.propGrid}>
@@ -203,24 +203,24 @@ export function RentalAgreement({ data }: { data: RentalPDFData }) {
 			<View style={styles.section}>
 				<SectionChip letter="E" title="Kira ve Süre" />
 				<View style={{ flexDirection: "row", gap: 12 }} wrap={false}>
-					<View style={styles.salesPriceBox}>
-						<Text style={styles.salesPriceLabel}>Aylık Kira</Text>
+					<View style={[styles.salesPriceBox, { backgroundColor: palette.primary }]}>
+						<Text style={[styles.salesPriceLabel, { color: palette.muted }]}>Aylık Kira</Text>
 						<View style={{ flexDirection: "row", alignItems: "baseline" }}>
 							<Text style={styles.salesPriceValue}>{fmtMoney(lease.monthly_rent)}</Text>
-							<Text style={[styles.salesCurrencyTag, { color: colors.gray_brand }]}>{lease.currency}</Text>
+							<Text style={[styles.salesCurrencyTag, { color: palette.muted }]}>{lease.currency}</Text>
 						</View>
 					</View>
-					<View style={styles.salesDepositBox}>
-						<Text style={styles.salesDepositLabel}>Depozito</Text>
+					<View style={[styles.salesDepositBox, { borderColor: palette.accent }]}>
+						<Text style={[styles.salesDepositLabel, { color: palette.accent }]}>Depozito</Text>
 						<View style={{ flexDirection: "row", alignItems: "baseline" }}>
-							<Text style={styles.salesDepositValue}>{fmtMoney(lease.deposit)}</Text>
-							<Text style={[styles.salesCurrencyTag, { color: colors.red_brand }]}>{lease.currency}</Text>
+							<Text style={[styles.salesDepositValue, { color: palette.primary }]}>{fmtMoney(lease.deposit)}</Text>
+							<Text style={[styles.salesCurrencyTag, { color: palette.accent }]}>{lease.currency}</Text>
 						</View>
 					</View>
 				</View>
 
 				{overCap ? (
-					<Text style={[styles.avaraLine, { color: colors.red_brand }]}>
+					<Text style={[styles.avaraLine, { color: colors.red500 }]}>
 						Uyarı: Depozito üç aylık kira bedelini aşmaktadır (TBK m.342 — yasal üst sınır aşılmış olabilir).
 					</Text>
 				) : null}
@@ -309,15 +309,13 @@ export function RentalAgreement({ data }: { data: RentalPDFData }) {
 			{/* Signatures */}
 			<SignatureBlock
 				label="İmzalar"
-				accentColor={colors.navy_brand}
+				accentColor={palette.primary}
 				signers={[
 					{ role: "Kiraya Veren", name: landlord.full_name },
 					{ role: "Kiracı", name: tenant.full_name },
 					...(guarantor ? [{ role: "Kefil", name: guarantor.full_name }] : []),
 				]}
 			/>
-
-			<PageFooter />
 		</View>
 	);
 }

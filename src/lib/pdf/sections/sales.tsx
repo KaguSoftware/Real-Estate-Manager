@@ -2,10 +2,10 @@ import { View, Text, Image } from "@react-pdf/renderer";
 import { styles } from "../styles";
 import { useBranding } from "../branding";
 import {
+	SectionChip,
 	TextSection,
 	ClausesList,
 	SignatureBlock,
-	PageFooter,
 	formatDate,
 } from "./common";
 import { SALES_STANDARD_CLAUSES, TAX_RESPONSIBILITY_CLAUSES } from "../salesClauses";
@@ -20,17 +20,6 @@ const fmtDateOrBlank = (s: string | null | undefined) =>
 
 const fmtOrBlank = (s: string | null | undefined) => (s && String(s).trim() ? String(s) : "—");
 
-function SectionChip({ letter, title }: { letter: string; title: string }) {
-	const { palette } = useBranding();
-	return (
-		<View style={[styles.salesSectionChip, { backgroundColor: palette.primary }]}>
-			<Text style={styles.salesSectionChipText}>
-				{letter}  ·  {title}
-			</Text>
-		</View>
-	);
-}
-
 /**
  * One field row inside a PartyCard. Each field is wrapped in a `<View>` with a
  * `minHeight` floor (mirroring propGridCell) rather than being a bare `<Text>`.
@@ -41,10 +30,11 @@ function SectionChip({ letter, title }: { letter: string; title: string }) {
  * can never collapse to zero height even if react-pdf regresses.
  */
 function CardLabelValue({ label, value }: { label: string; value: string }) {
+	const { palette } = useBranding();
 	return (
 		<>
 			<View style={styles.salesCardFieldLabel}>
-				<Text style={styles.salesCardLabel}>{label}</Text>
+				<Text style={[styles.salesCardLabel, { color: palette.primary }]}>{label}</Text>
 			</View>
 			<View style={styles.salesCardFieldValue}>
 				<Text style={styles.salesCardValue}>{value}</Text>
@@ -69,7 +59,7 @@ function PartyCard({ party }: { party: PartyInfo }) {
 			<CardLabelValue label="Adı Soyadı / Firma" value={party.full_name || "—"} />
 
 			<View style={styles.salesCardFieldLabel}>
-				<Text style={styles.salesCardLabel}>Adresi</Text>
+				<Text style={[styles.salesCardLabel, { color: palette.primary }]}>Adresi</Text>
 			</View>
 			<CardLine>{party.address || "—"}</CardLine>
 
@@ -250,8 +240,6 @@ export function SalesAgreement({ data }: { data: SalesPDFData }) {
 					{ role: teamName },
 				]}
 			/>
-
-			<PageFooter />
 		</View>
 	);
 }

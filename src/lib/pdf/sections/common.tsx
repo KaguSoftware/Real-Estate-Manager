@@ -20,12 +20,12 @@ export const DocHeader = ({
 	title: string;
 	subtitle?: string;
 }) => {
-	const { logoDataUrl } = useBranding();
+	const { logoDataUrl, palette } = useBranding();
 	return (
 		<View>
 			<View style={styles.headerRow}>
 				<View>
-					<Text style={styles.docType}>{title}</Text>
+					<Text style={[styles.docType, { color: palette.primary }]}>{title}</Text>
 					{subtitle ? <Text style={styles.refLine}>{subtitle}</Text> : null}
 				</View>
 				<View style={{ alignItems: "flex-end" }}>
@@ -35,7 +35,19 @@ export const DocHeader = ({
 					<Text style={styles.refLine}>{formatDate()}</Text>
 				</View>
 			</View>
-			<View style={styles.dividerThin} />
+			<View style={[styles.dividerThin, { backgroundColor: palette.primary }]} />
+		</View>
+	);
+};
+
+/** Brand-colored section label chip (A, B, C… blocks in agreements). */
+export const SectionChip = ({ letter, title }: { letter?: string; title: string }) => {
+	const { palette } = useBranding();
+	return (
+		<View style={[styles.salesSectionChip, { backgroundColor: palette.primary }]}>
+			<Text style={styles.salesSectionChipText}>
+				{letter ? `${letter}  ·  ${title}` : title}
+			</Text>
 		</View>
 	);
 };
@@ -47,13 +59,16 @@ export const HeroAddress = ({
 }: {
 	address: string;
 	meta?: string;
-}) => (
-	<View style={styles.hero}>
-		<Text style={styles.heroLabel}>Property</Text>
-		<Text style={styles.heroAddress}>{address}</Text>
-		{meta ? <Text style={styles.heroMeta}>{meta}</Text> : null}
-	</View>
-);
+}) => {
+	const { palette } = useBranding();
+	return (
+		<View style={[styles.hero, { borderLeftColor: palette.primary }]}>
+			<Text style={styles.heroLabel}>Property</Text>
+			<Text style={[styles.heroAddress, { color: palette.primary }]}>{address}</Text>
+			{meta ? <Text style={styles.heroMeta}>{meta}</Text> : null}
+		</View>
+	);
+};
 
 /**
  * Section title with a horizontal rule on the right.
@@ -126,24 +141,30 @@ export const HighlightPair = ({
 }: {
 	left: { label: string; value: string; currency: string };
 	right: { label: string; value: string; currency: string };
-}) => (
-	<View style={styles.highlightRow}>
-		<View style={styles.highlightBox}>
-			<Text style={styles.highlightLabel}>{left.label}</Text>
-			<View style={{ flexDirection: "row", alignItems: "baseline" }}>
-				<Text style={styles.highlightValue}>{left.value}</Text>
-				<Text style={styles.highlightCurrency}>{left.currency}</Text>
+}) => {
+	const { palette } = useBranding();
+	const box = [styles.highlightBox, { backgroundColor: palette.tint }];
+	const label = [styles.highlightLabel, { color: palette.accent }];
+	const value = [styles.highlightValue, { color: palette.primary }];
+	return (
+		<View style={styles.highlightRow}>
+			<View style={box}>
+				<Text style={label}>{left.label}</Text>
+				<View style={{ flexDirection: "row", alignItems: "baseline" }}>
+					<Text style={value}>{left.value}</Text>
+					<Text style={styles.highlightCurrency}>{left.currency}</Text>
+				</View>
+			</View>
+			<View style={box}>
+				<Text style={label}>{right.label}</Text>
+				<View style={{ flexDirection: "row", alignItems: "baseline" }}>
+					<Text style={value}>{right.value}</Text>
+					<Text style={styles.highlightCurrency}>{right.currency}</Text>
+				</View>
 			</View>
 		</View>
-		<View style={styles.highlightBox}>
-			<Text style={styles.highlightLabel}>{right.label}</Text>
-			<View style={{ flexDirection: "row", alignItems: "baseline" }}>
-				<Text style={styles.highlightValue}>{right.value}</Text>
-				<Text style={styles.highlightCurrency}>{right.currency}</Text>
-			</View>
-		</View>
-	</View>
-);
+	);
+};
 
 /** Banded clauses list with proper page-break behavior. */
 export const ClausesList = ({
@@ -195,15 +216,17 @@ export const Table = ({
 	columns: TableColumn[];
 	/** Each row is an array of cell strings, one per column. */
 	rows: string[][];
-}) => (
-	<View style={styles.commissionTable}>
-		<View style={styles.commissionHeaderRow} wrap={false}>
+}) => {
+	const { palette } = useBranding();
+	return (
+	<View style={[styles.commissionTable, { borderColor: palette.muted }]}>
+		<View style={[styles.commissionHeaderRow, { backgroundColor: palette.primary }]} wrap={false}>
 			{columns.map((c, i) => (
 				<Text
 					key={i}
 					style={[
 						styles.commissionHeaderCell,
-						{ flex: c.flex ?? 1, textAlign: c.align ?? "left" },
+						{ flex: c.flex ?? 1, textAlign: c.align ?? "left", borderRightColor: palette.primaryDark },
 						i === columns.length - 1 ? { borderRightWidth: 0 } : {},
 					]}
 				>
@@ -212,7 +235,15 @@ export const Table = ({
 			))}
 		</View>
 		{rows.map((cells, r) => (
-			<View key={r} style={r % 2 === 1 ? styles.commissionRowAlt : styles.commissionRow} wrap={false}>
+			<View
+				key={r}
+				style={[
+					r % 2 === 1 ? styles.commissionRowAlt : styles.commissionRow,
+					{ borderTopColor: palette.muted },
+					r % 2 === 1 ? { backgroundColor: palette.tint } : {},
+				]}
+				wrap={false}
+			>
 				{cells.map((cell, i) => {
 					const col = columns[i];
 					const isLabel = i === 0;
@@ -221,7 +252,8 @@ export const Table = ({
 							key={i}
 							style={[
 								isLabel ? styles.commissionLabelCell : styles.commissionDataCell,
-								{ flex: col?.flex ?? 1, textAlign: col?.align ?? (isLabel ? "left" : "right") },
+								isLabel ? { color: palette.primary } : {},
+								{ flex: col?.flex ?? 1, textAlign: col?.align ?? (isLabel ? "left" : "right"), borderRightColor: palette.muted },
 								i === cells.length - 1 ? { borderRightWidth: 0 } : {},
 							]}
 						>
@@ -232,7 +264,8 @@ export const Table = ({
 			</View>
 		))}
 	</View>
-);
+	);
+};
 
 export const SignatureBlock = ({
 	label = "Signatures",

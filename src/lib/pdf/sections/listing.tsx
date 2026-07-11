@@ -6,7 +6,6 @@ import {
 	KVList,
 	HighlightPair,
 	TextSection,
-	PageFooter,
 	formatDate,
 } from "./common";
 import type { ListingPDFData } from "../types";
@@ -87,8 +86,6 @@ export function PropertyListing({ data }: { data: ListingPDFData }) {
 			{notes && notes.trim() ? (
 				<TextSection label="Description" text={notes} />
 			) : null}
-
-			<PageFooter />
 		</View>
 	);
 }
