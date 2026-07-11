@@ -60,7 +60,7 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 	async function handleSubmit(e?: React.FormEvent) {
 		e?.preventDefault();
 		const errors = compactErrors({
-			full_name: required(full_name, "Name"),
+			full_name: required(full_name, "Ad soyad"),
 			email: validEmail(email),
 		});
 		setFieldErrors(errors);
@@ -72,7 +72,7 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 			if (mode === "create") await createTenant(buildInput());
 			else await updateTenant(initial!.id, buildInput());
 			invalidateCache("tenants");
-			toast.success(mode === "create" ? "Tenant added." : "Tenant updated.");
+			toast.success(mode === "create" ? "Kiracı eklendi." : "Kiracı güncellendi.");
 			onDone();
 		} catch (err) {
 			setError(humanizeError(err));
@@ -87,7 +87,7 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 		try {
 			await deleteTenant(initial.id);
 			invalidateCache("tenants");
-			toast.success("Tenant deleted.");
+			toast.success("Kiracı silindi.");
 			setConfirmingDelete(false);
 			onDone();
 		} catch (err) {
@@ -103,7 +103,7 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 		<Sheet
 			open
 			onClose={onClose}
-			title={mode === "create" ? "Add tenant" : "Edit tenant"}
+			title={mode === "create" ? "Kiracı ekle" : "Kiracıyı düzenle"}
 			footer={
 				<div className="flex items-center gap-2">
 					{mode === "edit" && (
@@ -112,15 +112,15 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 							size="md"
 							onClick={() => setConfirmingDelete(true)}
 							disabled={busy || deleteBlocked}
-							aria-label="Delete tenant"
-							title={deleteBlocked ? "Linked to leases or sales — remove those first." : undefined}
+							aria-label="Kiracıyı sil"
+							title={deleteBlocked ? "Kira sözleşmesi veya satış kaydına bağlı — önce onları kaldırın." : undefined}
 						>
 							<Trash2 className="w-4 h-4" />
 						</Button>
 					)}
-					<Button variant="ghost" block onClick={onClose}>Cancel</Button>
+					<Button variant="ghost" block onClick={onClose}>Vazgeç</Button>
 					<Button block onClick={() => handleSubmit()} loading={busy}>
-						{mode === "create" ? "Add tenant" : "Save"}
+						{mode === "create" ? "Kiracı ekle" : "Kaydet"}
 					</Button>
 				</div>
 			}
@@ -130,38 +130,38 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 
 				{deleteBlocked && (
 					<Alert tone="info">
-						Linked to {linkedCount} lease{linkedCount === 1 ? "" : "s"}/sale{linkedCount === 1 ? "" : "s"} —
-						deleting is disabled because it would also remove those agreements and their payment history.
+						Bu kiracı {linkedCount} kira sözleşmesine/satış kaydına bağlı —
+						silme devre dışı bırakıldı çünkü bu sözleşmeler ve ödeme geçmişleri de silinirdi.
 					</Alert>
 				)}
 
-				<FormField label="Full name" error={fieldErrors.full_name}>
+				<FormField label="Ad soyad" error={fieldErrors.full_name}>
 					<Input value={full_name} onChange={(e) => setFullName(e.target.value)} placeholder="Ahmet Yılmaz" autoFocus />
 				</FormField>
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Phone">
+					<FormField label="Telefon">
 						<Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+90 5xx xxx xx xx" />
 					</FormField>
-					<FormField label="Email" error={fieldErrors.email}>
-						<Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="optional" />
+					<FormField label="E-posta" error={fieldErrors.email}>
+						<Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="isteğe bağlı" />
 					</FormField>
 				</div>
 
-				<FormField label="National ID (TC Kimlik)">
-					<Input value={national_id} onChange={(e) => setNationalId(e.target.value)} placeholder="optional" />
+				<FormField label="TC Kimlik No">
+					<Input value={national_id} onChange={(e) => setNationalId(e.target.value)} placeholder="isteğe bağlı" />
 				</FormField>
 
-				<FormField label="Notes">
-					<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything worth remembering…" />
+				<FormField label="Notlar">
+					<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Hatırlamaya değer her şey…" />
 				</FormField>
 			</form>
 
 			<ConfirmDialog
 				open={confirmingDelete}
-				title="Delete this tenant?"
-				message={initial ? `"${initial.full_name}" will be removed permanently.` : undefined}
-				confirmLabel="Delete"
+				title="Bu kiracı silinsin mi?"
+				message={initial ? `"${initial.full_name}" kalıcı olarak silinecek.` : undefined}
+				confirmLabel="Sil"
 				loading={busy}
 				onConfirm={handleDelete}
 				onCancel={() => setConfirmingDelete(false)}

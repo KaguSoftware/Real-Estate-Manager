@@ -47,7 +47,7 @@ export function BrandingCard() {
 		try {
 			await uploadTeamLogo(file);
 			await refreshTeam();
-			toast.success("Logo updated.");
+			toast.success("Logo güncellendi.");
 		} catch (err) {
 			setError(humanizeError(err));
 		} finally {
@@ -62,7 +62,7 @@ export function BrandingCard() {
 		try {
 			await removeTeamLogo(team.logo_path);
 			await refreshTeam();
-			toast.success("Logo removed.");
+			toast.success("Logo kaldırıldı.");
 		} catch (err) {
 			setError(humanizeError(err));
 		} finally {
@@ -77,7 +77,7 @@ export function BrandingCard() {
 		try {
 			await updateTeamPalette(id);
 			await refreshTeam();
-			toast.success("Document colors updated.");
+			toast.success("Belge renkleri güncellendi.");
 		} catch (err) {
 			setError(humanizeError(err));
 		} finally {
@@ -87,10 +87,10 @@ export function BrandingCard() {
 
 	return (
 		<Card>
-			<CardLabel>Branding</CardLabel>
-			<p className="text-xs text-slate-500 mt-1">
-				Your logo appears in the top bar and on generated documents; the color
-				palette styles your PDFs.
+			<CardLabel>Marka görünümü</CardLabel>
+			<p className="text-xs text-base-content/60 mt-1">
+				Logonuz üst çubukta ve oluşturulan belgelerde görünür; renk paleti
+				PDF&apos;lerinizin görünümünü belirler.
 			</p>
 
 			{error && <div className="mt-3"><Alert tone="error">{error}</Alert></div>}
@@ -98,37 +98,37 @@ export function BrandingCard() {
 			{locked && (
 				<div className="mt-3">
 					<Alert tone="warning">
-						Your trial has ended. Reactivate your subscription to change your logo
-						and document colors.
+						Ücretsiz deneme süreniz doldu. Logonuzu ve belge renklerinizi
+						değiştirmek için aboneliğinizi yeniden başlatın.
 					</Alert>
 				</div>
 			)}
 
 			<div className="mt-4 flex items-center gap-4">
-				<div className="h-16 w-32 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden">
+				<div className="h-16 w-32 rounded-xl border border-dashed border-base-300 bg-base-200 flex items-center justify-center overflow-hidden">
 					{logoUrl ? (
 						// eslint-disable-next-line @next/next/no-img-element
-						<img src={logoUrl} alt="Team logo" className="max-h-full max-w-full object-contain" />
+						<img src={logoUrl} alt="Ekip logosu" className="max-h-full max-w-full object-contain" />
 					) : (
-						<span className="text-xs text-slate-400">No logo</span>
+						<span className="text-xs text-base-content/50">Logo yok</span>
 					)}
 				</div>
 				<div className="flex flex-col gap-2">
 					<input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={onPickLogo} />
 					<Button variant="outline" size="sm" disabled={locked} loading={busy === "logo"} onClick={() => fileRef.current?.click()}>
-						<ImagePlus className="w-4 h-4" /> {logoUrl ? "Replace logo" : "Upload logo"}
+						<ImagePlus className="w-4 h-4" /> {logoUrl ? "Logoyu değiştir" : "Logo yükle"}
 					</Button>
 					{logoUrl && (
 						<Button variant="ghost" size="sm" disabled={locked} loading={busy === "remove"} onClick={onRemoveLogo}>
-							<Trash2 className="w-4 h-4" /> Remove
+							<Trash2 className="w-4 h-4" /> Kaldır
 						</Button>
 					)}
 				</div>
 			</div>
-			<p className="text-[11px] text-slate-400 mt-2">PNG or JPEG, up to 1 MB.</p>
+			<p className="text-[11px] text-base-content/50 mt-2">PNG veya JPEG, en fazla 1 MB.</p>
 
 			<div className="mt-5">
-				<p className="text-xs font-semibold text-slate-600 mb-2">Document color palette</p>
+				<p className="text-xs font-semibold text-base-content/70 mb-2">Belge renk paleti</p>
 				<div className="flex flex-wrap gap-2">
 					{Object.values(BRAND_PALETTES).map((p) => (
 						<button
@@ -140,14 +140,14 @@ export function BrandingCard() {
 							className={cn(
 								"flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
 								team.brand_palette === p.id
-									? "border-primary ring-2 ring-primary/30 text-slate-900"
-									: "border-slate-200 text-slate-600 hover:border-slate-300",
+									? "border-primary ring-2 ring-primary/30 text-base-content"
+									: "border-base-300 text-base-content/70 hover:border-base-content/30",
 							)}
 						>
 							<span className="flex -space-x-1">
-								<span className="h-4 w-4 rounded-full border border-white" style={{ backgroundColor: p.primary }} />
-								<span className="h-4 w-4 rounded-full border border-white" style={{ backgroundColor: p.accent }} />
-								<span className="h-4 w-4 rounded-full border border-white" style={{ backgroundColor: p.muted }} />
+								<span className="h-4 w-4 rounded-full border border-base-100" style={{ backgroundColor: p.primary }} />
+								<span className="h-4 w-4 rounded-full border border-base-100" style={{ backgroundColor: p.accent }} />
+								<span className="h-4 w-4 rounded-full border border-base-100" style={{ backgroundColor: p.muted }} />
 							</span>
 							{p.label}
 						</button>

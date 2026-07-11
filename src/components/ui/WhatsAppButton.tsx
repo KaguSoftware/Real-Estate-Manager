@@ -14,9 +14,9 @@ export function WhatsAppButton({ phone, name }: { phone: string | null | undefin
 			target="_blank"
 			rel="noopener noreferrer"
 			onClick={(e) => e.stopPropagation()}
-			aria-label={`WhatsApp ${name ?? phone}`}
-			title="Open in WhatsApp"
-			className="inline-flex items-center justify-center h-7 w-7 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors align-middle"
+			aria-label={`${name ?? phone} ile WhatsApp'ta yaz`}
+			title="WhatsApp'ta aç"
+			className="inline-flex items-center justify-center h-7 w-7 rounded-lg text-success hover:bg-success/10 transition-colors align-middle"
 		>
 			<MessageCircle className="w-4 h-4" />
 		</a>

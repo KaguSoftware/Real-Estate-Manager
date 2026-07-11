@@ -13,12 +13,6 @@ import { usePathname } from "next/navigation";
 import { TriangleAlert, Lock } from "lucide-react";
 import { useAppStore } from "@/src/store";
 
-export function useIsWritable(): boolean {
-	const team = useAppStore((s) => s.team);
-	// Optimistic before team context loads; the DB rejects if it's wrong.
-	return team?.is_writable ?? true;
-}
-
 export function TrialBanner() {
 	const team = useAppStore((s) => s.team);
 	const pathname = usePathname();
@@ -42,17 +36,17 @@ export function TrialBanner() {
 
 	if (!team.is_writable) {
 		return (
-			<div className="sticky top-0 z-40 bg-red-600 text-white text-sm px-4 py-2 flex items-center justify-center gap-2 text-center">
+			<div className="sticky top-0 z-40 bg-error text-error-content text-sm px-4 py-2 flex items-center justify-center gap-2 text-center">
 				<Lock className="w-4 h-4 shrink-0" />
 				<span>
-					{onTrial ? "Your free trial has ended" : "Your subscription is inactive"} — the
-					workspace is read-only.{" "}
+					{onTrial ? "Ücretsiz denemeniz sona erdi" : "Aboneliğiniz etkin değil"} — çalışma
+					alanı salt okunur.{" "}
 					{team.role === "owner" ? (
 						<Link href="/settings/billing" className="underline font-semibold">
-							Subscribe to continue
+							Devam etmek için abone olun
 						</Link>
 					) : (
-						"Ask your team owner to subscribe."
+						"Abone olması için ekip sahibinizle iletişime geçin."
 					)}
 				</span>
 			</div>
@@ -61,16 +55,16 @@ export function TrialBanner() {
 
 	if (onTrial && daysLeft <= 3) {
 		return (
-			<div className="sticky top-0 z-40 bg-amber-400 text-amber-950 text-sm px-4 py-2 flex items-center justify-center gap-2 text-center">
+			<div className="sticky top-0 z-40 bg-warning text-warning-content text-sm px-4 py-2 flex items-center justify-center gap-2 text-center">
 				<TriangleAlert className="w-4 h-4 shrink-0" />
 				<span>
 					{daysLeft <= 0
-						? "Your free trial ends today"
-						: `${daysLeft} day${daysLeft === 1 ? "" : "s"} left in your free trial`}
+						? "Ücretsiz denemeniz bugün sona eriyor"
+						: `Ücretsiz denemenizin bitmesine ${daysLeft} gün kaldı`}
 					.{" "}
 					{team.role === "owner" && (
 						<Link href="/settings/billing" className="underline font-semibold">
-							Choose a plan
+							Plan seçin
 						</Link>
 					)}
 				</span>

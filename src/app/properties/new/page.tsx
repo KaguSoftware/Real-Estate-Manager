@@ -9,7 +9,7 @@ export default async function NewPropertyPage() {
 	if (!user) redirect("/");
 
 	return (
-		<AppShell title="Add a property" subtitle="Create a new listing" width="3xl">
+		<AppShell title="Taşınmaz ekle" subtitle="Yeni ilan oluşturun" width="3xl">
 			<Card>
 				<PropertyForm mode="create" />
 			</Card>

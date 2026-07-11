@@ -7,31 +7,31 @@
  */
 
 export function required(value: string, label: string): string | undefined {
-	return value.trim() ? undefined : `${label} is required.`;
+	return value.trim() ? undefined : `${label} zorunludur.`;
 }
 
 export function positiveNumber(value: string, label: string): string | undefined {
-	if (!value.trim()) return `${label} is required.`;
+	if (!value.trim()) return `${label} zorunludur.`;
 	const n = Number(value);
-	if (!Number.isFinite(n)) return `${label} must be a number.`;
-	if (n <= 0) return `${label} must be greater than zero.`;
+	if (!Number.isFinite(n)) return `${label} sayı olmalıdır.`;
+	if (n <= 0) return `${label} sıfırdan büyük olmalıdır.`;
 	return undefined;
 }
 
 export function validEmail(value: string): string | undefined {
 	if (!value.trim()) return undefined; // optional field — pair with required() when mandatory
-	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? undefined : "Enter a valid email address.";
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? undefined : "Geçerli bir e-posta adresi girin.";
 }
 
 export function isoDate(value: string, label: string): string | undefined {
-	if (!value.trim()) return `${label} is required.`;
-	return Number.isNaN(Date.parse(value)) ? `${label} must be a valid date.` : undefined;
+	if (!value.trim()) return `${label} zorunludur.`;
+	return Number.isNaN(Date.parse(value)) ? `${label} geçerli bir tarih olmalıdır.` : undefined;
 }
 
 /** end must be strictly after start (both ISO date strings). */
 export function dateRange(start: string, end: string): string | undefined {
 	if (!start || !end) return undefined;
-	return Date.parse(end) > Date.parse(start) ? undefined : "End date must be after the start date.";
+	return Date.parse(end) > Date.parse(start) ? undefined : "Bitiş tarihi başlangıç tarihinden sonra olmalıdır.";
 }
 
 export function hasErrors(errors: Record<string, string | undefined>): boolean {

@@ -10,7 +10,7 @@ const SIZES = {
 export function Spinner({
 	size = "md",
 	className,
-	label = "Loading",
+	label = "Yükleniyor",
 }: {
 	size?: keyof typeof SIZES;
 	className?: string;

@@ -9,7 +9,7 @@ export default async function NewDocumentPage() {
 	if (!user) redirect("/");
 
 	return (
-		<AppShell title="New document" subtitle="Generate a contract for a property" width="3xl">
+		<AppShell title="Yeni belge" subtitle="Bir taşınmaz için sözleşme oluşturun" width="3xl">
 			<DocumentWizard />
 		</AppShell>
 	);

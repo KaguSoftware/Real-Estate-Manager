@@ -14,7 +14,7 @@ const LocationPickerInner = dynamic(
 	() => import("./LocationPickerInner").then((m) => m.LocationPickerInner),
 	{
 		ssr: false,
-		loading: () => <div className="h-56 sm:h-64 w-full rounded-2xl bg-slate-100 animate-pulse" />,
+		loading: () => <div className="h-56 sm:h-64 w-full rounded-2xl bg-base-200 animate-pulse" />,
 	},
 );
 
@@ -28,10 +28,10 @@ class PickerErrorBoundary extends Component<{ children: ReactNode }, { failed: b
 	render() {
 		if (this.state.failed) {
 			return (
-				<div className="h-56 sm:h-64 w-full rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center text-center px-6">
-					<MapPinOff className="w-6 h-6 text-slate-400 mb-2" />
-					<p className="text-sm font-semibold text-slate-700">Map unavailable</p>
-					<p className="text-xs text-slate-500 mt-1">You can still save — paste a maps link or add the location later.</p>
+				<div className="h-56 sm:h-64 w-full rounded-2xl bg-base-200 border border-base-300 flex flex-col items-center justify-center text-center px-6">
+					<MapPinOff className="w-6 h-6 text-base-content/50 mb-2" />
+					<p className="text-sm font-semibold text-base-content/80">Harita kullanılamıyor</p>
+					<p className="text-xs text-base-content/60 mt-1">Yine de kaydedebilirsiniz — bir harita bağlantısı yapıştırın veya konumu sonra ekleyin.</p>
 				</div>
 			);
 		}
@@ -109,7 +109,7 @@ export function LocationPicker({ value, onChange, readOnly, heightClass }: Props
 		} else {
 			setStatus({
 				kind: "failed",
-				message: result.error ?? "Couldn't read this link — tap the map to place the pin instead.",
+				message: result.error ?? "Bu bağlantı okunamadı — konumu işaretlemek için haritaya dokunun.",
 			});
 		}
 	}, [onChange]);
@@ -156,8 +156,8 @@ export function LocationPicker({ value, onChange, readOnly, heightClass }: Props
 					type="url"
 					value={link}
 					onChange={(e) => onLinkChange(e.target.value)}
-					placeholder="Paste a Google Maps link (optional)…"
-					aria-label="Google Maps link"
+					placeholder="Google Haritalar bağlantısı yapıştırın (isteğe bağlı)…"
+					aria-label="Google Haritalar bağlantısı"
 					className="flex-1"
 				/>
 				<StatusChip status={status} pinned={!!value} onClear={clearPin} onRetry={() => void parseLink(link)} />
@@ -167,8 +167,8 @@ export function LocationPicker({ value, onChange, readOnly, heightClass }: Props
 				<LocationPickerInner value={value} onPick={handlePick} heightClass={heightClass} />
 			</PickerErrorBoundary>
 
-			<p className="text-xs text-slate-400">
-				Tap the map or drag the pin to set the exact location — nearby address fields fill in automatically.
+			<p className="text-xs text-base-content/50">
+				Tam konumu belirlemek için haritaya dokunun veya iğneyi sürükleyin — yakındaki adres alanları otomatik doldurulur.
 			</p>
 		</div>
 	);
@@ -189,7 +189,7 @@ function StatusChip({
 		return (
 			<Badge tone="slate" className="shrink-0 self-start sm:self-auto">
 				<Loader2 className="w-3.5 h-3.5 animate-spin" />
-				Resolving…
+				Çözümleniyor…
 			</Badge>
 		);
 	}
@@ -197,12 +197,12 @@ function StatusChip({
 		return (
 			<Badge tone="emerald" className="shrink-0 self-start sm:self-auto">
 				<MapPin className="w-3.5 h-3.5" />
-				Pinned
+				İşaretlendi
 				<button
 					type="button"
 					onClick={onClear}
-					aria-label="Clear location"
-					className="-mr-0.5 ml-0.5 rounded-full hover:bg-emerald-100 p-0.5 transition-colors"
+					aria-label="Konumu temizle"
+					className="-mr-0.5 ml-0.5 rounded-full hover:bg-success/20 p-0.5 transition-colors"
 				>
 					<X className="w-3 h-3" />
 				</button>
@@ -211,13 +211,13 @@ function StatusChip({
 	}
 	if (status.kind === "failed") {
 		return (
-			<span className="shrink-0 self-start sm:self-auto inline-flex items-center gap-2 text-xs text-amber-700">
+			<span className="shrink-0 self-start sm:self-auto inline-flex items-center gap-2 text-xs text-warning">
 				<Badge tone="amber">
 					<MapPinOff className="w-3.5 h-3.5" />
-					Link not readable
+					Bağlantı okunamadı
 				</Badge>
 				<button type="button" onClick={onRetry} className="font-semibold underline underline-offset-2">
-					Retry
+					Tekrar dene
 				</button>
 			</span>
 		);
@@ -225,7 +225,7 @@ function StatusChip({
 	return (
 		<Badge tone="slate" className="shrink-0 self-start sm:self-auto">
 			<MapPinOff className="w-3.5 h-3.5" />
-			Not pinned
+			İşaretlenmedi
 		</Badge>
 	);
 }

@@ -12,7 +12,7 @@ export function Card({
 	return (
 		<div
 			className={cn(
-				"bg-white rounded-2xl border border-slate-200/80 shadow-card",
+				"bg-base-100 rounded-2xl border border-base-300/80 shadow-card",
 				padded && "p-5 sm:p-6",
 				className,
 			)}
@@ -26,7 +26,7 @@ export function Card({
 /** Section eyebrow used inside cards — replaces the old text-[10px] headers. */
 export function CardLabel({ children, className }: { children: React.ReactNode; className?: string }) {
 	return (
-		<h2 className={cn("text-xs font-bold uppercase tracking-wider text-slate-500", className)}>
+		<h2 className={cn("text-xs font-bold uppercase tracking-wider text-base-content/60", className)}>
 			{children}
 		</h2>
 	);

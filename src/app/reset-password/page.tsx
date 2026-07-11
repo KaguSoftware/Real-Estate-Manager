@@ -36,43 +36,43 @@ export default function ResetPasswordPage() {
 	async function onSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		setError(null);
-		if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
-		if (password !== confirm) { setError("Passwords do not match."); return; }
+		if (password.length < 8) { setError("Şifre en az 8 karakter olmalı."); return; }
+		if (password !== confirm) { setError("Şifreler eşleşmiyor."); return; }
 		setStatus("loading");
 		const supabase = createClient();
 		const { error: err } = await supabase.auth.updateUser({ password });
 		if (err) { setError(humanizeError(err)); setStatus("idle"); return; }
-		toast.success("Password updated. You're all set.");
+		toast.success("Şifreniz güncellendi. Her şey hazır.");
 		router.replace("/");
 		router.refresh();
 	}
 
 	return (
-		<AppShell title="Reset password" subtitle="Choose a new password">
+		<AppShell title="Şifre sıfırlama" subtitle="Yeni bir şifre belirleyin">
 			<div className="max-w-md">
 				<Card>
-					<CardLabel>New password</CardLabel>
+					<CardLabel>Yeni şifre</CardLabel>
 					{checking ? (
 						<SpinnerBlock />
 					) : !hasSession ? (
 						<div className="mt-3 space-y-3">
-							<Alert>This reset link has expired or was already used.</Alert>
+							<Alert>Bu sıfırlama bağlantısının süresi dolmuş veya bağlantı daha önce kullanılmış.</Alert>
 							<Button block variant="outline" onClick={() => router.replace("/login")}>
-								Request a new link
+								Yeni bağlantı iste
 							</Button>
 						</div>
 					) : (
 						<form onSubmit={onSubmit} className="mt-3 space-y-4">
-							<FormField label="New password">
+							<FormField label="Yeni şifre">
 								<Input type="password" required autoFocus value={password}
 									onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
 							</FormField>
-							<FormField label="Confirm new password">
+							<FormField label="Yeni şifre tekrarı">
 								<Input type="password" required value={confirm}
 									onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" />
 							</FormField>
 							{error && <Alert>{error}</Alert>}
-							<Button type="submit" block loading={status === "loading"}>Update password</Button>
+							<Button type="submit" block loading={status === "loading"}>Şifreyi güncelle</Button>
 						</form>
 					)}
 				</Card>

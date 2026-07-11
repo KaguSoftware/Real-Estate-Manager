@@ -95,14 +95,14 @@ export function PropertyDashboard() {
 
 	return (
 		<AppShell
-			title="Properties"
-			subtitle="Listings, tenants & contracts"
+			title="Portföy"
+			subtitle="İlanlar, kiracılar ve sözleşmeler"
 			width="7xl"
 		>
 			{!user ? (
 				<Card className="p-10 text-center">
-					<p className="text-sm text-slate-600">Sign in to manage your properties.</p>
-					<p className="text-xs text-slate-400 mt-1">Use the Sign in button in the top bar.</p>
+					<p className="text-sm text-base-content/70">Portföyünüzü yönetmek için giriş yapın.</p>
+					<p className="text-xs text-base-content/50 mt-1">Üst çubuktaki Giriş yap düğmesini kullanın.</p>
 				</Card>
 			) : (
 				<>
@@ -112,9 +112,9 @@ export function PropertyDashboard() {
 					{error && (
 						<Alert
 							className="mb-4"
-							action={<Button size="sm" variant="outline" onClick={refetch}>Retry</Button>}
+							action={<Button size="sm" variant="outline" onClick={refetch}>Tekrar dene</Button>}
 						>
-							Couldn&apos;t load properties: {error}
+							Portföy yüklenemedi: {error}
 						</Alert>
 					)}
 
@@ -123,7 +123,7 @@ export function PropertyDashboard() {
 					{/* Mobile FAB — thumb-reachable primary action. */}
 					<button
 						onClick={() => router.push("/properties/new")}
-						aria-label="Add property"
+						aria-label="Taşınmaz ekle"
 						className="sm:hidden fixed right-4 bottom-4 z-20 h-14 w-14 rounded-full bg-primary text-primary-content shadow-pop flex items-center justify-center active:brightness-95 safe-bottom"
 					>
 						<Plus className="w-6 h-6" />

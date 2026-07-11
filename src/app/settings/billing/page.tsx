@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * /settings/billing — trial countdown, plan cards, subscription status.
- * Owners can subscribe; agents see status plus a "talk to your owner" note.
+ * /settings/billing — trial countdown, plan cards, subscription status,
+ * seat usage and self-service cancellation.
+ * Owners manage billing; agents see status plus a "talk to your owner" note.
  * The database (team_is_writable in RLS) is the enforcement; this page is UX.
  */
 
@@ -10,8 +11,8 @@ import { useEffect, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { useAppStore } from "@/src/store";
 import { createClient } from "@/src/lib/supabase/client";
-import { fetchTeamContext } from "@/src/lib/db/teams";
-import { AppShell, Card, CardLabel, Badge, Button, Alert, SpinnerBlock, toast } from "@/src/components/ui";
+import { fetchTeamContext, listTeamMembers } from "@/src/lib/db/teams";
+import { AppShell, Card, CardLabel, Badge, Button, Alert, SpinnerBlock, ConfirmDialog, toast } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
 
 interface Plan {
@@ -23,10 +24,10 @@ interface Plan {
 }
 
 const STATUS_LABEL: Record<string, { label: string; tone: "emerald" | "amber" | "red" | "slate" }> = {
-	trialing: { label: "Free trial", tone: "amber" },
-	active:   { label: "Active",     tone: "emerald" },
-	past_due: { label: "Payment overdue", tone: "red" },
-	canceled: { label: "Canceled",   tone: "slate" },
+	trialing: { label: "Ücretsiz deneme", tone: "amber" },
+	active:   { label: "Etkin",           tone: "emerald" },
+	past_due: { label: "Ödeme gecikti",   tone: "red" },
+	canceled: { label: "İptal edildi",    tone: "slate" },
 };
 
 export default function BillingPage() {
@@ -35,7 +36,10 @@ export default function BillingPage() {
 	const isOwner = team?.role === "owner";
 
 	const [plans, setPlans] = useState<Plan[] | null>(null);
+	const [seatCount, setSeatCount] = useState<number | null>(null);
 	const [busyPlan, setBusyPlan] = useState<string | null>(null);
+	const [confirmCancel, setConfirmCancel] = useState(false);
+	const [canceling, setCanceling] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -46,6 +50,7 @@ export default function BillingPage() {
 			.eq("is_active", true)
 			.order("price_monthly", { ascending: true })
 			.then(({ data }) => setPlans((data ?? []) as Plan[]));
+		listTeamMembers().then((m) => setSeatCount(m.length)).catch(() => {});
 		// Refresh subscription state on arrival (e.g. back from checkout) and
 		// celebrate when the checkout actually flipped the subscription on.
 		const wasActive = useAppStore.getState().team?.subscription_status === "active";
@@ -53,7 +58,7 @@ export default function BillingPage() {
 			.then((t) => {
 				setTeam(t);
 				if (t?.subscription_status === "active" && !wasActive) {
-					toast.success("Subscription activated 🎉");
+					toast.success("Aboneliğiniz etkinleştirildi 🎉");
 				}
 			})
 			.catch(() => {});
@@ -69,11 +74,34 @@ export default function BillingPage() {
 				body: JSON.stringify({ plan_id: planId }),
 			});
 			const json = (await res.json()) as { url?: string; error?: string };
-			if (!res.ok || !json.url) throw new Error(json.error || "Checkout failed");
+			if (!res.ok || !json.url) throw new Error(json.error || "Ödeme sayfası açılamadı");
 			window.location.href = json.url;
 		} catch (e) {
 			setError(humanizeError(e));
 			setBusyPlan(null);
+		}
+	}
+
+	async function cancelSubscription() {
+		setError(null);
+		setCanceling(true);
+		try {
+			const res = await fetch("/api/billing/cancel", { method: "POST" });
+			const json = (await res.json()) as { url?: string; ok?: boolean; error?: string };
+			if (!res.ok) throw new Error(json.error || "İptal işlemi başarısız oldu");
+			if (json.url) {
+				// Mock flow (dev): the webhook applies the change and redirects back.
+				window.location.href = json.url;
+				return;
+			}
+			toast.success("İptal talebiniz alındı. Ödenen dönemin sonuna kadar erişiminiz sürer.");
+			setConfirmCancel(false);
+			setTeam(await fetchTeamContext());
+		} catch (e) {
+			setError(humanizeError(e));
+			setConfirmCancel(false);
+		} finally {
+			setCanceling(false);
 		}
 	}
 
@@ -83,32 +111,46 @@ export default function BillingPage() {
 	const status = team?.subscription_status ?? "trialing";
 	const meta = STATUS_LABEL[status] ?? STATUS_LABEL.trialing;
 	const onTrial = status === "trialing";
+	const cancellable = isOwner && (status === "active" || status === "past_due");
+	const currentPlan = plans?.find((p) => p.id === team?.plan_id);
 
 	return (
-		<AppShell title="Billing" subtitle={team?.name}>
+		<AppShell title="Abonelik" subtitle={team?.name}>
 			<div className="space-y-4">
 				{error && <Alert tone="error">{error}</Alert>}
 
 				<Card>
 					<div className="flex items-center justify-between gap-3">
 						<div>
-							<CardLabel>Subscription</CardLabel>
-							<p className="mt-1 text-sm text-slate-600">
+							<CardLabel>Abonelik durumu</CardLabel>
+							<p className="mt-1 text-sm text-base-content/70">
 								{onTrial
 									? trialDaysLeft > 0
-										? `${trialDaysLeft} day${trialDaysLeft === 1 ? "" : "s"} left in your free trial.`
-										: "Your free trial has ended — the workspace is read-only until you subscribe."
+										? `Ücretsiz deneme sürenizin bitmesine ${trialDaysLeft} gün kaldı.`
+										: "Ücretsiz deneme süreniz doldu — abonelik başlatana kadar çalışma alanı salt okunur."
 									: status === "active" && team?.current_period_end
-										? `Paid through ${new Date(team.current_period_end).toLocaleDateString()}.`
+										? `Ödemesi ${new Date(team.current_period_end).toLocaleDateString("tr-TR")} tarihine kadar yapıldı.`
 										: status === "past_due"
-											? "The last payment failed. Update payment to keep write access."
-											: "No active subscription — the workspace is read-only."}
+											? "Son ödeme başarısız oldu. Yazma erişiminizi korumak için ödemenizi güncelleyin."
+											: "Etkin abonelik yok — çalışma alanı salt okunur."}
 							</p>
+							{seatCount !== null && currentPlan?.max_seats != null && (
+								<p className="mt-1 text-xs text-base-content/50">
+									Kullanılan üyelik: {seatCount} / {currentPlan.max_seats}
+								</p>
+							)}
 						</div>
 						<Badge tone={onTrial && trialDaysLeft === 0 ? "red" : meta.tone}>
-							{onTrial && trialDaysLeft === 0 ? "Trial ended" : meta.label}
+							{onTrial && trialDaysLeft === 0 ? "Deneme sona erdi" : meta.label}
 						</Badge>
 					</div>
+					{cancellable && (
+						<div className="mt-3 border-t border-base-300 pt-3 flex justify-end">
+							<Button variant="ghost" size="sm" onClick={() => setConfirmCancel(true)}>
+								Aboneliği iptal et
+							</Button>
+						</div>
+					)}
 				</Card>
 
 				{plans === null ? (
@@ -120,21 +162,21 @@ export default function BillingPage() {
 							return (
 								<Card key={p.id} className={current ? "ring-2 ring-primary/40" : undefined}>
 									<div className="flex items-baseline justify-between">
-										<h3 className="text-lg font-bold text-slate-900">{p.name}</h3>
-										{current && <Badge tone="emerald">Current plan</Badge>}
+										<h3 className="text-lg font-bold text-base-content">{p.name}</h3>
+										{current && <Badge tone="emerald">Mevcut plan</Badge>}
 									</div>
-									<p className="mt-2 text-3xl font-bold text-slate-900">
+									<p className="mt-2 text-3xl font-bold text-base-content">
 										₺{Number(p.price_monthly).toLocaleString("tr-TR")}
-										<span className="text-sm font-normal text-slate-400"> / month</span>
+										<span className="text-sm font-normal text-base-content/50"> / ay</span>
 									</p>
-									<ul className="mt-3 space-y-1.5 text-sm text-slate-600">
+									<ul className="mt-3 space-y-1.5 text-sm text-base-content/70">
 										<li className="flex items-center gap-2">
-											<CheckCircle2 className="w-4 h-4 text-emerald-500" />
-											{p.max_seats ? `Up to ${p.max_seats} agents` : "Unlimited agents"}
+											<CheckCircle2 className="w-4 h-4 text-success" />
+											{p.max_seats ? `En fazla ${p.max_seats} danışman` : "Sınırsız danışman"}
 										</li>
 										<li className="flex items-center gap-2">
-											<CheckCircle2 className="w-4 h-4 text-emerald-500" />
-											Properties, clients, contracts & payments
+											<CheckCircle2 className="w-4 h-4 text-success" />
+											Portföy, müşteri, sözleşme ve tahsilat yönetimi
 										</li>
 									</ul>
 									{isOwner ? (
@@ -146,11 +188,11 @@ export default function BillingPage() {
 											loading={busyPlan === p.id}
 											onClick={() => subscribe(p.id)}
 										>
-											{current ? "Subscribed" : "Subscribe"}
+											{current ? "Abonesiniz" : "Abone ol"}
 										</Button>
 									) : (
-										<p className="mt-4 text-xs text-slate-400 text-center">
-											Only the team owner can manage billing.
+										<p className="mt-4 text-xs text-base-content/50 text-center">
+											Aboneliği yalnızca ekip sahibi yönetebilir.
 										</p>
 									)}
 								</Card>
@@ -159,6 +201,17 @@ export default function BillingPage() {
 					</div>
 				)}
 			</div>
+
+			<ConfirmDialog
+				open={confirmCancel}
+				title="Abonelik iptal edilsin mi?"
+				message="Ödenen dönemin sonuna kadar erişiminiz devam eder; sonrasında çalışma alanı salt okunur olur. Verileriniz silinmez."
+				confirmLabel="Aboneliği iptal et"
+				cancelLabel="Vazgeç"
+				loading={canceling}
+				onConfirm={cancelSubscription}
+				onCancel={() => setConfirmCancel(false)}
+			/>
 		</AppShell>
 	);
 }

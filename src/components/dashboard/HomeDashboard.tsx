@@ -18,11 +18,17 @@ import {
 } from "lucide-react";
 
 const QUICK_ACTIONS = [
-	{ href: "/properties/new", label: "Add property", icon: Home },
-	{ href: "/leads?new=1", label: "Add client", icon: Users },
-	{ href: "/tenants?new=1", label: "Add tenant", icon: UserPlus },
-	{ href: "/documents/new", label: "New document", icon: FilePlus2 },
+	{ href: "/properties/new", label: "Taşınmaz ekle", icon: Home },
+	{ href: "/leads?new=1", label: "Müşteri ekle", icon: Users },
+	{ href: "/tenants?new=1", label: "Kiracı ekle", icon: UserPlus },
+	{ href: "/documents/new", label: "Yeni belge", icon: FilePlus2 },
 ];
+
+const PROPERTY_STATUS_LABEL: Record<string, string> = {
+	vacant: "Boş",
+	occupied: "Kirada",
+	sold: "Satıldı",
+};
 
 function statusTone(status: string): BadgeTone {
 	return status === "vacant" ? "slate" : status === "occupied" ? "emerald" : "blue";
@@ -56,11 +62,11 @@ export function HomeDashboard() {
 	);
 
 	return (
-		<AppShell title="Dashboard" subtitle="Everything at a glance" width="7xl">
+		<AppShell title="Genel bakış" subtitle="Her şey bir bakışta" width="7xl">
 			{!user ? (
 				<Card className="p-10 text-center">
-					<p className="text-sm text-slate-600">Sign in to see your dashboard.</p>
-					<p className="text-xs text-slate-400 mt-1">Use the Sign in button in the top bar.</p>
+					<p className="text-sm text-base-content/70">Genel bakışı görmek için giriş yapın.</p>
+					<p className="text-xs text-base-content/50 mt-1">Üst çubuktaki &quot;Giriş yap&quot; düğmesini kullanın.</p>
 				</Card>
 			) : (
 				<>
@@ -74,7 +80,7 @@ export function HomeDashboard() {
 							<Link
 								key={href}
 								href={href}
-								className="flex items-center gap-2.5 bg-white rounded-2xl border border-slate-200/80 shadow-card px-4 py-3.5 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:shadow-pop transition-all"
+								className="flex items-center gap-2.5 bg-base-100 rounded-2xl border border-base-300 shadow-card px-4 py-3.5 text-sm font-semibold text-base-content/80 hover:border-base-content/30 hover:shadow-pop transition-all"
 							>
 								<Icon className="w-4 h-4 text-primary shrink-0" />
 								<span className="truncate">{label}</span>
@@ -85,30 +91,30 @@ export function HomeDashboard() {
 					{/* Recents */}
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<Card>
-							<SectionHeader label="Recent properties" href="/properties" />
+							<SectionHeader label="Son eklenen taşınmazlar" href="/properties" />
 							{!recentProperties?.length ? (
-								<p className="text-sm text-slate-400 py-4">No properties yet.</p>
+								<p className="text-sm text-base-content/50 py-4">Henüz taşınmaz yok.</p>
 							) : (
-								<ul className="divide-y divide-slate-100">
+								<ul className="divide-y divide-base-300">
 									{recentProperties.slice(0, 5).map((p) => (
 										<li key={p.id}>
 											<Link
 												href={`/properties/${p.id}`}
-												className="flex items-center gap-3 py-2.5 text-sm hover:bg-slate-50 -mx-2 px-2 rounded-lg transition-colors"
+												className="flex items-center gap-3 py-2.5 text-sm hover:bg-base-200 -mx-2 px-2 rounded-lg transition-colors"
 											>
 												<div className="min-w-0 flex-1">
-													<p className="font-medium text-slate-800 truncate">{p.address_line}</p>
-													<p className="text-xs text-slate-400 truncate">
+													<p className="font-medium text-base-content truncate">{p.address_line}</p>
+													<p className="text-xs text-base-content/50 truncate">
 														{[p.city, p.nitelik].filter(Boolean).join(" · ") || p.homeowner_name}
 													</p>
 												</div>
 												{p.list_price != null && (
-													<span className="text-xs font-semibold text-slate-600 whitespace-nowrap hidden sm:inline">
+													<span className="text-xs font-semibold text-base-content/70 whitespace-nowrap hidden sm:inline">
 														{fmtMoney(Number(p.list_price), p.currency)}
 													</span>
 												)}
 												<Badge tone={statusTone(p.status)}>
-													{p.status[0].toUpperCase() + p.status.slice(1)}
+													{PROPERTY_STATUS_LABEL[p.status] ?? p.status}
 												</Badge>
 											</Link>
 										</li>
@@ -118,20 +124,20 @@ export function HomeDashboard() {
 						</Card>
 
 						<Card>
-							<SectionHeader label="Recent clients" href="/leads" />
+							<SectionHeader label="Son eklenen müşteriler" href="/leads" />
 							{!recentLeads?.length ? (
-								<p className="text-sm text-slate-400 py-4">No clients yet.</p>
+								<p className="text-sm text-base-content/50 py-4">Henüz müşteri yok.</p>
 							) : (
-								<ul className="divide-y divide-slate-100">
+								<ul className="divide-y divide-base-300">
 									{recentLeads.slice(0, 5).map((l) => (
 										<li key={l.id}>
 											<Link
 												href="/leads"
-												className="flex items-center gap-3 py-2.5 text-sm hover:bg-slate-50 -mx-2 px-2 rounded-lg transition-colors"
+												className="flex items-center gap-3 py-2.5 text-sm hover:bg-base-200 -mx-2 px-2 rounded-lg transition-colors"
 											>
 												<div className="min-w-0 flex-1">
-													<p className="font-medium text-slate-800 truncate">{l.full_name}</p>
-													<p className="text-xs text-slate-400 truncate">
+													<p className="font-medium text-base-content truncate">{l.full_name}</p>
+													<p className="text-xs text-base-content/50 truncate">
 														{l.interested_in || l.phone || "—"}
 													</p>
 												</div>
@@ -159,7 +165,7 @@ function SectionHeader({ label, href }: { label: string; href: string }) {
 				href={href}
 				className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
 			>
-				View all
+				Tümünü gör
 				<ArrowRight className="w-3.5 h-3.5" />
 			</Link>
 		</div>

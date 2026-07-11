@@ -49,7 +49,7 @@ export function MultiSelect({ label, options, selected, onChange, className }: M
 			? label
 			: selected.length === 1
 				? selected[0]
-				: `${selected.length} selected`;
+				: `${selected.length} seçildi`;
 
 	return (
 		<div ref={rootRef} className={cn("relative", className)}>
@@ -57,25 +57,25 @@ export function MultiSelect({ label, options, selected, onChange, className }: M
 				type="button"
 				onClick={() => setOpen((o) => !o)}
 				className={cn(
-					"w-full h-12 flex items-center justify-between gap-2 bg-white border rounded-xl px-3.5 text-base sm:text-sm shadow-soft outline-none transition-all",
+					"w-full h-12 flex items-center justify-between gap-2 bg-base-100 border rounded-xl px-3.5 text-base sm:text-sm shadow-soft outline-none transition-all",
 					"focus:border-primary focus:ring-4 focus:ring-primary/15",
-					open ? "border-primary ring-4 ring-primary/15" : "border-slate-200",
-					selected.length ? "text-slate-800" : "text-slate-400",
+					open ? "border-primary ring-4 ring-primary/15" : "border-base-300",
+					selected.length ? "text-base-content" : "text-base-content/40",
 				)}
 				aria-haspopup="listbox"
 				aria-expanded={open}
 			>
 				<span className="truncate">{summary}</span>
-				<ChevronDown className={cn("w-4 h-4 shrink-0 text-slate-400 transition-transform", open && "rotate-180")} />
+				<ChevronDown className={cn("w-4 h-4 shrink-0 text-base-content/50 transition-transform", open && "rotate-180")} />
 			</button>
 
 			{open && (
 				<div
-					className="absolute z-40 mt-1.5 w-full min-w-44 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-pop p-1"
+					className="absolute z-40 mt-1.5 w-full min-w-44 max-h-64 overflow-y-auto rounded-xl border border-base-300 bg-base-100 shadow-pop p-1"
 					role="listbox"
 				>
 					{options.length === 0 ? (
-						<p className="px-3 py-2 text-xs text-slate-400">No options yet</p>
+						<p className="px-3 py-2 text-xs text-base-content/50">Henüz seçenek yok</p>
 					) : (
 						options.map((opt) => {
 							const checked = selected.includes(opt);
@@ -86,7 +86,7 @@ export function MultiSelect({ label, options, selected, onChange, className }: M
 									onClick={() => toggle(opt)}
 									className={cn(
 										"w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-left transition-colors",
-										checked ? "bg-primary/5 text-slate-900" : "text-slate-700 hover:bg-slate-100",
+										checked ? "bg-primary/5 text-base-content" : "text-base-content/80 hover:bg-base-200",
 									)}
 									role="option"
 									aria-selected={checked}
@@ -94,7 +94,7 @@ export function MultiSelect({ label, options, selected, onChange, className }: M
 									<span
 										className={cn(
 											"w-4 h-4 shrink-0 rounded border flex items-center justify-center",
-											checked ? "bg-primary border-primary text-primary-content" : "border-slate-300",
+											checked ? "bg-primary border-primary text-primary-content" : "border-base-300",
 										)}
 									>
 										{checked && <Check className="w-3 h-3" strokeWidth={3} />}

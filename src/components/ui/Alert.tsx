@@ -5,10 +5,10 @@ import { cn } from "./cn";
 type AlertTone = "error" | "warning" | "success" | "info";
 
 const TONES: Record<AlertTone, { box: string; icon: React.ComponentType<{ className?: string }> }> = {
-	error:   { box: "bg-red-50 border-red-200 text-red-700", icon: AlertCircle },
-	warning: { box: "bg-amber-50 border-amber-200 text-amber-800", icon: AlertTriangle },
-	success: { box: "bg-emerald-50 border-emerald-200 text-emerald-800", icon: CheckCircle2 },
-	info:    { box: "bg-slate-50 border-slate-200 text-slate-600", icon: Info },
+	error:   { box: "bg-error/10 border-error/40 text-error", icon: AlertCircle },
+	warning: { box: "bg-warning/10 border-warning/30 text-warning", icon: AlertTriangle },
+	success: { box: "bg-success/10 border-success/30 text-success", icon: CheckCircle2 },
+	info:    { box: "bg-base-200 border-base-300 text-base-content/70", icon: Info },
 };
 
 /** Inline message box — replaces the ad-hoc red/amber divs across forms. */

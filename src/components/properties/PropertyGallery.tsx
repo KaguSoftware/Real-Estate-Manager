@@ -81,7 +81,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 			// Keep the featured index in range.
 			setFeaturedIdx((idx) => Math.max(0, Math.min(idx, next.length - 1)));
 			invalidateCache("properties:covers");
-			toast.success("Photo deleted.");
+			toast.success("Fotoğraf silindi.");
 		} catch (e) {
 			setError(humanizeError(e));
 		} finally {
@@ -105,7 +105,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 			/>
 
 			{/* Hero */}
-			<div className="relative w-full aspect-[4/3] sm:aspect-[16/9] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
+			<div className="relative w-full aspect-[4/3] sm:aspect-[16/9] rounded-2xl overflow-hidden bg-base-200 border border-base-300">
 				{loading ? (
 					<div className="absolute inset-0 flex items-center justify-center">
 						<Spinner />
@@ -113,7 +113,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 				) : featured ? (
 					<Image
 						src={featured.url}
-						alt="Property photo"
+						alt="Taşınmaz fotoğrafı"
 						fill
 						sizes="(max-width: 768px) 100vw, 960px"
 						className="object-cover"
@@ -121,12 +121,12 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 					/>
 				) : (
 					<div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-						<svg className="w-10 h-10 text-slate-300 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+						<svg className="w-10 h-10 text-base-content/30 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
 							<rect x="3" y="3" width="18" height="18" rx="2" />
 							<circle cx="9" cy="9" r="2" />
 							<path d="M21 15l-5-5L5 21" />
 						</svg>
-						<p className="text-xs text-slate-500 mb-3">No photos yet.</p>
+						<p className="text-xs text-base-content/60 mb-3">Henüz fotoğraf yok.</p>
 						{canEdit && (
 							<button
 								type="button"
@@ -134,7 +134,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 								disabled={uploading}
 								className="inline-flex items-center h-11 px-4 text-sm font-semibold rounded-xl bg-primary text-primary-content hover:brightness-110 transition-all shadow-soft disabled:opacity-50"
 							>
-								{uploading ? "Uploading…" : "+ Add photos"}
+								{uploading ? "Yükleniyor…" : "+ Fotoğraf ekle"}
 							</button>
 						)}
 					</div>
@@ -152,13 +152,13 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 							className={`relative shrink-0 snap-start w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border-2 group cursor-pointer transition-all ${
 								i === featuredIdx
 									? "border-primary ring-2 ring-primary/30"
-									: "border-slate-200 hover:border-slate-400"
+									: "border-base-300 hover:border-base-content/40"
 							}`}
 							onClick={() => setFeaturedIdx(i)}
 						>
 							<Image
 								src={img.url}
-								alt="Thumbnail"
+								alt="Küçük görsel"
 								fill
 								sizes="96px"
 								className="object-cover"
@@ -167,8 +167,8 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 								<button
 									type="button"
 									onClick={(e) => { e.stopPropagation(); setDeleting(img); }}
-									className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 text-white text-base leading-none flex items-center justify-center hover:bg-red-600 transition-colors"
-									aria-label="Delete photo"
+									className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 text-white text-base leading-none flex items-center justify-center hover:bg-error transition-colors"
+									aria-label="Fotoğrafı sil"
 								>×</button>
 							)}
 						</div>
@@ -179,8 +179,8 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 							type="button"
 							onClick={() => fileRef.current?.click()}
 							disabled={uploading}
-							className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg border-2 border-dashed border-slate-300 hover:border-primary hover:bg-primary/5 flex items-center justify-center text-slate-400 hover:text-primary transition-all disabled:opacity-50"
-							aria-label="Add more photos"
+							className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg border-2 border-dashed border-base-300 hover:border-primary hover:bg-primary/5 flex items-center justify-center text-base-content/50 hover:text-primary transition-all disabled:opacity-50"
+							aria-label="Daha fazla fotoğraf ekle"
 						>
 							<span className="text-2xl">{uploading ? "…" : "+"}</span>
 						</button>
@@ -190,9 +190,9 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 
 			<ConfirmDialog
 				open={deleting !== null}
-				title="Delete this photo?"
-				message="The photo is removed from storage permanently."
-				confirmLabel="Delete"
+				title="Bu fotoğraf silinsin mi?"
+				message="Fotoğraf depolamadan kalıcı olarak kaldırılır."
+				confirmLabel="Sil"
 				loading={deleteBusy}
 				onConfirm={handleDelete}
 				onCancel={() => setDeleting(null)}

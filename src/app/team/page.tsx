@@ -25,6 +25,7 @@ import {
 } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
 import { BrandingCard } from "@/src/components/team/BrandingCard";
+import { TeamDangerZone } from "@/src/components/team/TeamDangerZone";
 
 export default function TeamPage() {
 	const user = useAppStore((s) => s.user);
@@ -70,12 +71,12 @@ export default function TeamPage() {
 				body: JSON.stringify({ email: inviteEmail.trim() }),
 			});
 			const json = (await res.json()) as { error?: string; emailed?: boolean; joinUrl?: string };
-			if (!res.ok) throw new Error(json.error || "Invite failed");
+			if (!res.ok) throw new Error(json.error || "Davet gönderilemedi");
 			if (json.emailed) {
-				toast.success(`Invite sent to ${inviteEmail.trim()}.`);
+				toast.success(`Davet ${inviteEmail.trim()} adresine gönderildi.`);
 			} else if (json.joinUrl) {
 				await navigator.clipboard.writeText(json.joinUrl).catch(() => {});
-				toast.info("They already have an account — invite link copied, send it to them directly.");
+				toast.info("Bu kişinin zaten bir hesabı var — davet bağlantısı kopyalandı, doğrudan kendisine iletin.");
 			}
 			setInviteEmail("");
 			await reload();
@@ -91,7 +92,7 @@ export default function TeamPage() {
 		try {
 			await rotateInviteLink();
 			await reload();
-			toast.success("New team link created — the old one no longer works.");
+			toast.success("Yeni ekip bağlantısı oluşturuldu — eski bağlantı artık çalışmıyor.");
 		} catch (err) {
 			setError(humanizeError(err));
 		} finally {
@@ -102,7 +103,7 @@ export default function TeamPage() {
 	async function onCopyLink() {
 		if (!joinUrl) return;
 		await navigator.clipboard.writeText(joinUrl);
-		toast.success("Team link copied.");
+		toast.success("Ekip bağlantısı kopyalandı.");
 	}
 
 	async function onRevoke(id: string) {
@@ -124,7 +125,7 @@ export default function TeamPage() {
 			await removeMember(removing.user_id);
 			setRemoving(null);
 			await reload();
-			toast.success("Member removed — their records are now unassigned.");
+			toast.success("Üye çıkarıldı — kayıtları artık atanmamış durumda.");
 		} catch (err) {
 			setError(humanizeError(err));
 		} finally {
@@ -133,34 +134,34 @@ export default function TeamPage() {
 	}
 
 	return (
-		<AppShell title={team ? team.name : "Team"} subtitle="Team & invites">
+		<AppShell title={team ? team.name : "Ekip"} subtitle="Ekip ve davetler">
 			<div className="space-y-4 px-0">
 				{error && <Alert tone="error">{error}</Alert>}
 
 				<Card>
-					<CardLabel>Members</CardLabel>
+					<CardLabel>Üyeler</CardLabel>
 					{members === null ? (
 						<SpinnerBlock />
 					) : (
-						<ul className="mt-3 divide-y divide-slate-100">
+						<ul className="mt-3 divide-y divide-base-300">
 							{members.map((m) => (
 								<li key={m.user_id} className="py-3 flex items-center gap-3">
 									<div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold uppercase">
 										{(m.display_name || m.email).charAt(0)}
 									</div>
 									<div className="min-w-0 flex-1">
-										<p className="text-sm font-semibold text-slate-900 truncate">
+										<p className="text-sm font-semibold text-base-content truncate">
 											{m.display_name || m.email}
-											{m.user_id === user?.id && <span className="text-slate-400 font-normal"> (you)</span>}
+											{m.user_id === user?.id && <span className="text-base-content/50 font-normal"> (siz)</span>}
 										</p>
-										<p className="text-xs text-slate-400 truncate">{m.email}</p>
+										<p className="text-xs text-base-content/50 truncate">{m.email}</p>
 									</div>
-									<Badge tone={m.role === "owner" ? "indigo" : "slate"}>{m.role}</Badge>
+									<Badge tone={m.role === "owner" ? "indigo" : "slate"}>{m.role === "owner" ? "Ekip sahibi" : "Danışman"}</Badge>
 									{isOwner && m.user_id !== user?.id && (
 										<Button
 											variant="danger" size="sm"
 											onClick={() => setRemoving(m)}
-											aria-label={`Remove ${m.display_name || m.email}`}
+											aria-label={`${m.display_name || m.email} üyesini çıkar`}
 										>
 											<UserMinus className="w-4 h-4" />
 										</Button>
@@ -176,31 +177,31 @@ export default function TeamPage() {
 						<BrandingCard />
 
 						<Card>
-							<CardLabel>Invite by email</CardLabel>
+							<CardLabel>E-posta ile davet et</CardLabel>
 							<form onSubmit={onInvite} className="mt-3 flex flex-col sm:flex-row gap-3">
 								<div className="flex-1">
-									<FormField label="Email">
+									<FormField label="E-posta">
 										<Input
 											type="email"
 											value={inviteEmail}
 											onChange={(e) => setInviteEmail(e.target.value)}
-											placeholder="agent@example.com"
+											placeholder="danisman@ornek.com"
 											required
 										/>
 									</FormField>
 								</div>
 								<Button type="submit" className="sm:self-end" loading={busy === "invite"}>
-									<Mail className="w-4 h-4" /> Send invite
+									<Mail className="w-4 h-4" /> Davet gönder
 								</Button>
 							</form>
 
 							{invites.filter((i) => i.email).length > 0 && (
-								<ul className="mt-4 divide-y divide-slate-100">
+								<ul className="mt-4 divide-y divide-base-300">
 									{invites.filter((i) => i.email).map((i) => (
 										<li key={i.id} className="py-2 flex items-center gap-3">
-											<p className="text-sm text-slate-700 flex-1 truncate">{i.email}</p>
-											<span className="text-xs text-slate-400">
-												expires {new Date(i.expires_at).toLocaleDateString()}
+											<p className="text-sm text-base-content/80 flex-1 truncate">{i.email}</p>
+											<span className="text-xs text-base-content/50">
+												son geçerlilik: {new Date(i.expires_at).toLocaleDateString("tr-TR")}
 											</span>
 											<Button
 												variant="ghost" size="sm"
@@ -216,37 +217,40 @@ export default function TeamPage() {
 						</Card>
 
 						<Card>
-							<CardLabel>Shareable team link</CardLabel>
-							<p className="text-xs text-slate-500 mt-1">
-								Anyone with this link can join your team. Rotate it to cut off old copies.
+							<CardLabel>Paylaşılabilir ekip bağlantısı</CardLabel>
+							<p className="text-xs text-base-content/60 mt-1">
+								Bu bağlantıya sahip olan herkes ekibinize katılabilir. Eski kopyaları geçersiz kılmak için bağlantıyı yenileyin.
 							</p>
 							<div className="mt-3 flex flex-col sm:flex-row gap-2">
-								<div className="flex-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 h-11 text-sm text-slate-600 min-w-0">
-									<Link2 className="w-4 h-4 shrink-0 text-slate-400" />
-									<span className="truncate">{joinUrl ?? "No active link yet"}</span>
+								<div className="flex-1 flex items-center gap-2 rounded-xl border border-base-300 bg-base-200 px-3 h-11 text-sm text-base-content/70 min-w-0">
+									<Link2 className="w-4 h-4 shrink-0 text-base-content/50" />
+									<span className="truncate">{joinUrl ?? "Henüz etkin bağlantı yok"}</span>
 								</div>
 								{joinUrl && (
 									<Button variant="outline" onClick={onCopyLink}>
-										<Copy className="w-4 h-4" /> Copy
+										<Copy className="w-4 h-4" /> Kopyala
 									</Button>
 								)}
 								<Button variant="outline" loading={busy === "rotate"} onClick={onRotate}>
-									<RefreshCw className="w-4 h-4" /> {joinUrl ? "Rotate" : "Create link"}
+									<RefreshCw className="w-4 h-4" /> {joinUrl ? "Yenile" : "Bağlantı oluştur"}
 								</Button>
 							</div>
 						</Card>
 					</>
 				)}
 
+				<TeamDangerZone members={members ?? []} />
+
 				<ConfirmDialog
 					open={removing !== null}
-					title="Remove this member?"
+					title="Bu üye çıkarılsın mı?"
 					message={
 						removing
-							? `${removing.display_name || removing.email} will lose access to the team. Their properties and clients stay with the team, unassigned.`
+							? `${removing.display_name || removing.email} ekibe erişimini kaybedecek. Taşınmazları ve müşterileri, atanmamış olarak ekipte kalır.`
 							: undefined
 					}
-					confirmLabel="Remove"
+					confirmLabel="Çıkar"
+					cancelLabel="Vazgeç"
 					onConfirm={onRemoveConfirmed}
 					onCancel={() => setRemoving(null)}
 				/>

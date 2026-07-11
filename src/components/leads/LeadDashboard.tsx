@@ -57,14 +57,14 @@ export function LeadDashboard() {
 
 	return (
 		<AppShell
-			title="Clients"
-			subtitle="Leads, follow-ups & interests"
+			title="Müşteriler"
+			subtitle="Müşteriler, takipler ve ilgi alanları"
 			width="7xl"
 		>
 			{!user ? (
 				<Card className="p-10 text-center">
-					<p className="text-sm text-slate-600">Sign in to manage your leads.</p>
-					<p className="text-xs text-slate-400 mt-1">Use the Sign in button in the top bar.</p>
+					<p className="text-sm text-base-content/70">Müşterilerinizi yönetmek için giriş yapın.</p>
+					<p className="text-xs text-base-content/50 mt-1">Üst çubuktaki Giriş yap düğmesini kullanın.</p>
 				</Card>
 			) : (
 				<>
@@ -76,18 +76,18 @@ export function LeadDashboard() {
 								type="button"
 								onClick={() =>
 									downloadCsv(
-										"clients",
-										["Name", "Phone", "Email", "Interested in", "Status", "Last call", "Notes"],
+										"musteriler",
+										["Ad", "Telefon", "E-posta", "İlgilendiği", "Durum", "Son arama", "Notlar"],
 										leads.map((l) => [
 											l.full_name, l.phone, l.email, l.interested_in,
 											l.status, l.last_call_at?.slice(0, 10), l.notes,
 										]),
 									)
 								}
-								className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-700 transition-colors"
+								className="inline-flex items-center gap-1 text-xs font-medium text-base-content/50 hover:text-base-content/80 transition-colors"
 							>
 								<Download className="w-3.5 h-3.5" />
-								Export CSV
+								CSV indir
 							</button>
 						</div>
 					)}
@@ -95,9 +95,9 @@ export function LeadDashboard() {
 					{error && (
 						<Alert
 							className="mb-4"
-							action={<Button size="sm" variant="outline" onClick={refetch}>Retry</Button>}
+							action={<Button size="sm" variant="outline" onClick={refetch}>Tekrar dene</Button>}
 						>
-							Couldn&apos;t load clients: {error}
+							Müşteriler yüklenemedi: {error}
 						</Alert>
 					)}
 
@@ -105,7 +105,7 @@ export function LeadDashboard() {
 
 					<button
 						onClick={() => setEditing({ mode: "create" })}
-						aria-label="Add lead"
+						aria-label="Müşteri ekle"
 						className="sm:hidden fixed right-4 bottom-4 z-20 h-14 w-14 rounded-full bg-primary text-primary-content shadow-pop flex items-center justify-center active:brightness-95 safe-bottom"
 					>
 						<Plus className="w-6 h-6" />

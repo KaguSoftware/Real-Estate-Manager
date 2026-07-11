@@ -21,13 +21,13 @@ export default function RouteError({
 	return (
 		<main className="min-h-[70vh] flex items-center justify-center px-6">
 			<div className="max-w-sm text-center">
-				<div className="mx-auto mb-4 h-12 w-12 rounded-2xl bg-red-50 flex items-center justify-center">
-					<AlertTriangle className="w-6 h-6 text-red-500" />
+				<div className="mx-auto mb-4 h-12 w-12 rounded-2xl bg-error/10 flex items-center justify-center">
+					<AlertTriangle className="w-6 h-6 text-error" />
 				</div>
-				<h1 className="text-lg font-bold text-slate-900">Something went wrong</h1>
-				<p className="mt-2 text-sm text-slate-500">
-					The page hit an unexpected error. Your data is safe — try again, or head back
-					to the dashboard.
+				<h1 className="text-lg font-bold text-base-content">Bir sorun oluştu</h1>
+				<p className="mt-2 text-sm text-base-content/60">
+					Sayfa beklenmedik bir hatayla karşılaştı. Verileriniz güvende — tekrar deneyin
+					veya genel bakışa dönün.
 				</p>
 				<div className="mt-5 flex items-center justify-center gap-2">
 					<button
@@ -36,17 +36,17 @@ export default function RouteError({
 						className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl bg-primary text-primary-content text-sm font-semibold hover:brightness-110 transition-all"
 					>
 						<RotateCcw className="w-4 h-4" />
-						Try again
+						Tekrar dene
 					</button>
 					<Link
 						href="/"
-						className="inline-flex items-center h-10 px-4 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+						className="inline-flex items-center h-10 px-4 rounded-xl border border-base-300 text-sm font-semibold text-base-content/80 hover:bg-base-200 transition-colors"
 					>
-						Go to dashboard
+						Genel bakışa dön
 					</Link>
 				</div>
 				{error.digest && (
-					<p className="mt-4 text-[11px] text-slate-300">Error reference: {error.digest}</p>
+					<p className="mt-4 text-[11px] text-base-content/30">Hata referansı: {error.digest}</p>
 				)}
 			</div>
 		</main>

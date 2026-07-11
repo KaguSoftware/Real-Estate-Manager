@@ -78,8 +78,8 @@ export interface LeadRow {
 export function propertyLabel(
 	p: { address_line: string; homeowner_name: string } | null,
 ): string {
-	if (!p) return "Unknown property";
-	return p.address_line || p.homeowner_name || "Unknown property";
+	if (!p) return "Bilinmeyen taşınmaz";
+	return p.address_line || p.homeowner_name || "Bilinmeyen taşınmaz";
 }
 
 export function daysBetween(fromISO: string, to: Date): number {

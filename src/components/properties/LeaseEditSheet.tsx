@@ -31,17 +31,17 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 
 	function validate(): boolean {
 		const errors = compactErrors({
-			monthlyRent: positiveNumber(monthlyRent, "Monthly rent"),
+			monthlyRent: positiveNumber(monthlyRent, "Aylık kira"),
 			deposit: deposit.trim() && (!Number.isFinite(Number(deposit)) || Number(deposit) < 0)
-				? "Deposit must be zero or more."
+				? "Depozito sıfır veya daha büyük olmalıdır."
 				: undefined,
 			endDate:
 				endDate && Date.parse(endDate) <= Date.parse(lease.start_date)
-					? "End date must be after the lease start."
+					? "Bitiş tarihi sözleşme başlangıcından sonra olmalıdır."
 					: undefined,
 			paymentDay:
 				paymentDay.trim() && (Number(paymentDay) < 1 || Number(paymentDay) > 31)
-					? "Payment day must be between 1 and 31."
+					? "Ödeme günü 1 ile 31 arasında olmalıdır."
 					: undefined,
 		});
 		setFieldErrors(errors);
@@ -63,7 +63,7 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 				bank_account: bankAccount.trim() || null,
 			};
 			await updateLease(lease.id, patch);
-			toast.success("Lease updated.");
+			toast.success("Kira sözleşmesi güncellendi.");
 			onSaved();
 			onClose();
 		} catch (e) {
@@ -77,24 +77,24 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 		<Sheet
 			open={open}
 			onClose={onClose}
-			title="Edit lease"
+			title="Sözleşmeyi düzenle"
 			footer={
 				<div className="flex gap-2 justify-end">
-					<Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
-					<Button onClick={handleSave} loading={busy}>Save changes</Button>
+					<Button variant="ghost" onClick={onClose} disabled={busy}>Vazgeç</Button>
+					<Button onClick={handleSave} loading={busy}>Değişiklikleri kaydet</Button>
 				</div>
 			}
 		>
 			<div className="space-y-5">
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Monthly rent" error={fieldErrors.monthlyRent}>
+					<FormField label="Aylık kira" error={fieldErrors.monthlyRent}>
 						<Input
 							type="number" inputMode="decimal" min="0"
 							value={monthlyRent}
 							onChange={(e) => setMonthlyRent(e.target.value)}
 						/>
 					</FormField>
-					<FormField label="Security deposit" error={fieldErrors.deposit}>
+					<FormField label="Depozito" error={fieldErrors.deposit}>
 						<Input
 							type="number" inputMode="decimal" min="0"
 							value={deposit}
@@ -104,35 +104,35 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 				</div>
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Currency">
+					<FormField label="Para birimi">
 						<Select value="TRY" disabled>
 							<option value="TRY">TRY (₺)</option>
 						</Select>
 					</FormField>
-					<FormField label="End date" hint="Leave empty for an open-ended lease." error={fieldErrors.endDate}>
+					<FormField label="Bitiş tarihi" hint="Süresiz sözleşme için boş bırakın." error={fieldErrors.endDate}>
 						<Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
 					</FormField>
 				</div>
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Payment day of month" error={fieldErrors.paymentDay}>
+					<FormField label="Ayın ödeme günü" error={fieldErrors.paymentDay}>
 						<Input
 							type="number" inputMode="numeric" min="1" max="31"
 							value={paymentDay}
 							onChange={(e) => setPaymentDay(e.target.value)}
-							placeholder="e.g. 5"
+							placeholder="örn. 5"
 						/>
 					</FormField>
-					<FormField label="Payment method">
+					<FormField label="Ödeme yöntemi">
 						<Input
 							value={paymentMethod}
 							onChange={(e) => setPaymentMethod(e.target.value)}
-							placeholder="Bank transfer"
+							placeholder="Banka havalesi"
 						/>
 					</FormField>
 				</div>
 
-				<FormField label="Bank account (IBAN)">
+				<FormField label="Banka hesabı (IBAN)">
 					<Input
 						value={bankAccount}
 						onChange={(e) => setBankAccount(e.target.value)}

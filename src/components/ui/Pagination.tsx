@@ -42,28 +42,28 @@ export function Pagination({ page, pageCount, total, pageSize, onPageChange, cla
 
 	return (
 		<div className={`flex items-center justify-between gap-3 px-1 py-3 text-sm ${className ?? ""}`}>
-			<span className="text-xs text-slate-400">
-				{from}–{to} of {total}
+			<span className="text-xs text-base-content/50">
+				{from}–{to} · toplam {total}
 			</span>
 			<div className="flex items-center gap-1">
 				<button
 					type="button"
 					onClick={() => onPageChange(page - 1)}
 					disabled={page <= 1}
-					aria-label="Previous page"
-					className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+					aria-label="Önceki sayfa"
+					className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-base-content/60 hover:bg-base-200 disabled:opacity-30 disabled:pointer-events-none transition-colors"
 				>
 					<ChevronLeft className="w-4 h-4" />
 				</button>
-				<span className="text-xs font-medium text-slate-600 tabular-nums px-1">
+				<span className="text-xs font-medium text-base-content/70 tabular-nums px-1">
 					{page} / {pageCount}
 				</span>
 				<button
 					type="button"
 					onClick={() => onPageChange(page + 1)}
 					disabled={page >= pageCount}
-					aria-label="Next page"
-					className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+					aria-label="Sonraki sayfa"
+					className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-base-content/60 hover:bg-base-200 disabled:opacity-30 disabled:pointer-events-none transition-colors"
 				>
 					<ChevronRight className="w-4 h-4" />
 				</button>

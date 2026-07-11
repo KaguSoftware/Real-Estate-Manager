@@ -50,7 +50,7 @@ export function Sheet({ open, onClose, title, footer, children, size = "md" }: S
 	// sticky app header) create a containing block that traps fixed elements.
 	return createPortal(
 		<div
-			className="fixed inset-0 z-50 flex sm:items-center sm:justify-center sm:p-6 bg-slate-900/40 backdrop-blur-[2px]"
+			className="fixed inset-0 z-50 flex sm:items-center sm:justify-center sm:p-6 bg-black/40 backdrop-blur-[2px]"
 			onClick={onClose}
 		>
 			<div
@@ -62,19 +62,19 @@ export function Sheet({ open, onClose, title, footer, children, size = "md" }: S
 				onClick={(e) => e.stopPropagation()}
 				className={cn(
 					// Mobile: fill the screen. Desktop: centered card.
-					"flex flex-col bg-white w-full h-full",
+					"flex flex-col bg-base-100 w-full h-full",
 					"sm:h-auto sm:max-h-[88vh] sm:rounded-2xl sm:shadow-pop",
 					"animate-[sheetIn_.18s_ease-out]",
 					maxW,
 				)}
 			>
 				{/* Sticky header */}
-				<div className="safe-top shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 h-14 border-b border-slate-100">
-					<h2 id={titleId} className="text-base font-bold text-slate-900 truncate">{title}</h2>
+				<div className="safe-top shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 h-14 border-b border-base-300">
+					<h2 id={titleId} className="text-base font-bold text-base-content truncate">{title}</h2>
 					<button
 						onClick={onClose}
-						aria-label="Close"
-						className="-mr-2 h-11 w-11 inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+						aria-label="Kapat"
+						className="-mr-2 h-11 w-11 inline-flex items-center justify-center rounded-xl text-base-content/50 hover:text-base-content/80 hover:bg-base-200 transition-colors"
 					>
 						<X className="w-5 h-5" />
 					</button>
@@ -85,7 +85,7 @@ export function Sheet({ open, onClose, title, footer, children, size = "md" }: S
 
 				{/* Sticky footer */}
 				{footer && (
-					<div className="safe-bottom shrink-0 border-t border-slate-100 px-4 sm:px-6 py-3 bg-white">
+					<div className="safe-bottom shrink-0 border-t border-base-300 px-4 sm:px-6 py-3 bg-base-100">
 						{footer}
 					</div>
 				)}

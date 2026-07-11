@@ -12,7 +12,7 @@ interface Props {
 }
 
 function fmtDate(d: string) {
-	return new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+	return new Date(d).toLocaleDateString("tr-TR", { year: "numeric", month: "short", day: "numeric" });
 }
 
 export function TenantTable({ tenants, loading, onEdit }: Props) {
@@ -24,14 +24,14 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 			<Card>
 				<EmptyState
 					icon={Users}
-					title="No tenants yet"
-					hint="Tenants are created here or automatically when you generate a rental or sales agreement."
+					title="Henüz kiracı yok"
+					hint="Kiracılar burada veya bir kira ya da satış sözleşmesi oluşturduğunuzda otomatik olarak eklenir."
 				/>
 			</Card>
 		);
 	}
 
-	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400";
+	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-base-content/50";
 
 	return (
 		<>
@@ -46,18 +46,18 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 						tabIndex={0}
 						onClick={() => onEdit(t)}
 						onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(t); } }}
-						className="w-full text-left bg-white border border-slate-200/80 rounded-2xl shadow-card p-4 active:bg-slate-50 transition-colors cursor-pointer"
+						className="w-full text-left bg-base-100 border border-base-300 rounded-2xl shadow-card p-4 active:bg-base-200 transition-colors cursor-pointer"
 					>
-						<p className="text-base font-bold text-slate-900 truncate">{t.full_name}</p>
+						<p className="text-base font-bold text-base-content truncate">{t.full_name}</p>
 						{(t.phone || t.email) && (
-							<p className="text-sm text-slate-500 mt-0.5 truncate">
+							<p className="text-sm text-base-content/60 mt-0.5 truncate">
 								{t.phone ?? ""}
 								{t.phone && <WhatsAppButton phone={t.phone} name={t.full_name} />}
 								{t.phone && t.email ? " · " : ""}
 								{t.email ?? ""}
 							</p>
 						)}
-						<p className="text-xs text-slate-400 mt-2">Added {fmtDate(t.created_at)}</p>
+						<p className="text-xs text-base-content/50 mt-2">Eklenme: {fmtDate(t.created_at)}</p>
 					</div>
 				))}
 			</div>
@@ -66,14 +66,14 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 			<Card padded={false} className="hidden sm:block overflow-hidden">
 				<div className="overflow-x-auto">
 					<table className="w-full min-w-140 text-sm">
-						<thead className="bg-slate-50/60 border-b border-slate-100">
+						<thead className="bg-base-200/60 border-b border-base-300">
 							<tr>
-								<th className={headerCls}>Name</th>
-								<th className={headerCls}>Phone</th>
-								<th className={headerCls}>Email</th>
-								<th className={headerCls}>National ID</th>
-								<th className={headerCls}>Added</th>
-								<th className={headerCls}><span className="sr-only">Actions</span></th>
+								<th className={headerCls}>Ad soyad</th>
+								<th className={headerCls}>Telefon</th>
+								<th className={headerCls}>E-posta</th>
+								<th className={headerCls}>TC Kimlik No</th>
+								<th className={headerCls}>Eklenme tarihi</th>
+								<th className={headerCls}><span className="sr-only">İşlemler</span></th>
 							</tr>
 						</thead>
 						<tbody>
@@ -81,23 +81,23 @@ export function TenantTable({ tenants, loading, onEdit }: Props) {
 								<tr
 									key={t.id}
 									onClick={() => onEdit(t)}
-									className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
+									className="border-b border-base-300 last:border-0 hover:bg-base-200 transition-colors cursor-pointer"
 								>
-									<td className="px-4 py-3 text-sm font-medium text-slate-800">{t.full_name}</td>
-									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+									<td className="px-4 py-3 text-sm font-medium text-base-content">{t.full_name}</td>
+									<td className="px-4 py-3 text-sm text-base-content/70 whitespace-nowrap">
 										{t.phone ?? "—"}
 										{t.phone && <span className="ml-1"><WhatsAppButton phone={t.phone} name={t.full_name} /></span>}
 									</td>
-									<td className="px-4 py-3 text-sm text-slate-600">{t.email ?? "—"}</td>
-									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{t.national_id ?? "—"}</td>
-									<td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">{fmtDate(t.created_at)}</td>
+									<td className="px-4 py-3 text-sm text-base-content/70">{t.email ?? "—"}</td>
+									<td className="px-4 py-3 text-sm text-base-content/70 whitespace-nowrap">{t.national_id ?? "—"}</td>
+									<td className="px-4 py-3 text-sm text-base-content/60 whitespace-nowrap">{fmtDate(t.created_at)}</td>
 									<td className="px-4 py-3 text-right whitespace-nowrap">
 										<button
 											type="button"
 											onClick={(e) => { e.stopPropagation(); onEdit(t); }}
-											aria-label={`Edit ${t.full_name}`}
-											title="Edit or delete this tenant"
-											className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+											aria-label={`${t.full_name} kaydını düzenle`}
+											title="Bu kiracıyı düzenle veya sil"
+											className="h-8 w-8 inline-flex items-center justify-center rounded-lg text-base-content/50 hover:text-base-content/80 hover:bg-base-200 transition-colors"
 										>
 											<Pencil className="w-4 h-4" />
 										</button>

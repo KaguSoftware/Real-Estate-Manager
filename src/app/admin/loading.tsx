@@ -1,5 +1,5 @@
 import { RouteLoading } from "@/src/components/ui/RouteLoading";
 
 export default function Loading() {
-	return <RouteLoading label="Opening admin" />;
+	return <RouteLoading label="Yönetim paneli açılıyor" />;
 }

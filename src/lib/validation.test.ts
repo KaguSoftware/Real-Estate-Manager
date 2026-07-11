@@ -11,8 +11,8 @@ import {
 
 describe("required", () => {
 	it("rejects empty / whitespace", () => {
-		expect(required("", "Name")).toBe("Name is required.");
-		expect(required("   ", "Name")).toBe("Name is required.");
+		expect(required("", "Name")).toBe("Name zorunludur.");
+		expect(required("   ", "Name")).toBe("Name zorunludur.");
 	});
 	it("accepts non-empty", () => {
 		expect(required("x", "Name")).toBeUndefined();
@@ -21,10 +21,10 @@ describe("required", () => {
 
 describe("positiveNumber", () => {
 	it("rejects empty, non-numeric, zero, negative", () => {
-		expect(positiveNumber("", "Rent")).toBe("Rent is required.");
-		expect(positiveNumber("abc", "Rent")).toBe("Rent must be a number.");
-		expect(positiveNumber("0", "Rent")).toBe("Rent must be greater than zero.");
-		expect(positiveNumber("-5", "Rent")).toBe("Rent must be greater than zero.");
+		expect(positiveNumber("", "Rent")).toBe("Rent zorunludur.");
+		expect(positiveNumber("abc", "Rent")).toBe("Rent sayı olmalıdır.");
+		expect(positiveNumber("0", "Rent")).toBe("Rent sıfırdan büyük olmalıdır.");
+		expect(positiveNumber("-5", "Rent")).toBe("Rent sıfırdan büyük olmalıdır.");
 	});
 	it("accepts positive numbers", () => {
 		expect(positiveNumber("1500.50", "Rent")).toBeUndefined();
@@ -46,8 +46,8 @@ describe("validEmail", () => {
 
 describe("isoDate / dateRange", () => {
 	it("validates dates", () => {
-		expect(isoDate("", "Start")).toBe("Start is required.");
-		expect(isoDate("nonsense", "Start")).toBe("Start must be a valid date.");
+		expect(isoDate("", "Start")).toBe("Start zorunludur.");
+		expect(isoDate("nonsense", "Start")).toBe("Start geçerli bir tarih olmalıdır.");
 		expect(isoDate("2026-07-01", "Start")).toBeUndefined();
 	});
 	it("requires end strictly after start", () => {

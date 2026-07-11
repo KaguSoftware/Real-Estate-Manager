@@ -14,7 +14,7 @@ import { Home, Download } from "lucide-react";
 function Thumb({ src, className }: { src: string | undefined; className?: string }) {
 	if (!src) {
 		return (
-			<div className={`bg-slate-100 flex items-center justify-center text-slate-300 ${className ?? ""}`}>
+			<div className={`bg-base-200 flex items-center justify-center text-base-content/30 ${className ?? ""}`}>
 				<Home className="w-5 h-5" />
 			</div>
 		);
@@ -28,19 +28,26 @@ type SortDir = "asc" | "desc";
 
 function fmtPrice(p: number | null, ccy: string) {
 	if (p == null) return "—";
-	return `${Math.round(p).toLocaleString()} ${ccy}`;
+	return `${Math.round(p).toLocaleString("tr-TR")} ${ccy}`;
 }
+
+// Display labels for DB status values (values themselves stay in English).
+const STATUS_LABEL: Record<Property["status"], string> = {
+	vacant: "Boş",
+	occupied: "Kirada",
+	sold: "Satıldı",
+};
 
 function StatusBadge({ status }: { status: Property["status"] }) {
 	const tone: BadgeTone =
 		status === "vacant" ? "slate" : status === "occupied" ? "emerald" : "blue";
-	return <Badge tone={tone}>{status[0].toUpperCase() + status.slice(1)}</Badge>;
+	return <Badge tone={tone}>{STATUS_LABEL[status]}</Badge>;
 }
 
 function TypeBadge({ t }: { t: Property["listing_type"] }) {
 	return (
 		<Badge tone={t === "for_rent" ? "indigo" : "amber"}>
-			{t === "for_rent" ? "For Rent" : "For Sale"}
+			{t === "for_rent" ? "Kiralık" : "Satılık"}
 		</Badge>
 	);
 }
@@ -108,10 +115,10 @@ export function PropertyTable() {
 		return hasActiveFilter ? (
 			<Card>
 				<EmptyState
-					title="No properties match your filters"
+					title="Filtrelerinize uyan taşınmaz yok"
 					action={
 						<Button variant="outline" size="sm" onClick={resetFilters}>
-							Clear filters
+							Filtreleri temizle
 						</Button>
 					}
 				/>
@@ -120,11 +127,11 @@ export function PropertyTable() {
 			<Card>
 				<EmptyState
 					icon={Home}
-					title="No properties yet"
-					hint="Add your first listing to see it on the map and dashboard."
+					title="Henüz taşınmaz yok"
+					hint="Haritada ve genel bakışta görmek için ilk ilanınızı ekleyin."
 					action={
 						<Button size="sm" onClick={() => router.push("/properties/new")}>
-							Add your first property
+							İlk taşınmazınızı ekleyin
 						</Button>
 					}
 				/>
@@ -132,36 +139,36 @@ export function PropertyTable() {
 		);
 	}
 
-	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 cursor-pointer select-none hover:text-slate-700";
-	const staticHeaderCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400";
+	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-base-content/50 cursor-pointer select-none hover:text-base-content/80";
+	const staticHeaderCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-base-content/50";
 	const sortArrow = (k: SortKey) => sortKey === k ? (sortDir === "asc" ? "↑" : "↓") : "";
 
 	return (
 		<>
 			<div className="px-1 mb-2 flex items-center justify-between">
-				<p className="text-xs font-medium text-slate-400">
-					{properties.length} {properties.length === 1 ? "property" : "properties"}
-					{hasActiveFilter ? " matched" : ""}
+				<p className="text-xs font-medium text-base-content/50">
+					{properties.length} taşınmaz
+					{hasActiveFilter ? " eşleşti" : ""}
 				</p>
 				<button
 					type="button"
 					onClick={() =>
 						downloadCsv(
-							"properties",
-							["Homeowner", "Address", "City", "Neighborhood", "Type", "Listing", "Status", "Size (m²)", "Bedrooms", "Bathrooms", "Furnished", "Price", "Currency", "Notes"],
+							"portfoy",
+							["Mülk sahibi", "Adres", "Şehir", "Mahalle", "Nitelik", "İlan", "Durum", "Büyüklük (m²)", "Yatak odası", "Banyo", "Eşyalı", "Fiyat", "Para birimi", "Notlar"],
 							sorted.map((p) => [
 								p.homeowner_name, p.address_line, p.city, p.mahalle, p.nitelik,
-								p.listing_type === "for_rent" ? "For rent" : "For sale", p.status,
+								p.listing_type === "for_rent" ? "Kiralık" : "Satılık", STATUS_LABEL[p.status],
 								p.size_sqm, p.bedrooms, p.bathrooms,
-								p.furnished == null ? "" : p.furnished ? "yes" : "no",
+								p.furnished == null ? "" : p.furnished ? "evet" : "hayır",
 								p.list_price, p.currency, p.notes,
 							]),
 						)
 					}
-					className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-slate-700 transition-colors"
+					className="inline-flex items-center gap-1 text-xs font-medium text-base-content/50 hover:text-base-content/80 transition-colors"
 				>
 					<Download className="w-3.5 h-3.5" />
-					Export CSV
+					CSV indir
 				</button>
 			</div>
 
@@ -172,22 +179,22 @@ export function PropertyTable() {
 						key={p.id}
 						type="button"
 						onClick={() => open(p.id)}
-						className="w-full text-left bg-white border border-slate-200/80 rounded-2xl shadow-card p-4 active:bg-slate-50 transition-colors"
+						className="w-full text-left bg-base-100 border border-base-300 rounded-2xl shadow-card p-4 active:bg-base-200 transition-colors"
 					>
 						<div className="flex items-start justify-between gap-3">
 							<Thumb src={covers?.[p.id]} className="w-14 h-14 rounded-xl shrink-0" />
 							<div className="min-w-0 flex-1">
-								<p className="text-base font-bold text-slate-900 line-clamp-2">{p.address_line}</p>
-								<p className="text-sm text-slate-500 mt-0.5 truncate">{p.homeowner_name}{p.city ? ` · ${p.city}` : ""}</p>
+								<p className="text-base font-bold text-base-content line-clamp-2">{p.address_line}</p>
+								<p className="text-sm text-base-content/60 mt-0.5 truncate">{p.homeowner_name}{p.city ? ` · ${p.city}` : ""}</p>
 							</div>
-							<p className="text-sm font-semibold text-slate-700 whitespace-nowrap">{fmtPrice(p.list_price, p.currency)}</p>
+							<p className="text-sm font-semibold text-base-content/80 whitespace-nowrap">{fmtPrice(p.list_price, p.currency)}</p>
 						</div>
 						<div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
 							<div className="flex items-center gap-1.5">
 								<TypeBadge t={p.listing_type} />
 								<StatusBadge status={p.status} />
 							</div>
-							<p className="text-xs text-slate-400">{p.size_sqm ? `${p.size_sqm} m²` : ""}</p>
+							<p className="text-xs text-base-content/50">{p.size_sqm ? `${p.size_sqm} m²` : ""}</p>
 						</div>
 					</button>
 				))}
@@ -197,16 +204,16 @@ export function PropertyTable() {
 			<Card padded={false} className="hidden sm:block overflow-hidden">
 				<div className="overflow-x-auto">
 					<table className="w-full min-w-160 text-sm">
-						<thead className="bg-slate-50/60 border-b border-slate-100">
+						<thead className="bg-base-200/60 border-b border-base-300">
 							<tr>
-								<th className={staticHeaderCls}><span className="sr-only">Photo</span></th>
-								<th className={headerCls} onClick={() => toggle("homeowner_name")}>Homeowner {sortArrow("homeowner_name")}</th>
-								<th className={headerCls} onClick={() => toggle("address_line")}>Address {sortArrow("address_line")}</th>
-								<th className={headerCls} onClick={() => toggle("size_sqm")}>Size (m²) {sortArrow("size_sqm")}</th>
-								<th className={staticHeaderCls}>Type</th>
-								<th className={staticHeaderCls}>Status</th>
-								<th className={headerCls} onClick={() => toggle("list_price")}>Price {sortArrow("list_price")}</th>
-								<th className={headerCls} onClick={() => toggle("updated_at")}>Updated {sortArrow("updated_at")}</th>
+								<th className={staticHeaderCls}><span className="sr-only">Fotoğraf</span></th>
+								<th className={headerCls} onClick={() => toggle("homeowner_name")}>Mülk sahibi {sortArrow("homeowner_name")}</th>
+								<th className={headerCls} onClick={() => toggle("address_line")}>Adres {sortArrow("address_line")}</th>
+								<th className={headerCls} onClick={() => toggle("size_sqm")}>Büyüklük (m²) {sortArrow("size_sqm")}</th>
+								<th className={staticHeaderCls}>İlan</th>
+								<th className={staticHeaderCls}>Durum</th>
+								<th className={headerCls} onClick={() => toggle("list_price")}>Fiyat {sortArrow("list_price")}</th>
+								<th className={headerCls} onClick={() => toggle("updated_at")}>Güncellendi {sortArrow("updated_at")}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -215,19 +222,19 @@ export function PropertyTable() {
 									key={p.id}
 									onClick={() => open(p.id)}
 									onMouseEnter={() => prefetch(p.id)}
-									className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
+									className="border-b border-base-300 last:border-0 hover:bg-base-200 transition-colors cursor-pointer"
 								>
 									<td className="pl-4 pr-0 py-2">
 										<Thumb src={covers?.[p.id]} className="w-11 h-11 rounded-lg" />
 									</td>
-									<td className="px-4 py-3 text-sm font-medium text-slate-800 min-w-0">{p.homeowner_name}</td>
-									<td className="px-4 py-3 text-sm text-slate-600 min-w-0">{p.address_line}{p.city ? `, ${p.city}` : ""}</td>
-									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{p.size_sqm ?? "—"}</td>
+									<td className="px-4 py-3 text-sm font-medium text-base-content min-w-0">{p.homeowner_name}</td>
+									<td className="px-4 py-3 text-sm text-base-content/70 min-w-0">{p.address_line}{p.city ? `, ${p.city}` : ""}</td>
+									<td className="px-4 py-3 text-sm text-base-content/70 whitespace-nowrap">{p.size_sqm ?? "—"}</td>
 									<td className="px-4 py-3"><TypeBadge t={p.listing_type} /></td>
 									<td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-									<td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">{fmtPrice(p.list_price, p.currency)}</td>
-									<td className="px-4 py-3 text-sm text-slate-400 whitespace-nowrap">
-										{new Date(p.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+									<td className="px-4 py-3 text-sm text-base-content/80 whitespace-nowrap">{fmtPrice(p.list_price, p.currency)}</td>
+									<td className="px-4 py-3 text-sm text-base-content/50 whitespace-nowrap">
+										{new Date(p.updated_at).toLocaleDateString("tr-TR", { month: "short", day: "numeric" })}
 									</td>
 								</tr>
 							))}

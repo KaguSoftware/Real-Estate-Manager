@@ -85,10 +85,10 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 
 	function validate(): boolean {
 		const errors = compactErrors({
-			amount: positiveNumber(amount, "Amount"),
+			amount: positiveNumber(amount, "Tutar"),
 			periodEnd:
 				periodStart && periodEnd && Date.parse(periodEnd) <= Date.parse(periodStart)
-					? "Period end must be after the start."
+					? "Dönem bitişi başlangıçtan sonra olmalıdır."
 					: undefined,
 		});
 		setFieldErrors(errors);
@@ -110,7 +110,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 					amount_paid: Number(amount),
 					method: method.trim() || null,
 				});
-				toast.success("Payment recorded.");
+				toast.success("Ödeme kaydedildi.");
 			} else {
 				await updatePayment(form.payment.id, {
 					period_start: periodStart,
@@ -119,7 +119,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 					amount_paid: Number(amount),
 					method: method.trim() || null,
 				});
-				toast.success("Payment updated.");
+				toast.success("Ödeme güncellendi.");
 			}
 			invalidateCache("stats");
 			invalidateCache("attention");
@@ -139,7 +139,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 			await deletePayment(deleting.id);
 			invalidateCache("stats");
 			invalidateCache("attention");
-			toast.success("Payment deleted.");
+			toast.success("Ödeme silindi.");
 			setDeleting(null);
 			await reload();
 			onChanged?.();
@@ -152,7 +152,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 	return (
 		<div>
 			<div className="flex items-center justify-between mb-3">
-				<p className="text-sm font-semibold text-slate-700">{rows.length} payment{rows.length === 1 ? "" : "s"}</p>
+				<p className="text-sm font-semibold text-base-content/80">{rows.length} ödeme</p>
 				<div className="flex items-center gap-1">
 					{rows.length > 0 && (
 						<Button
@@ -161,32 +161,32 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 							onClick={() =>
 								downloadCsv(
 									"payments",
-									["Period start", "Period end", "Amount due", "Amount paid", "Currency", "Method", "Paid at", "Notes"],
+									["Dönem başlangıcı", "Dönem bitişi", "Vadesi gelen tutar", "Ödenen tutar", "Para birimi", "Yöntem", "Ödeme tarihi", "Notlar"],
 									rows.map((p) => [
 										p.period_start, p.period_end, p.amount_due, p.amount_paid,
 										currency, p.method, p.paid_at?.slice(0, 10), p.notes,
 									]),
 								)
 							}
-							title="Export payments as CSV"
+							title="Ödemeleri CSV olarak indir"
 						>
 							<Download className="w-4 h-4" />
-							CSV
+							CSV indir
 						</Button>
 					)}
 					<Button size="sm" variant={form ? "ghost" : "outline"} onClick={() => (form ? setForm(null) : openCreate())}>
-						{form ? "Cancel" : "+ Record payment"}
+						{form ? "Vazgeç" : "+ Ödeme kaydet"}
 					</Button>
 				</div>
 			</div>
 
 			{form && (
-				<form onSubmit={handleSubmit} className="mb-4 space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+				<form onSubmit={handleSubmit} className="mb-4 space-y-4 p-4 bg-base-200 rounded-2xl border border-base-300">
 					{form.mode === "edit" && (
-						<p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Editing payment</p>
+						<p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">Ödeme düzenleniyor</p>
 					)}
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<FormField label="Period start">
+						<FormField label="Dönem başlangıcı">
 							<Input
 								type="date"
 								value={periodStart}
@@ -194,21 +194,21 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 								required
 							/>
 						</FormField>
-						<FormField label="Period end" error={fieldErrors.periodEnd}>
+						<FormField label="Dönem bitişi" error={fieldErrors.periodEnd}>
 							<Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required />
 						</FormField>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<FormField label={`Amount (${currency})`} error={fieldErrors.amount}>
+						<FormField label={`Tutar (${currency})`} error={fieldErrors.amount}>
 							<Input type="number" inputMode="decimal" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
 						</FormField>
-						<FormField label="Method (optional)">
-							<Input value={method} onChange={(e) => setMethod(e.target.value)} placeholder="cash, transfer, …" />
+						<FormField label="Yöntem (isteğe bağlı)">
+							<Input value={method} onChange={(e) => setMethod(e.target.value)} placeholder="nakit, havale, …" />
 						</FormField>
 					</div>
 					{error && <Alert>{error}</Alert>}
 					<Button type="submit" block loading={submitting}>
-						{form.mode === "create" ? "Save payment" : "Save changes"}
+						{form.mode === "create" ? "Ödemeyi kaydet" : "Değişiklikleri kaydet"}
 					</Button>
 				</form>
 			)}
@@ -220,31 +220,31 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 			) : rows.length === 0 ? (
 				<EmptyState
 					icon={Receipt}
-					title="No payments recorded yet"
-					hint="Record the first rent payment to start tracking the balance."
+					title="Henüz ödeme kaydı yok"
+					hint="Bakiyeyi takip etmeye başlamak için ilk kira ödemesini kaydedin."
 					className="py-6"
 				/>
 			) : (
-				<ul className="divide-y divide-slate-100">
+				<ul className="divide-y divide-base-300">
 					{rows.map((p) => (
 						<li key={p.id} className="py-3 flex items-center justify-between gap-3 text-sm">
 							<div className="min-w-0">
-								<p className="text-slate-800 font-semibold">{fmt(Number(p.amount_paid), currency)}</p>
-								<p className="text-xs text-slate-400 mt-0.5">
+								<p className="text-base-content font-semibold">{fmt(Number(p.amount_paid), currency)}</p>
+								<p className="text-xs text-base-content/50 mt-0.5">
 									{p.period_start} → {p.period_end}{p.method ? ` · ${p.method}` : ""}
 								</p>
 							</div>
 							<div className="flex items-center gap-1 shrink-0">
-								<p className="hidden sm:block text-xs text-slate-400 whitespace-nowrap mr-2">
-									{p.paid_at ? new Date(p.paid_at).toLocaleDateString() : "—"}
+								<p className="hidden sm:block text-xs text-base-content/50 whitespace-nowrap mr-2">
+									{p.paid_at ? new Date(p.paid_at).toLocaleDateString("tr-TR") : "—"}
 								</p>
 								{onReceipt && (
 									<button
 										type="button"
 										onClick={() => onReceipt(p)}
-										aria-label="Download receipt"
-										title="Download rent receipt (kira makbuzu)"
-										className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+										aria-label="Makbuzu indir"
+										title="Kira makbuzunu indir"
+										className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-base-content/50 hover:text-base-content/80 hover:bg-base-200 transition-colors"
 									>
 										<Receipt className="w-4 h-4" />
 									</button>
@@ -252,16 +252,16 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 								<button
 									type="button"
 									onClick={() => openEdit(p)}
-									aria-label="Edit payment"
-									className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+									aria-label="Ödemeyi düzenle"
+									className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-base-content/50 hover:text-base-content/80 hover:bg-base-200 transition-colors"
 								>
 									<Pencil className="w-4 h-4" />
 								</button>
 								<button
 									type="button"
 									onClick={() => setDeleting(p)}
-									aria-label="Delete payment"
-									className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+									aria-label="Ödemeyi sil"
+									className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-base-content/50 hover:text-error hover:bg-error/10 transition-colors"
 								>
 									<Trash2 className="w-4 h-4" />
 								</button>
@@ -273,13 +273,13 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 
 			<ConfirmDialog
 				open={deleting !== null}
-				title="Delete this payment?"
+				title="Bu ödeme silinsin mi?"
 				message={
 					deleting
-						? `${fmt(Number(deleting.amount_paid), currency)} for ${deleting.period_start} → ${deleting.period_end}. This cannot be undone.`
+						? `${deleting.period_start} → ${deleting.period_end} dönemi için ${fmt(Number(deleting.amount_paid), currency)}. Bu işlem geri alınamaz.`
 						: undefined
 				}
-				confirmLabel="Delete"
+				confirmLabel="Sil"
 				loading={deleteBusy}
 				onConfirm={handleDelete}
 				onCancel={() => setDeleting(null)}

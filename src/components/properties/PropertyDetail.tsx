@@ -59,6 +59,23 @@ async function toDataUrl(url: string): Promise<string | null> {
 }
 
 
+// Display labels for DB enum values (values themselves stay in English).
+const STATUS_LABEL: Record<PropertyWithActiveLease["status"], string> = {
+	vacant: "Boş",
+	occupied: "Kirada",
+	sold: "Satıldı",
+};
+const SALE_STATUS_LABEL: Record<string, string> = {
+	active: "Etkin",
+	closed: "Tamamlandı",
+	cancelled: "İptal edildi",
+};
+const LEASE_STATUS_LABEL: Record<string, string> = {
+	active: "Etkin",
+	ended: "Sona erdi",
+	cancelled: "İptal edildi",
+};
+
 interface Props {
 	propertyId: string;
 }
@@ -121,7 +138,7 @@ export function PropertyDetail({ propertyId }: Props) {
 				generatedAt: new Date().toISOString(),
 			};
 
-			const safeName = data.address_line.replace(/[^\w\s-]/g, "").trim().slice(0, 60) || "listing";
+			const safeName = data.address_line.replace(/[^\w\s-]/g, "").trim().slice(0, 60) || "ilan";
 			await exportToPDF("listing", listing, safeName, await getPdfBrandingFromStore());
 		} catch (e) {
 			setError(humanizeError(e));
@@ -146,7 +163,7 @@ export function PropertyDetail({ propertyId }: Props) {
 				paid_at: payment.paid_at,
 				generatedAt: new Date().toISOString(),
 			};
-			await exportToPDF("receipt", receipt, `receipt-${payment.period_start}`, await getPdfBrandingFromStore());
+			await exportToPDF("receipt", receipt, `makbuz-${payment.period_start}`, await getPdfBrandingFromStore());
 		} catch (e) {
 			toast.error(humanizeError(e));
 		}
@@ -161,10 +178,10 @@ export function PropertyDetail({ propertyId }: Props) {
 				await endLease(data.active_lease.id, new Date().toISOString().slice(0, 10));
 				const updated = await updateProperty(data.id, { status: "vacant" });
 				upsertProperty(updated);
-				toast.success("Lease ended — property is vacant again.");
+				toast.success("Kira sözleşmesi sonlandırıldı — taşınmaz yeniden boş.");
 			} else if (pendingAction === "close-sale" && sale) {
 				await closeSale(sale.id);
-				toast.success("Sale closed.");
+				toast.success("Satış tamamlandı.");
 				invalidateCache("stats");
 			invalidateCache("attention");
 			} else if (pendingAction === "record-rent" && data.active_lease) {
@@ -173,7 +190,7 @@ export function PropertyDetail({ propertyId }: Props) {
 				const period = currentMonthPeriod();
 				const existing = await listPaymentsForLease(data.active_lease.id);
 				if (existing.some((p) => p.period_start === period.start)) {
-					toast.error("This month's rent is already recorded.");
+					toast.error("Bu ayın kirası zaten kaydedilmiş.");
 				} else {
 					await recordPayment({
 						lease_id: data.active_lease.id,
@@ -183,13 +200,13 @@ export function PropertyDetail({ propertyId }: Props) {
 					});
 					invalidateCache("stats");
 					invalidateCache("attention");
-					toast.success("This month's rent recorded as paid.");
+					toast.success("Bu ayın kirası ödendi olarak kaydedildi.");
 				}
 			} else if (pendingAction === "cancel-sale" && sale) {
 				await cancelSale(sale.id);
 				const updated = await updateProperty(data.id, { status: "vacant" });
 				upsertProperty(updated);
-				toast.success("Sale cancelled — property is vacant again.");
+				toast.success("Satış iptal edildi — taşınmaz yeniden boş.");
 			}
 			setPendingAction(null);
 			await reload();
@@ -205,7 +222,7 @@ export function PropertyDetail({ propertyId }: Props) {
 
 	if (loading && !data) {
 		return (
-			<AppShell title="Property">
+			<AppShell title="Taşınmaz">
 				<div className="py-16 flex justify-center">
 					<Spinner />
 				</div>
@@ -215,9 +232,9 @@ export function PropertyDetail({ propertyId }: Props) {
 
 	if (error && !data) {
 		return (
-			<AppShell title="Property">
+			<AppShell title="Taşınmaz">
 				<Alert>{error}</Alert>
-				<Button variant="ghost" size="sm" className="mt-4" onClick={() => router.push("/properties")}>← Back to properties</Button>
+				<Button variant="ghost" size="sm" className="mt-4" onClick={() => router.push("/properties")}>← Portföye dön</Button>
 			</AppShell>
 		);
 	}
@@ -228,13 +245,13 @@ export function PropertyDetail({ propertyId }: Props) {
 		sale?.status === "active" ? "amber" : sale?.status === "closed" ? "emerald" : "slate";
 
 	return (
-		<AppShell title="Property" subtitle={data.city ?? undefined}>
+		<AppShell title="Taşınmaz" subtitle={data.city ?? undefined}>
 			{/* Address header */}
 			<div className="mb-5">
-				<h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight wrap-break-word">
+				<h1 className="text-xl sm:text-2xl font-bold text-base-content leading-tight wrap-break-word">
 					{data.address_line}
 				</h1>
-				{data.city && <p className="text-sm text-slate-500 mt-1">{data.city}</p>}
+				{data.city && <p className="text-sm text-base-content/60 mt-1">{data.city}</p>}
 			</div>
 
 			{/* Gallery */}
@@ -246,11 +263,11 @@ export function PropertyDetail({ propertyId }: Props) {
 					className="mb-4"
 					action={
 						<Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-							Set location
+							Konum belirle
 						</Button>
 					}
 				>
-					This property isn&apos;t on the map yet. Set its location to show it on the dashboard map.
+					Bu taşınmaz henüz haritada değil. Genel bakış haritasında göstermek için konumunu belirleyin.
 				</Alert>
 			)}
 
@@ -261,17 +278,17 @@ export function PropertyDetail({ propertyId }: Props) {
 				{/* Property info */}
 				<Card>
 					<div className="flex items-center justify-between gap-2 mb-4">
-						<CardLabel>Property</CardLabel>
+						<CardLabel>Taşınmaz</CardLabel>
 						{!editing && (
 							<div className="flex items-center gap-2">
 								<Button size="sm" onClick={handleShare} loading={sharing}
-									title="Generate a client-ready PDF with photos & details">
+									title="Fotoğraflı ve detaylı, müşteriye hazır bir PDF oluşturur">
 									{!sharing && <Share2 className="w-4 h-4" />}
-									{sharing ? "Preparing…" : "Share"}
+									{sharing ? "Hazırlanıyor…" : "Paylaş"}
 								</Button>
 								<Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
 									<Pencil className="w-4 h-4" />
-									Edit
+									Düzenle
 								</Button>
 							</div>
 						)}
@@ -286,14 +303,14 @@ export function PropertyDetail({ propertyId }: Props) {
 						/>
 					) : (
 						<dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-sm">
-							<Field label="Homeowner" value={data.homeowner_name} />
-							<Field label="City" value={data.city ?? "—"} />
-							<Field label="Size" value={data.size_sqm != null ? `${data.size_sqm} m²` : "—"} />
-							<Field label="Bedrooms / Baths" value={`${data.bedrooms ?? "—"} / ${data.bathrooms ?? "—"}`} />
-							<Field label="Type" value={data.listing_type === "for_rent" ? "For Rent" : "For Sale"} />
-							<Field label="Status" value={data.status[0].toUpperCase() + data.status.slice(1)} />
-							<Field label="Listed price" value={data.list_price != null ? fmtMoney(data.list_price, data.currency) : "—"} wide />
-							{data.notes && <Field label="Notes" value={data.notes} wide multiline />}
+							<Field label="Mülk sahibi" value={data.homeowner_name} />
+							<Field label="Şehir" value={data.city ?? "—"} />
+							<Field label="Büyüklük" value={data.size_sqm != null ? `${data.size_sqm} m²` : "—"} />
+							<Field label="Yatak odası / Banyo" value={`${data.bedrooms ?? "—"} / ${data.bathrooms ?? "—"}`} />
+							<Field label="İlan" value={data.listing_type === "for_rent" ? "Kiralık" : "Satılık"} />
+							<Field label="Durum" value={STATUS_LABEL[data.status]} />
+							<Field label="Liste fiyatı" value={data.list_price != null ? fmtMoney(data.list_price, data.currency) : "—"} wide />
+							{data.notes && <Field label="Notlar" value={data.notes} wide multiline />}
 						</dl>
 					)}
 				</Card>
@@ -302,8 +319,8 @@ export function PropertyDetail({ propertyId }: Props) {
 				<Card>
 					<CardLabel className="mb-4 block">
 						{data.listing_type === "for_sale"
-							? (sale ? "Sale" : "Sales agreement")
-							: (data.active_lease ? "Active lease" : "Lease")}
+							? (sale ? "Satış" : "Satış sözleşmesi")
+							: (data.active_lease ? "Etkin kira sözleşmesi" : "Kira sözleşmesi")}
 					</CardLabel>
 
 					{data.listing_type === "for_sale" ? (
@@ -311,28 +328,28 @@ export function PropertyDetail({ propertyId }: Props) {
 							<div className="space-y-4">
 								<div className="flex flex-wrap items-center justify-between gap-2">
 									<div>
-										<p className="text-base font-bold text-slate-900">{sale.buyer.full_name}</p>
+										<p className="text-base font-bold text-base-content">{sale.buyer.full_name}</p>
 										{(sale.buyer.phone || sale.buyer.email) && (
-											<p className="text-sm text-slate-500 mt-0.5">
+											<p className="text-sm text-base-content/60 mt-0.5">
 												{sale.buyer.phone ?? ""}
 												{sale.buyer.phone && sale.buyer.email ? " · " : ""}
 												{sale.buyer.email ?? ""}
 											</p>
 										)}
 									</div>
-									<Badge tone={saleTone}>{sale.status}</Badge>
+									<Badge tone={saleTone}>{SALE_STATUS_LABEL[sale.status] ?? sale.status}</Badge>
 								</div>
 
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-									<Highlight label="Sale price" value={fmtMoney(Number(sale.sale_price), sale.currency)} />
+									<Highlight label="Satış fiyatı" value={fmtMoney(Number(sale.sale_price), sale.currency)} />
 									{sale.deposit_amount != null && (
-										<Highlight label="Deposit" value={fmtMoney(Number(sale.deposit_amount), sale.currency)} />
+										<Highlight label="Kapora" value={fmtMoney(Number(sale.deposit_amount), sale.currency)} />
 									)}
 								</div>
 
 								<dl className="grid grid-cols-2 gap-4 text-sm pt-1">
-									<Field label="Sale date" value={sale.sale_date} />
-									<Field label="Target close" value={sale.target_close_date ?? "—"} />
+									<Field label="Satış tarihi" value={sale.sale_date} />
+									<Field label="Hedef kapanış" value={sale.target_close_date ?? "—"} />
 								</dl>
 
 								{sale.document_pdf_path && (
@@ -343,25 +360,25 @@ export function PropertyDetail({ propertyId }: Props) {
 									<div className="flex flex-col sm:flex-row gap-2 pt-1">
 										<Button block onClick={() => setPendingAction("close-sale")}>
 											<CheckCircle2 className="w-4 h-4" />
-											Close sale
+											Satışı tamamla
 										</Button>
 										<Button variant="danger" block onClick={() => setPendingAction("cancel-sale")}>
 											<XCircle className="w-4 h-4" />
-											Cancel sale
+											Satışı iptal et
 										</Button>
 									</div>
 								)}
 							</div>
 						) : data.status === "sold" ? (
 							<div className="text-center py-6">
-								<p className="text-sm text-slate-500">This property is sold.</p>
+								<p className="text-sm text-base-content/60">Bu taşınmaz satıldı.</p>
 							</div>
 						) : (
 							<div className="text-center py-6">
-								<p className="text-sm text-slate-500 mb-4">No sales agreement for this property.</p>
+								<p className="text-sm text-base-content/60 mb-4">Bu taşınmaz için satış sözleşmesi yok.</p>
 								<Button onClick={() => router.push("/documents/new")}>
 									<Plus className="w-4 h-4" />
-									New sales agreement
+									Yeni satış sözleşmesi
 								</Button>
 							</div>
 						)
@@ -369,9 +386,9 @@ export function PropertyDetail({ propertyId }: Props) {
 						<div className="space-y-4">
 							<div className="flex flex-wrap items-center justify-between gap-2">
 								<div>
-									<p className="text-base font-bold text-slate-900">{data.active_lease.tenant.full_name}</p>
+									<p className="text-base font-bold text-base-content">{data.active_lease.tenant.full_name}</p>
 									{(data.active_lease.tenant.phone || data.active_lease.tenant.email) && (
-										<p className="text-sm text-slate-500 mt-0.5">
+										<p className="text-sm text-base-content/60 mt-0.5">
 											{data.active_lease.tenant.phone ?? ""}
 											{data.active_lease.tenant.phone && data.active_lease.tenant.email ? " · " : ""}
 											{data.active_lease.tenant.email ?? ""}
@@ -380,23 +397,23 @@ export function PropertyDetail({ propertyId }: Props) {
 								</div>
 								<div className="flex items-center gap-2">
 									<Badge tone="emerald">
-										{data.active_lease.term === "undefined" ? "Open" : data.active_lease.term}
+										{data.active_lease.term === "undefined" ? "Süresiz" : data.active_lease.term === "1yr" ? "1 yıl" : "2 yıl"}
 									</Badge>
 									<Button size="sm" variant="ghost" onClick={() => setEditingLease(true)}>
 										<Pencil className="w-4 h-4" />
-										Edit
+										Düzenle
 									</Button>
 								</div>
 							</div>
 
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-								<Highlight label="Monthly rent" value={fmtMoney(Number(data.active_lease.monthly_rent), data.active_lease.currency)} />
-								<Highlight label="Security deposit" value={fmtMoney(Number(data.active_lease.deposit), data.active_lease.currency)} />
+								<Highlight label="Aylık kira" value={fmtMoney(Number(data.active_lease.monthly_rent), data.active_lease.currency)} />
+								<Highlight label="Depozito" value={fmtMoney(Number(data.active_lease.deposit), data.active_lease.currency)} />
 							</div>
 
 							<dl className="grid grid-cols-2 gap-4 text-sm pt-1">
-								<Field label="Start" value={data.active_lease.start_date} />
-								<Field label="End" value={data.active_lease.end_date ?? "—"} />
+								<Field label="Başlangıç" value={data.active_lease.start_date} />
+								<Field label="Bitiş" value={data.active_lease.end_date ?? "—"} />
 							</dl>
 
 							{data.active_lease.document_pdf_path && (
@@ -404,11 +421,11 @@ export function PropertyDetail({ propertyId }: Props) {
 							)}
 
 							{/* Balance — 3 columns on sm+, stacked on phones */}
-							<div className="border-t border-slate-100 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-								<BalanceCell label="Paid" value={fmtMoney(data.active_lease.balance.totalPaid, data.active_lease.currency)} />
-								<BalanceCell label="Due" value={fmtMoney(data.active_lease.balance.totalDue, data.active_lease.currency)} />
+							<div className="border-t border-base-300 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+								<BalanceCell label="Ödenen" value={fmtMoney(data.active_lease.balance.totalPaid, data.active_lease.currency)} />
+								<BalanceCell label="Vadesi gelen" value={fmtMoney(data.active_lease.balance.totalDue, data.active_lease.currency)} />
 								<BalanceCell
-									label="Balance"
+									label="Bakiye"
 									value={fmtMoney(data.active_lease.balance.balance, data.active_lease.currency)}
 									danger={data.active_lease.balance.balance > 0}
 								/>
@@ -416,24 +433,24 @@ export function PropertyDetail({ propertyId }: Props) {
 
 							<Button block variant="outline" onClick={() => setPendingAction("record-rent")}>
 								<Plus className="w-4 h-4" />
-								Record this month&apos;s rent
+								Bu ayın kirasını kaydet
 							</Button>
 							<div className="flex flex-col sm:flex-row gap-2">
 								<Button block onClick={() => setRenewingLease(true)}>
 									<RefreshCw className="w-4 h-4" />
-									Renew lease
+									Sözleşmeyi yenile
 								</Button>
 								<Button variant="danger" block onClick={() => setPendingAction("end-lease")}>
-									End lease
+									Sözleşmeyi sonlandır
 								</Button>
 							</div>
 						</div>
 					) : (
 						<div className="text-center py-6">
-							<p className="text-sm text-slate-500 mb-4">No active lease for this property.</p>
+							<p className="text-sm text-base-content/60 mb-4">Bu taşınmaz için etkin kira sözleşmesi yok.</p>
 							<Button onClick={() => router.push("/documents/new")}>
 								<Plus className="w-4 h-4" />
-								New rental agreement
+								Yeni kira sözleşmesi
 							</Button>
 						</div>
 					)}
@@ -444,14 +461,14 @@ export function PropertyDetail({ propertyId }: Props) {
 			{data.latitude != null && data.longitude != null && (
 				<Card className="mt-4 sm:mt-5">
 					<div className="flex items-center justify-between gap-2 mb-4">
-						<CardLabel>Location</CardLabel>
+						<CardLabel>Konum</CardLabel>
 						<a
 							href={`https://www.google.com/maps?q=${data.latitude},${data.longitude}`}
 							target="_blank"
 							rel="noopener noreferrer"
 							className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-2"
 						>
-							Open in Google Maps
+							Google Haritalar&apos;da aç
 							<ExternalLink className="w-3.5 h-3.5" />
 						</a>
 					</div>
@@ -470,7 +487,7 @@ export function PropertyDetail({ propertyId }: Props) {
 			{/* Payments — full width */}
 			{data.active_lease && (
 				<Card className="mt-4 sm:mt-5">
-					<CardLabel className="mb-4 block">Payments</CardLabel>
+					<CardLabel className="mb-4 block">Ödemeler</CardLabel>
 					<PaymentList
 						leaseId={data.active_lease.id}
 						currency={data.active_lease.currency}
@@ -484,34 +501,34 @@ export function PropertyDetail({ propertyId }: Props) {
 			{/* History — past leases / sales */}
 			{data.listing_type === "for_rent" ? (
 				<HistorySection<Lease & { tenant: Tenant | null }>
-					title="Lease history"
+					title="Sözleşme geçmişi"
 					fetch={async () =>
 						(await listLeasesForProperty(data.id)).filter((l) => l.status !== "active")
 					}
 					render={(l) => (
 						<HistoryRow
 							key={l.id}
-							primary={l.tenant?.full_name ?? "Unknown tenant"}
-							secondary={`${l.start_date} → ${l.end_date ?? "open"}`}
-							amount={fmtMoney(Number(l.monthly_rent), l.currency) + " / mo"}
-							badge={<Badge tone={l.status === "ended" ? "slate" : "red"}>{l.status}</Badge>}
+							primary={l.tenant?.full_name ?? "Bilinmeyen kiracı"}
+							secondary={`${l.start_date} → ${l.end_date ?? "süresiz"}`}
+							amount={fmtMoney(Number(l.monthly_rent), l.currency) + " / ay"}
+							badge={<Badge tone={l.status === "ended" ? "slate" : "red"}>{LEASE_STATUS_LABEL[l.status] ?? l.status}</Badge>}
 						/>
 					)}
 				/>
 			) : (
 				<HistorySection<Sale & { buyer: Tenant | null }>
-					title="Sale history"
+					title="Satış geçmişi"
 					fetch={async () =>
 						(await listSalesForProperty(data.id)).filter((s) => s.status !== "active")
 					}
 					render={(s) => (
 						<HistoryRow
 							key={s.id}
-							primary={s.buyer?.full_name ?? "Unknown buyer"}
+							primary={s.buyer?.full_name ?? "Bilinmeyen alıcı"}
 							secondary={s.sale_date}
 							amount={fmtMoney(Number(s.sale_price), s.currency)}
 							badge={
-								<Badge tone={s.status === "closed" ? "emerald" : "slate"}>{s.status}</Badge>
+								<Badge tone={s.status === "closed" ? "emerald" : "slate"}>{SALE_STATUS_LABEL[s.status] ?? s.status}</Badge>
 							}
 						/>
 					)}
@@ -540,26 +557,26 @@ export function PropertyDetail({ propertyId }: Props) {
 
 			<ConfirmDialog
 				open={pendingAction === "end-lease"}
-				title="End this lease?"
+				title="Bu sözleşme sonlandırılsın mı?"
 				message={
 					data.active_lease
-						? `The lease for ${data.active_lease.tenant.full_name} will end today and the property becomes vacant. Payment history is kept.`
+						? `${data.active_lease.tenant.full_name} ile olan kira sözleşmesi bugün sona erer ve taşınmaz boşa çıkar. Ödeme geçmişi korunur.`
 						: undefined
 				}
-				confirmLabel="End lease"
+				confirmLabel="Sözleşmeyi sonlandır"
 				loading={actionBusy}
 				onConfirm={runPendingAction}
 				onCancel={() => setPendingAction(null)}
 			/>
 			<ConfirmDialog
 				open={pendingAction === "record-rent"}
-				title="Record this month's rent?"
+				title="Bu ayın kirası kaydedilsin mi?"
 				message={
 					data.active_lease
-						? `Records ${fmtMoney(Number(data.active_lease.monthly_rent), data.active_lease.currency)} for ${currentMonthPeriod().start.slice(0, 7)} as paid in full. You can adjust it later in Payments.`
+						? `${currentMonthPeriod().start.slice(0, 7)} dönemi için ${fmtMoney(Number(data.active_lease.monthly_rent), data.active_lease.currency)} tamamı ödendi olarak kaydedilir. Daha sonra Ödemeler bölümünden düzenleyebilirsiniz.`
 						: undefined
 				}
-				confirmLabel="Record rent"
+				confirmLabel="Kirayı kaydet"
 				tone="primary"
 				loading={actionBusy}
 				onConfirm={runPendingAction}
@@ -567,9 +584,9 @@ export function PropertyDetail({ propertyId }: Props) {
 			/>
 			<ConfirmDialog
 				open={pendingAction === "close-sale"}
-				title="Close this sale?"
-				message="Marks the sale as completed. The property stays sold."
-				confirmLabel="Close sale"
+				title="Bu satış tamamlansın mı?"
+				message="Satışı tamamlandı olarak işaretler. Taşınmaz satıldı durumunda kalır."
+				confirmLabel="Satışı tamamla"
 				tone="primary"
 				loading={actionBusy}
 				onConfirm={runPendingAction}
@@ -577,9 +594,9 @@ export function PropertyDetail({ propertyId }: Props) {
 			/>
 			<ConfirmDialog
 				open={pendingAction === "cancel-sale"}
-				title="Cancel this sale?"
-				message="The agreement is voided and the property returns to Vacant. This cannot be undone."
-				confirmLabel="Cancel sale"
+				title="Bu satış iptal edilsin mi?"
+				message="Sözleşme geçersiz olur ve taşınmaz Boş durumuna döner. Bu işlem geri alınamaz."
+				confirmLabel="Satışı iptal et"
 				loading={actionBusy}
 				onConfirm={runPendingAction}
 				onCancel={() => setPendingAction(null)}
@@ -624,13 +641,13 @@ function HistorySection<T>({
 				className="w-full flex items-center justify-between gap-2 text-left"
 			>
 				<span className="flex items-center gap-2">
-					<History className="w-4 h-4 text-slate-400" />
+					<History className="w-4 h-4 text-base-content/50" />
 					<CardLabel>{title}</CardLabel>
 					{items !== null && (
-						<span className="text-xs font-semibold text-slate-400">({items.length})</span>
+						<span className="text-xs font-semibold text-base-content/50">({items.length})</span>
 					)}
 				</span>
-				<ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+				<ChevronDown className={`w-4 h-4 text-base-content/50 transition-transform ${open ? "rotate-180" : ""}`} />
 			</button>
 
 			{open && (
@@ -640,10 +657,10 @@ function HistorySection<T>({
 					)}
 					{error && <Alert>{error}</Alert>}
 					{items !== null && items.length === 0 && (
-						<p className="text-sm text-slate-500 text-center py-4">No past records for this property.</p>
+						<p className="text-sm text-base-content/60 text-center py-4">Bu taşınmaz için geçmiş kayıt yok.</p>
 					)}
 					{items !== null && items.length > 0 && (
-						<ul className="divide-y divide-slate-100">{items.map(render)}</ul>
+						<ul className="divide-y divide-base-300">{items.map(render)}</ul>
 					)}
 				</div>
 			)}
@@ -665,11 +682,11 @@ function HistoryRow({
 	return (
 		<li className="py-3 flex flex-wrap items-center justify-between gap-2">
 			<div className="min-w-0">
-				<p className="text-sm font-semibold text-slate-800 truncate">{primary}</p>
-				<p className="text-xs text-slate-500 mt-0.5">{secondary}</p>
+				<p className="text-sm font-semibold text-base-content truncate">{primary}</p>
+				<p className="text-xs text-base-content/60 mt-0.5">{secondary}</p>
 			</div>
 			<div className="flex items-center gap-3">
-				<span className="text-sm font-semibold text-slate-700">{amount}</span>
+				<span className="text-sm font-semibold text-base-content/80">{amount}</span>
 				{badge}
 			</div>
 		</li>
@@ -698,7 +715,7 @@ function ContractPdfLink({ path }: { path: string }) {
 			className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-2 disabled:opacity-50"
 		>
 			<ExternalLink className="w-3.5 h-3.5" />
-			{busy ? "Opening…" : "Contract PDF"}
+			{busy ? "Açılıyor…" : "Sözleşme PDF"}
 		</button>
 	);
 }
@@ -706,8 +723,8 @@ function ContractPdfLink({ path }: { path: string }) {
 function Field({ label, value, wide, multiline }: { label: string; value: string; wide?: boolean; multiline?: boolean }) {
 	return (
 		<div className={wide ? "sm:col-span-2" : ""}>
-			<dt className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{label}</dt>
-			<dd className={`text-slate-800 ${multiline ? "whitespace-pre-wrap" : ""}`}>{value}</dd>
+			<dt className="text-xs font-semibold uppercase tracking-wide text-base-content/50 mb-0.5">{label}</dt>
+			<dd className={`text-base-content ${multiline ? "whitespace-pre-wrap" : ""}`}>{value}</dd>
 		</div>
 	);
 }
@@ -716,16 +733,16 @@ function Highlight({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="bg-primary/5 rounded-xl px-4 py-3">
 			<p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1">{label}</p>
-			<p className="text-base font-bold text-slate-900">{value}</p>
+			<p className="text-base font-bold text-base-content">{value}</p>
 		</div>
 	);
 }
 
 function BalanceCell({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
 	return (
-		<div className="bg-slate-50 rounded-xl px-4 py-3">
-			<p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-			<p className={`font-semibold mt-0.5 ${danger ? "text-red-600" : "text-slate-800"}`}>{value}</p>
+		<div className="bg-base-200 rounded-xl px-4 py-3">
+			<p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">{label}</p>
+			<p className={`font-semibold mt-0.5 ${danger ? "text-error" : "text-base-content"}`}>{value}</p>
 		</div>
 	);
 }

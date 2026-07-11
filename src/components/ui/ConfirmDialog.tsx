@@ -28,8 +28,8 @@ export function ConfirmDialog({
 	open,
 	title,
 	message,
-	confirmLabel = "Confirm",
-	cancelLabel = "Cancel",
+	confirmLabel = "Onayla",
+	cancelLabel = "Vazgeç",
 	tone = "danger",
 	loading,
 	onConfirm,
@@ -74,7 +74,7 @@ export function ConfirmDialog({
 
 	return (
 		<div
-			className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px]"
+			className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]"
 			onClick={() => { if (!loading) onCancel(); }}
 		>
 			<div
@@ -83,22 +83,22 @@ export function ConfirmDialog({
 				aria-modal="true"
 				aria-labelledby="confirm-dialog-title"
 				onClick={(e) => e.stopPropagation()}
-				className="w-full max-w-sm bg-white rounded-2xl shadow-pop p-5 sm:p-6 animate-[sheetIn_.18s_ease-out]"
+				className="w-full max-w-sm bg-base-100 rounded-2xl shadow-pop p-5 sm:p-6 animate-[sheetIn_.18s_ease-out]"
 			>
 				<div className="flex items-start gap-3">
 					<div
 						className={cn(
 							"shrink-0 h-10 w-10 rounded-xl flex items-center justify-center",
-							tone === "danger" ? "bg-red-50 text-red-600" : "bg-primary/10 text-primary",
+							tone === "danger" ? "bg-error/10 text-error" : "bg-primary/10 text-primary",
 						)}
 					>
 						<AlertTriangle className="w-5 h-5" />
 					</div>
 					<div className="min-w-0">
-						<h2 id="confirm-dialog-title" className="text-base font-bold text-slate-900">
+						<h2 id="confirm-dialog-title" className="text-base font-bold text-base-content">
 							{title}
 						</h2>
-						{message && <div className="mt-1 text-sm text-slate-500">{message}</div>}
+						{message && <div className="mt-1 text-sm text-base-content/60">{message}</div>}
 					</div>
 				</div>
 

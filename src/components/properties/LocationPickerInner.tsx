@@ -60,7 +60,7 @@ export function LocationPickerInner({ value, onPick, readOnly, heightClass = "h-
 		return () => { cancelled = true; };
 	}, []);
 	if (!mounted) {
-		return <div className={`${heightClass} w-full rounded-2xl bg-slate-100 animate-pulse`} />;
+		return <div className={`${heightClass} w-full rounded-2xl bg-base-200 animate-pulse`} />;
 	}
 
 	return (

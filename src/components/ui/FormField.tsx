@@ -14,7 +14,7 @@ interface FormFieldProps {
 	onDelete?: () => void;
 }
 
-const errorInputClass = "border-red-300 focus:border-red-400 focus:ring-red-100";
+const errorInputClass = "border-error/40 focus:border-error/60 focus:ring-error/15";
 
 /**
  * Labeled field wrapper. Wires label↔input (htmlFor/id), and when `error` is
@@ -49,16 +49,16 @@ export const FormField = ({ label, children, hint, error, id, onDelete }: FormFi
 	return (
 		<div className="w-full">
 			<div className="flex items-center justify-between mb-1.5">
-				<label htmlFor={fieldId} className="block text-xs font-semibold text-slate-600">
+				<label htmlFor={fieldId} className="block text-xs font-semibold text-base-content/70">
 					{label}
 				</label>
 				{onDelete && (
 					<button
 						type="button"
 						onClick={onDelete}
-						className="text-slate-300 hover:text-red-500 transition-colors p-1 -m-1"
-						title="Remove field"
-						aria-label={`Remove ${label}`}
+						className="text-base-content/30 hover:text-error transition-colors p-1 -m-1"
+						title="Alanı kaldır"
+						aria-label={`${label} alanını kaldır`}
 					>
 						<TrashIcon size={14} />
 					</button>
@@ -66,12 +66,12 @@ export const FormField = ({ label, children, hint, error, id, onDelete }: FormFi
 			</div>
 			{content}
 			{error && (
-				<p id={errorId} className="mt-1 text-xs font-medium text-red-600">
+				<p id={errorId} className="mt-1 text-xs font-medium text-error">
 					{error}
 				</p>
 			)}
 			{hint && !error && (
-				<p id={hintId} className="mt-1 text-xs text-slate-400">
+				<p id={hintId} className="mt-1 text-xs text-base-content/50">
 					{hint}
 				</p>
 			)}
@@ -86,15 +86,15 @@ export const FormField = ({ label, children, hint, error, id, onDelete }: FormFi
  * the className constant OR through the <Input/Textarea/Select> wrappers below.
  */
 export const inputClass =
-	"w-full h-12 bg-white border border-slate-200 rounded-xl px-3.5 text-base sm:text-sm text-slate-800 " +
-	"placeholder:text-slate-400 shadow-soft outline-none transition-all " +
+	"w-full h-12 bg-base-100 border border-base-300 rounded-xl px-3.5 text-base sm:text-sm text-base-content " +
+	"placeholder:text-base-content/40 shadow-soft outline-none transition-all " +
 	"focus:border-primary focus:ring-4 focus:ring-primary/15 " +
-	"disabled:bg-slate-50 disabled:text-slate-400";
+	"disabled:bg-base-200 disabled:text-base-content/50";
 
 /** Textarea variant — same skin, auto height. */
 export const textareaClass =
-	"w-full min-h-24 bg-white border border-slate-200 rounded-xl px-3.5 py-3 text-base sm:text-sm text-slate-800 " +
-	"placeholder:text-slate-400 shadow-soft outline-none transition-all resize-y " +
+	"w-full min-h-24 bg-base-100 border border-base-300 rounded-xl px-3.5 py-3 text-base sm:text-sm text-base-content " +
+	"placeholder:text-base-content/40 shadow-soft outline-none transition-all resize-y " +
 	"focus:border-primary focus:ring-4 focus:ring-primary/15";
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(

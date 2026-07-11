@@ -20,7 +20,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
 			onClick={() => setMode(m)}
 			className={cn(
 				"flex-1 h-9 text-sm font-semibold rounded-lg transition-colors",
-				mode === m ? "bg-white text-slate-800 shadow-soft" : "text-slate-500 hover:text-slate-700",
+				mode === m ? "bg-base-100 text-base-content shadow-soft" : "text-base-content/60 hover:text-base-content/80",
 			)}
 		>
 			{label}
@@ -28,10 +28,10 @@ export function AuthModal({ onClose }: AuthModalProps) {
 	);
 
 	return (
-		<Sheet open onClose={onClose} title="Account">
-			<div className="flex gap-1 mb-5 bg-slate-100 rounded-xl p-1">
-				{tabBtn("login", "Sign In")}
-				{tabBtn("signup", "Sign Up")}
+		<Sheet open onClose={onClose} title="Hesap">
+			<div className="flex gap-1 mb-5 bg-base-200 rounded-xl p-1">
+				{tabBtn("login", "Giriş yap")}
+				{tabBtn("signup", "Kayıt ol")}
 			</div>
 			<AuthForm key={mode} mode={mode} standalone={false} onClose={onClose} />
 		</Sheet>

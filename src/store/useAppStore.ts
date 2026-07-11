@@ -139,3 +139,11 @@ export const useAppStore = create<AppState>((set) => ({
 	setLeadFilter: (k, v) => set((s) => ({ leadFilters: { ...s.leadFilters, [k]: v } })),
 	resetLeadFilters: () => set({ leadFilters: { ...EMPTY_LEAD_FILTERS } }),
 }));
+
+/** Client mirror of the DB-side team_is_writable() write gate. Optimistic
+ *  before team context loads; RLS stays authoritative. Use it to disable
+ *  create/edit/delete controls when the trial/subscription has lapsed. */
+export function useIsWritable(): boolean {
+	const team = useAppStore((s) => s.team);
+	return team?.is_writable ?? true;
+}

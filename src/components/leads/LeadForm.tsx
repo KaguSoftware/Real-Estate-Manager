@@ -22,7 +22,7 @@ interface Props {
 /** Eyebrow heading separating field groups inside the form. */
 function GroupTitle({ children }: { children: React.ReactNode }) {
 	return (
-		<p className="text-xs font-bold uppercase tracking-wider text-slate-400 pt-1">{children}</p>
+		<p className="text-xs font-bold uppercase tracking-wider text-base-content/50 pt-1">{children}</p>
 	);
 }
 
@@ -72,7 +72,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 	async function handleSubmit(e?: React.FormEvent) {
 		e?.preventDefault();
 		const errors = compactErrors({
-			full_name: full_name.trim() ? undefined : "Name is required.",
+			full_name: full_name.trim() ? undefined : "Ad zorunludur.",
 			email: validEmail(email),
 		});
 		setFieldErrors(errors);
@@ -85,7 +85,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 				? await createLead(input)
 				: await updateLead(initial!.id, input);
 			upsertLead(row);
-			toast.success(mode === "create" ? "Lead added." : "Lead updated.");
+			toast.success(mode === "create" ? "Müşteri eklendi." : "Müşteri güncellendi.");
 			onDone();
 		} catch (err) {
 			setError(humanizeError(err));
@@ -100,7 +100,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 		try {
 			await deleteLead(initial.id);
 			removeLead(initial.id);
-			toast.success("Lead deleted.");
+			toast.success("Müşteri silindi.");
 			onDone();
 		} catch (err) {
 			setConfirmingDelete(false);
@@ -129,17 +129,17 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 		<Sheet
 			open
 			onClose={onClose}
-			title={mode === "create" ? "Add lead" : "Edit lead"}
+			title={mode === "create" ? "Müşteri ekle" : "Müşteriyi düzenle"}
 			footer={
 				<div className="flex items-center gap-2">
 					{mode === "edit" && (
-						<Button variant="danger" size="md" onClick={() => setConfirmingDelete(true)} disabled={busy} aria-label="Delete lead">
+						<Button variant="danger" size="md" onClick={() => setConfirmingDelete(true)} disabled={busy} aria-label="Müşteriyi sil">
 							<Trash2 className="w-4 h-4" />
 						</Button>
 					)}
-					<Button variant="ghost" block onClick={onClose}>Cancel</Button>
+					<Button variant="ghost" block onClick={onClose}>Vazgeç</Button>
 					<Button block onClick={() => handleSubmit()} loading={busy}>
-						{mode === "create" ? "Add lead" : "Save"}
+						{mode === "create" ? "Müşteri ekle" : "Kaydet"}
 					</Button>
 				</div>
 			}
@@ -148,82 +148,82 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 				{error && <Alert>{error}</Alert>}
 
 				{/* Contact */}
-				<GroupTitle>Contact</GroupTitle>
-				<FormField label="Name" error={fieldErrors.full_name}>
-					<Input value={full_name} onChange={(e) => setFullName(e.target.value)} placeholder="Client name" autoFocus />
+				<GroupTitle>İletişim</GroupTitle>
+				<FormField label="Ad" error={fieldErrors.full_name}>
+					<Input value={full_name} onChange={(e) => setFullName(e.target.value)} placeholder="Müşteri adı" autoFocus />
 				</FormField>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Phone">
+					<FormField label="Telefon">
 						<Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+90 5xx xxx xx xx" />
 					</FormField>
-					<FormField label="Email" error={fieldErrors.email}>
-						<Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="optional" />
+					<FormField label="E-posta" error={fieldErrors.email}>
+						<Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="isteğe bağlı" />
 					</FormField>
 				</div>
 
 				{/* Interest */}
-				<GroupTitle>Interest</GroupTitle>
-				<FormField label="Interested in">
-					<Textarea value={interested_in} onChange={(e) => setInterestedIn(e.target.value)} placeholder="e.g. 3+1 with a garden, near the center" />
+				<GroupTitle>İlgi alanı</GroupTitle>
+				<FormField label="İlgilendiği">
+					<Textarea value={interested_in} onChange={(e) => setInterestedIn(e.target.value)} placeholder="örn. bahçeli 3+1, merkeze yakın" />
 				</FormField>
 
-				<div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-4">
-					<p className="text-xs font-bold uppercase tracking-wider text-slate-500">Search preferences (optional)</p>
+				<div className="rounded-2xl bg-base-200 border border-base-300 p-4 space-y-4">
+					<p className="text-xs font-bold uppercase tracking-wider text-base-content/60">Arama tercihleri (isteğe bağlı)</p>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<FormField label="Looking to">
+						<FormField label="Amaç">
 							<Select value={pref_listing_type} onChange={(e) => setPrefListingType(e.target.value as ListingType | "")}>
-								<option value="">Any</option>
-								<option value="for_rent">Rent</option>
-								<option value="for_sale">Buy</option>
+								<option value="">Fark etmez</option>
+								<option value="for_rent">Kiralamak</option>
+								<option value="for_sale">Satın almak</option>
 							</Select>
 						</FormField>
-						<FormField label="Type (e.g. 3+1)">
+						<FormField label="Nitelik (örn. 3+1)">
 							<Input value={pref_nitelik} onChange={(e) => setPrefNitelik(e.target.value)} placeholder="3+1" />
 						</FormField>
-						<FormField label="Min bedrooms">
+						<FormField label="En az yatak odası">
 							<Input type="number" inputMode="numeric" min={0} value={pref_min_bedrooms} onChange={(e) => setPrefMinBedrooms(e.target.value)} placeholder="3" />
 						</FormField>
-						<FormField label="Location / site">
-							<Input value={pref_location} onChange={(e) => setPrefLocation(e.target.value)} placeholder="Neighborhood or site" />
+						<FormField label="Konum / site">
+							<Input value={pref_location} onChange={(e) => setPrefLocation(e.target.value)} placeholder="Mahalle veya site" />
 						</FormField>
 					</div>
 					<Button type="button" variant="primary" block onClick={findMatches} disabled={!hasPrefs}>
 						<Search className="w-4 h-4" />
-						Find matching properties
+						Eşleşen taşınmazları bul
 					</Button>
 				</div>
 
 				{/* Status & follow-up */}
-				<GroupTitle>Status &amp; follow-up</GroupTitle>
+				<GroupTitle>Durum ve takip</GroupTitle>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Status">
+					<FormField label="Durum">
 						<Select value={status} onChange={(e) => setStatus(e.target.value as LeadStatus)}>
 							{LEAD_STATUS_ORDER.map((s) => (
 								<option key={s} value={s}>{LEAD_STATUS_META[s].label}</option>
 							))}
 						</Select>
 					</FormField>
-					<FormField label="Last call">
+					<FormField label="Son arama">
 						<Input type="date" value={last_call_at ?? ""} onChange={(e) => setLastCallAt(e.target.value)} />
 					</FormField>
 				</div>
 
-				<FormField label="Assigned agent" hint="Who is responsible — the whole team can still see it.">
+				<FormField label="Atanan danışman" hint="Sorumlu kişi — tüm ekip yine de görebilir.">
 					<AssigneeSelect value={assignedTo} onChange={setAssignedTo} />
 				</FormField>
 
 				{/* Notes */}
-				<GroupTitle>Notes</GroupTitle>
-				<FormField label="Notes">
-					<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything worth remembering…" />
+				<GroupTitle>Notlar</GroupTitle>
+				<FormField label="Notlar">
+					<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Hatırlanmaya değer her şey…" />
 				</FormField>
 			</form>
 
 			<ConfirmDialog
 				open={confirmingDelete}
-				title="Delete this lead?"
-				message={initial ? `"${initial.full_name}" will be removed permanently.` : undefined}
-				confirmLabel="Delete"
+				title="Bu müşteri silinsin mi?"
+				message={initial ? `"${initial.full_name}" kalıcı olarak silinecek.` : undefined}
+				confirmLabel="Sil"
 				loading={busy}
 				onConfirm={handleDelete}
 				onCancel={() => setConfirmingDelete(false)}

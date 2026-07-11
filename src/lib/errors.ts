@@ -22,43 +22,59 @@ export function humanizeError(e: unknown): string {
 	const raw = err.message ?? (e instanceof Error ? e.message : String(e));
 
 	if (isPaywallError(err.code, raw)) {
-		return "Your team's trial has ended — the workspace is read-only until a plan is active. See Billing.";
+		return "Ekibinizin deneme süresi sona erdi — bir plan etkinleştirilene kadar çalışma alanı salt okunur. Abonelik sayfasına bakın.";
 	}
 
 	switch (err.code) {
 		case "23503": // foreign key violation
-			return "This record is still linked to other data (for example a lease or payment). Remove those first.";
+			return "Bu kayıt hâlâ başka verilerle bağlantılı (örneğin bir kira sözleşmesi veya ödeme). Önce onları kaldırın.";
 		case "23505": // unique violation
 			if (raw.includes("uniq_active_lease_per_property"))
-				return "This property already has an active lease. End it before creating a new one.";
-			return "A record with these details already exists.";
+				return "Bu taşınmazın zaten aktif bir kira sözleşmesi var. Yenisini oluşturmadan önce mevcut sözleşmeyi sonlandırın.";
+			return "Bu bilgilerle bir kayıt zaten mevcut.";
 		case "23514": // check constraint
-			return "One of the values is out of the allowed range. Please review the form.";
+			return "Değerlerden biri izin verilen aralığın dışında. Lütfen formu gözden geçirin.";
 		case "42501": // insufficient privilege / RLS
 		case "PGRST301":
-			return "You don't have permission to do that.";
+			// Owners hitting this on paths they should have access to is a bug in
+			// our policies or seed data, not user error — surface the raw denial.
+			reportError(e);
+			return "Bu işlem için yetkiniz yok.";
 	}
 
-	// Supabase Auth error strings.
-	if (/invalid login credentials/i.test(raw)) return "Wrong email or password. Please try again.";
-	if (/email not confirmed/i.test(raw))
-		return "Your email isn't confirmed yet — check your inbox for the confirmation link.";
-	if (/user already registered/i.test(raw))
-		return "An account with this email already exists. Try signing in instead.";
-	if (/password should be/i.test(raw))
-		return "Password is too weak — use at least 6 characters.";
-	if (/rate limit|too many requests|security purposes/i.test(raw))
-		return "Too many attempts — please wait a minute and try again.";
-	if (/invalid email/i.test(raw)) return "That doesn't look like a valid email address.";
+	// Domain RPC errors (raised in migrations — keep the regexes in sync).
+	if (/seat limit/i.test(raw))
+		return "Planınızın danışman sınırına ulaştınız — daha fazla üye eklemek için planınızı yükseltin.";
+	if (/transfer ownership or delete/i.test(raw))
+		return "Önce ekip sahipliğini devredin veya ekibi silin.";
+	if (/already belong to a team/i.test(raw))
+		return "Zaten bir ekibe üyesiniz.";
+	if (/invalid or expired invite/i.test(raw))
+		return "Davet kodu geçersiz veya süresi dolmuş.";
 
-	if (/JWT|token|not authenticated/i.test(raw)) return "Your session expired — please sign in again.";
+	// Supabase Auth error strings.
+	if (/invalid login credentials/i.test(raw)) return "E-posta veya şifre hatalı. Lütfen tekrar deneyin.";
+	if (/email not confirmed/i.test(raw))
+		return "E-posta adresiniz henüz doğrulanmadı — onay bağlantısı için gelen kutunuzu kontrol edin.";
+	if (/user already registered/i.test(raw))
+		return "Bu e-posta ile kayıtlı bir hesap zaten var. Bunun yerine giriş yapmayı deneyin.";
+	if (/password should be/i.test(raw))
+		return "Şifre çok zayıf — en az 6 karakter kullanın.";
+	if (/rate limit|too many requests|security purposes/i.test(raw))
+		return "Çok fazla deneme yapıldı — lütfen bir dakika bekleyip tekrar deneyin.";
+	if (/invalid email/i.test(raw)) return "Bu geçerli bir e-posta adresine benzemiyor.";
+
+	if (/JWT|token|not authenticated/i.test(raw)) return "Oturumunuzun süresi doldu — lütfen tekrar giriş yapın.";
 	if (/Failed to fetch|NetworkError|fetch failed/i.test(raw))
-		return "Couldn't reach the server. Check your connection and try again.";
-	if (/row-level security/i.test(raw)) return "You don't have permission to do that.";
+		return "Sunucuya ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.";
+	if (/row-level security/i.test(raw)) {
+		reportError(e);
+		return "Bu işlem için yetkiniz yok.";
+	}
 
 	// Nothing matched — this is an unexpected failure. Report it (Sentry when
 	// configured) before showing the generic fallback so prod breakage surfaces
 	// to us, not only to customers.
 	reportError(e);
-	return raw || "Something went wrong. Please try again.";
+	return raw || "Bir şeyler ters gitti. Lütfen tekrar deneyin.";
 }

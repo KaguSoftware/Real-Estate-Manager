@@ -11,13 +11,13 @@ const VARIANTS: Record<Variant, string> = {
 	primary:
 		"bg-primary text-primary-content hover:brightness-110 active:brightness-95 shadow-soft",
 	secondary:
-		"bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-900 shadow-soft",
+		"bg-neutral text-neutral-content hover:bg-neutral/90 active:bg-neutral shadow-soft",
 	ghost:
-		"bg-transparent text-slate-700 hover:bg-slate-100 active:bg-slate-200",
+		"bg-transparent text-base-content/80 hover:bg-base-200 active:bg-base-300",
 	outline:
-		"bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 active:bg-slate-100 shadow-soft",
+		"bg-base-100 text-base-content/80 border border-base-300 hover:bg-base-200 active:bg-base-300 shadow-soft",
 	danger:
-		"bg-white text-red-600 border border-red-200 hover:bg-red-50 active:bg-red-100",
+		"bg-base-100 text-error border border-error/40 hover:bg-error/10 active:bg-error/20",
 };
 
 const SIZES: Record<Size, string> = {

@@ -34,7 +34,7 @@ export function AdminPanel() {
 		try {
 			await adminSetUserRole({ userId, role });
 			setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, app_role: role } : u)));
-			toast.success("Role updated.");
+			toast.success("Rol güncellendi.");
 		} catch (e) {
 			setRoleError(humanizeError(e));
 		} finally {
@@ -43,7 +43,7 @@ export function AdminPanel() {
 	}
 
 	function formatDate(iso: string) {
-		return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+		return new Date(iso).toLocaleDateString("tr-TR", { month: "short", day: "numeric", year: "numeric" });
 	}
 
 	function roleSelect(user: ProfileRow) {
@@ -54,24 +54,24 @@ export function AdminPanel() {
 					disabled={updatingRole === user.id}
 					onChange={(e) => handleRoleChange(user.id, e.target.value as GlobalRole)}
 					className="h-10 w-auto"
-					aria-label={`Role for ${user.email}`}
+					aria-label={`${user.email} için rol`}
 				>
-					<option value="member">Member</option>
-					<option value="admin">Admin</option>
-					<option value="client">Client</option>
+					<option value="member">Üye</option>
+					<option value="admin">Yönetici</option>
+					<option value="client">Müşteri</option>
 				</Select>
 				{updatingRole === user.id && <Spinner size="sm" />}
 			</div>
 		);
 	}
 
-	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400";
+	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-base-content/50";
 
 	return (
-		<AppShell title="Admin · Users" subtitle="Change roles for any user">
+		<AppShell title="Yönetim · Kullanıcılar" subtitle="Tüm kullanıcıların rollerini değiştirin">
 			<Card padded={false}>
-				<div className="px-4 sm:px-6 py-4 border-b border-slate-100">
-					<CardLabel>All Users ({users.length})</CardLabel>
+				<div className="px-4 sm:px-6 py-4 border-b border-base-300">
+					<CardLabel>Tüm kullanıcılar ({users.length})</CardLabel>
 				</div>
 
 				{loading ? (
@@ -85,13 +85,13 @@ export function AdminPanel() {
 						{roleError && <Alert className="mx-4 sm:mx-6 mt-4">{roleError}</Alert>}
 
 						{/* Mobile: card list */}
-						<ul className="block sm:hidden divide-y divide-slate-100">
+						<ul className="block sm:hidden divide-y divide-base-300">
 							{users.map((user) => (
 								<li key={user.id} className="p-4 space-y-2">
 									<div className="min-w-0">
-										<p className="text-sm font-semibold text-slate-800 truncate">{user.email}</p>
-										<p className="text-xs text-slate-400 mt-0.5">
-											{user.display_name ?? "—"} · joined {formatDate(user.created_at)}
+										<p className="text-sm font-semibold text-base-content truncate">{user.email}</p>
+										<p className="text-xs text-base-content/50 mt-0.5">
+											{user.display_name ?? "—"} · katılım {formatDate(user.created_at)}
 										</p>
 									</div>
 									{roleSelect(user)}
@@ -103,20 +103,20 @@ export function AdminPanel() {
 						<div className="hidden sm:block overflow-x-auto">
 							<table className="w-full min-w-140 text-sm">
 								<thead>
-									<tr className="border-b border-slate-100 bg-slate-50/60">
-										<th className={headerCls}>Email</th>
-										<th className={headerCls}>Name</th>
-										<th className={headerCls}>Role</th>
-										<th className={cn(headerCls, "hidden md:table-cell")}>Joined</th>
+									<tr className="border-b border-base-300 bg-base-200/60">
+										<th className={headerCls}>E-posta</th>
+										<th className={headerCls}>Ad</th>
+										<th className={headerCls}>Rol</th>
+										<th className={cn(headerCls, "hidden md:table-cell")}>Katılım</th>
 									</tr>
 								</thead>
 								<tbody>
 									{users.map((user) => (
-										<tr key={user.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-											<td className="px-4 py-3 text-sm text-slate-700 max-w-50 truncate">{user.email}</td>
-											<td className="px-4 py-3 text-sm text-slate-500">{user.display_name ?? "—"}</td>
+										<tr key={user.id} className="border-b border-base-300 last:border-0 hover:bg-base-200 transition-colors">
+											<td className="px-4 py-3 text-sm text-base-content/80 max-w-50 truncate">{user.email}</td>
+											<td className="px-4 py-3 text-sm text-base-content/60">{user.display_name ?? "—"}</td>
 											<td className="px-4 py-3">{roleSelect(user)}</td>
-											<td className="px-4 py-3 text-sm text-slate-400 hidden md:table-cell whitespace-nowrap">
+											<td className="px-4 py-3 text-sm text-base-content/50 hidden md:table-cell whitespace-nowrap">
 												{formatDate(user.created_at)}
 											</td>
 										</tr>

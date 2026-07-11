@@ -26,9 +26,9 @@ export function LeadFilters({ onAdd }: { onAdd?: () => void }) {
 	return (
 		<div className="mb-4 flex flex-col sm:flex-row gap-2 sm:items-center">
 			<div className="relative flex-1 min-w-0">
-				<Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+				<Search className="w-4 h-4 text-base-content/50 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
 				<Input
-					placeholder="Search name, phone, interest…"
+					placeholder="Ad, telefon veya ilgi alanı ara…"
 					value={q}
 					onChange={(e) => setQ(e.target.value)}
 					className="pl-9"
@@ -40,7 +40,7 @@ export function LeadFilters({ onAdd }: { onAdd?: () => void }) {
 				onChange={(e) => setLeadFilter("status", e.target.value as LeadStatus | "all")}
 				className="sm:w-52"
 			>
-				<option value="all">All statuses</option>
+				<option value="all">Tüm durumlar</option>
 				{LEAD_STATUS_ORDER.map((s) => (
 					<option key={s} value={s}>{LEAD_STATUS_META[s].label}</option>
 				))}
@@ -48,14 +48,14 @@ export function LeadFilters({ onAdd }: { onAdd?: () => void }) {
 
 			{hasActiveFilter && (
 				<Button variant="ghost" size="sm" onClick={() => { setQ(""); resetLeadFilters(); }}>
-					Clear
+					Temizle
 				</Button>
 			)}
 
 			{onAdd && (
 				<Button size="sm" onClick={onAdd} className="hidden sm:inline-flex sm:ml-auto shrink-0">
 					<Plus className="w-4 h-4" />
-					Add client
+					Müşteri ekle
 				</Button>
 			)}
 		</div>

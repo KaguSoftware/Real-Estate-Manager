@@ -19,10 +19,10 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { failed: bool
 			return (
 				<div className="h-64 sm:h-96 w-full flex items-center justify-center text-center px-6">
 					<div className="flex flex-col items-center">
-						<MapPinOff className="w-7 h-7 text-slate-400 mb-2" />
-						<p className="text-sm font-semibold text-slate-700">Map unavailable</p>
-						<p className="text-xs text-slate-500 mt-1">
-							Refresh the page to retry. Other dashboard features still work.
+						<MapPinOff className="w-7 h-7 text-base-content/50 mb-2" />
+						<p className="text-sm font-semibold text-base-content/80">Harita kullanılamıyor</p>
+						<p className="text-xs text-base-content/60 mt-1">
+							Yeniden denemek için sayfayı yenileyin. Diğer özellikler çalışmaya devam eder.
 						</p>
 					</div>
 				</div>
@@ -37,7 +37,7 @@ const PropertyMapInner = dynamic(
 	{
 		ssr: false,
 		loading: () => (
-			<div className="h-64 sm:h-96 w-full rounded-2xl bg-slate-100 animate-pulse" />
+			<div className="h-64 sm:h-96 w-full rounded-2xl bg-base-200 animate-pulse" />
 		),
 	},
 );
@@ -59,14 +59,14 @@ export function PropertyMap() {
 	);
 
 	return (
-		<section className="relative mb-4 bg-white rounded-2xl border border-slate-200/80 shadow-card overflow-hidden">
+		<section className="relative mb-4 bg-base-100 rounded-2xl border border-base-300 shadow-card overflow-hidden">
 			{mappable.length === 0 ? (
 				<div className="h-64 sm:h-96 w-full flex items-center justify-center text-center px-6">
 					<div className="flex flex-col items-center">
-						<MapPin className="w-7 h-7 text-slate-400 mb-2" />
-						<p className="text-sm font-semibold text-slate-700">No mapped properties yet</p>
-						<p className="text-xs text-slate-500 mt-1">
-							Addresses are geocoded on save. Create or edit a property to see it on the map.
+						<MapPin className="w-7 h-7 text-base-content/50 mb-2" />
+						<p className="text-sm font-semibold text-base-content/80">Haritada gösterilecek taşınmaz yok</p>
+						<p className="text-xs text-base-content/60 mt-1">
+							Adresler kayıt sırasında konumlandırılır. Haritada görmek için bir taşınmaz ekleyin veya düzenleyin.
 						</p>
 					</div>
 				</div>
@@ -81,8 +81,8 @@ export function PropertyMap() {
 					<button
 						type="button"
 						onClick={() => setExpanded((e) => !e)}
-						aria-label={expanded ? "Collapse map" : "Expand map"}
-						className="absolute top-3 right-3 z-10 h-10 w-10 inline-flex items-center justify-center rounded-xl bg-white/90 backdrop-blur border border-slate-200 text-slate-600 shadow-soft hover:bg-white hover:text-slate-900 transition-colors"
+						aria-label={expanded ? "Haritayı küçült" : "Haritayı büyüt"}
+						className="absolute top-3 right-3 z-10 h-10 w-10 inline-flex items-center justify-center rounded-xl bg-base-100/90 backdrop-blur border border-base-300 text-base-content/70 shadow-soft hover:bg-base-100 hover:text-base-content transition-colors"
 					>
 						{expanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
 					</button>

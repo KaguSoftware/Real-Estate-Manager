@@ -53,52 +53,52 @@ export function PropertyFilters() {
 	// The secondary controls — reused inline on desktop and inside the sheet on mobile.
 	const controls = (stacked: boolean) => (
 		<div className={cn(stacked ? "space-y-4" : "contents")}>
-			<FieldWrap stacked={stacked} label="Type">
+			<FieldWrap stacked={stacked} label="Nitelik">
 				<MultiSelect
-					label="Any type"
+					label="Tüm nitelikler"
 					options={typeOptions}
 					selected={filters.nitelik}
 					onChange={(next) => setFilter("nitelik", next)}
 					className={stacked ? "" : "sm:w-36"}
 				/>
 			</FieldWrap>
-			<FieldWrap stacked={stacked} label="Location / site">
+			<FieldWrap stacked={stacked} label="Konum / site">
 				<MultiSelect
-					label="Any location"
+					label="Tüm konumlar"
 					options={locationOptions}
 					selected={filters.location}
 					onChange={(next) => setFilter("location", next)}
 					className={stacked ? "" : "sm:w-48"}
 				/>
 			</FieldWrap>
-			<FieldWrap stacked={stacked} label="Furnished">
+			<FieldWrap stacked={stacked} label="Eşya durumu">
 				<Select
 					value={filters.furnished}
 					onChange={(e) => setFilter("furnished", e.target.value as typeof filters.furnished)}
 					className={stacked ? "" : "sm:w-auto"}
 				>
-					<option value="all">Any</option>
-					<option value="yes">Furnished</option>
-					<option value="no">Unfurnished</option>
+					<option value="all">Tümü</option>
+					<option value="yes">Eşyalı</option>
+					<option value="no">Eşyasız</option>
 				</Select>
 			</FieldWrap>
-			<FieldWrap stacked={stacked} label="Listing">
+			<FieldWrap stacked={stacked} label="İlan">
 				<Select value={filters.listing_type}
 					onChange={(e) => setFilter("listing_type", e.target.value as typeof filters.listing_type)}
 					className={stacked ? "" : "sm:w-auto"}>
-					<option value="all">All types</option>
-					<option value="for_rent">For Rent</option>
-					<option value="for_sale">For Sale</option>
+					<option value="all">Tüm ilanlar</option>
+					<option value="for_rent">Kiralık</option>
+					<option value="for_sale">Satılık</option>
 				</Select>
 			</FieldWrap>
-			<FieldWrap stacked={stacked} label="Status">
+			<FieldWrap stacked={stacked} label="Durum">
 				<Select value={filters.status}
 					onChange={(e) => setFilter("status", e.target.value as typeof filters.status)}
 					className={stacked ? "" : "sm:w-auto"}>
-					<option value="all">All statuses</option>
-					<option value="vacant">Vacant</option>
-					<option value="occupied">Occupied</option>
-					<option value="sold">Sold</option>
+					<option value="all">Tüm durumlar</option>
+					<option value="vacant">Boş</option>
+					<option value="occupied">Kirada</option>
+					<option value="sold">Satıldı</option>
 				</Select>
 			</FieldWrap>
 		</div>
@@ -109,9 +109,9 @@ export function PropertyFilters() {
 			{/* Always-visible search + (mobile) Filters trigger */}
 			<div className="flex gap-2 items-center">
 				<div className="relative flex-1 min-w-0">
-					<Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+					<Search className="w-4 h-4 text-base-content/50 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
 					<Input
-						placeholder="Search homeowner, address, city…"
+						placeholder="Mülk sahibi, adres veya şehir ara…"
 						value={q}
 						onChange={(e) => setQ(e.target.value)}
 						className="pl-9"
@@ -124,7 +124,7 @@ export function PropertyFilters() {
 					size="md"
 					onClick={() => setSheetOpen(true)}
 					className="sm:hidden relative shrink-0"
-					aria-label="Filters"
+					aria-label="Filtreler"
 				>
 					<SlidersHorizontal className="w-4 h-4" />
 					{activeCount > 0 && (
@@ -139,11 +139,11 @@ export function PropertyFilters() {
 			<div className="hidden sm:flex flex-wrap gap-2 items-center mt-3">
 				{controls(false)}
 				{hasActiveFilter && (
-					<Button variant="ghost" size="sm" onClick={clearAll}>Clear</Button>
+					<Button variant="ghost" size="sm" onClick={clearAll}>Temizle</Button>
 				)}
 				<Button size="sm" onClick={() => router.push("/properties/new")} className="ml-auto shrink-0">
 					<Plus className="w-4 h-4" />
-					Add property
+					Taşınmaz ekle
 				</Button>
 			</div>
 
@@ -151,11 +151,11 @@ export function PropertyFilters() {
 			<Sheet
 				open={sheetOpen}
 				onClose={() => setSheetOpen(false)}
-				title="Filters"
+				title="Filtreler"
 				footer={
 					<div className="flex gap-2">
-						<Button variant="ghost" block onClick={clearAll}>Clear all</Button>
-						<Button block onClick={() => setSheetOpen(false)}>Show results</Button>
+						<Button variant="ghost" block onClick={clearAll}>Tümünü temizle</Button>
+						<Button block onClick={() => setSheetOpen(false)}>Sonuçları göster</Button>
 					</div>
 				}
 			>

@@ -49,7 +49,7 @@ async function requireUser() {
  *  can reach the database with a missing/foreign team_id. */
 export function requireTeamId(): string {
 	const team = useAppStore.getState().team;
-	if (!team) throw new Error("No team — join or create a team first");
+	if (!team) throw new Error("Ekibiniz yok — önce bir ekibe katılın veya ekip oluşturun");
 	return team.id;
 }
 
@@ -209,6 +209,27 @@ export async function removeMember(userId: string): Promise<void> {
 	if (error) throw error;
 }
 
+/** Owner-only (RPC). Demotes the caller to agent and promotes the member. */
+export async function transferOwnership(newOwnerId: string): Promise<void> {
+	const { supabase } = await requireUser();
+	const { error } = await supabase.rpc("transfer_ownership", { new_owner: newOwnerId });
+	if (error) throw error;
+}
+
+/** Agent-only (RPC) — owners must transfer or delete first. */
+export async function leaveTeam(): Promise<void> {
+	const { supabase } = await requireUser();
+	const { error } = await supabase.rpc("leave_team");
+	if (error) throw error;
+}
+
+/** Owner-only (RPC), irreversible: cascades every table + storage objects. */
+export async function deleteTeam(): Promise<void> {
+	const { supabase } = await requireUser();
+	const { error } = await supabase.rpc("delete_team", { confirmation: "DELETE" });
+	if (error) throw error;
+}
+
 export async function renameTeam(name: string): Promise<void> {
 	const { supabase } = await requireUser();
 	const teamId = requireTeamId();
@@ -223,27 +244,75 @@ const LOGO_MAX_BYTES = 1024 * 1024; // 1 MB
 // PNG/JPEG only — react-pdf's <Image> cannot render WebP/SVG.
 const LOGO_TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg" };
 
-/** Public CDN URL for a stored logo; `v` busts caches after re-uploads. */
+/** Public CDN URL for a stored logo. Paths are timestamped on upload, so the
+ *  URL changes on every re-upload and no cache busting param is needed. */
 export function getTeamLogoUrl(logoPath: string | null): string | null {
 	if (!logoPath) return null;
 	const { data } = createClient().storage.from(LOGO_BUCKET).getPublicUrl(logoPath);
 	return data.publicUrl;
 }
 
-/** Owner-only (RLS). Uploads {team_id}/logo-{ts}.{ext} and points logo_path at it. */
+/** Storage failures come back as generic messages; translate the three real
+ *  failure classes into something the owner can act on. */
+function mapLogoUploadError(e: unknown): Error {
+	const raw = e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e);
+	if (/bucket not found/i.test(raw)) {
+		return new Error(
+			"Depolama alanı bulunamadı — sistem yöneticinizin 0012_team_branding.sql migrasyonunu uygulaması gerekiyor.",
+		);
+	}
+	if (/row-level security|violates.*policy|unauthorized|403/i.test(raw)) {
+		const team = useAppStore.getState().team;
+		if (team && !team.is_writable) {
+			return new Error(
+				"Deneme süreniz sona erdi — logo yüklemek için aboneliğinizi etkinleştirin.",
+			);
+		}
+		return new Error(
+			"Logo yükleme izni reddedildi. Yalnızca ekip sahibi logo yükleyebilir; sorun devam ederse oturumu kapatıp tekrar açın.",
+		);
+	}
+	if (/payload too large|exceeded|maximum allowed size/i.test(raw)) {
+		return new Error("Dosya çok büyük — logo 1 MB'den küçük olmalı.");
+	}
+	return e instanceof Error ? e : new Error(raw);
+}
+
+/** Owner-only (RLS). Compresses the image client-side, uploads it as
+ *  {team_id}/logo-{ts}.{ext} and points teams.logo_path at it. */
 export async function uploadTeamLogo(file: File): Promise<string> {
 	const ext = LOGO_TYPES[file.type];
-	if (!ext) throw new Error("Logo must be a PNG or JPEG image.");
-	if (file.size > LOGO_MAX_BYTES) throw new Error("Logo must be under 1 MB.");
+	if (!ext) throw new Error("Logo PNG veya JPEG formatında olmalı.");
 	const { supabase } = await requireUser();
 	const teamId = requireTeamId();
+
+	// Downscale/compress before upload: the logo renders at ≤128px in the navbar
+	// and small in PDFs, and phone-camera images easily exceed the 1 MB cap.
+	let payload: Blob = file;
+	if (file.size > 200 * 1024) {
+		try {
+			const imageCompression = (await import("browser-image-compression")).default;
+			payload = await imageCompression(file, {
+				maxSizeMB: 0.5,
+				maxWidthOrHeight: 1024,
+				useWebWorker: true,
+				fileType: file.type,
+			});
+		} catch {
+			// Best-effort: fall through with the original file; the size check below
+			// still guards the bucket cap.
+		}
+	}
+	if (payload.size > LOGO_MAX_BYTES) throw new Error("Dosya çok büyük — logo 1 MB'den küçük olmalı.");
+
 	// Timestamped filename: a stable path would serve stale CDN copies after re-upload.
 	const path = `${teamId}/logo-${Date.now()}.${ext}`;
-	const { error: upErr } = await supabase.storage.from(LOGO_BUCKET).upload(path, file, {
+	const { error: upErr } = await supabase.storage.from(LOGO_BUCKET).upload(path, payload, {
 		cacheControl: "3600",
+		contentType: file.type,
 		upsert: true,
 	});
-	if (upErr) throw upErr;
+	if (upErr) throw mapLogoUploadError(upErr);
 	const { error } = await supabase.from("teams").update({ logo_path: path }).eq("id", teamId);
 	if (error) throw error;
 	return path;

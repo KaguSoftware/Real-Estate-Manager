@@ -22,7 +22,7 @@ function isToday(dateStr: string | null): boolean {
 
 function fmtCallDate(dateStr: string | null): string {
 	if (!dateStr) return "—";
-	return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+	return new Date(dateStr).toLocaleDateString("tr-TR", { month: "short", day: "numeric" });
 }
 
 function StatusBadge({ status }: { status: Lead["status"] }) {
@@ -35,7 +35,7 @@ function CalledTodayPill() {
 	return (
 		<Badge tone="blue">
 			<PhoneCall className="w-3.5 h-3.5" />
-			Today
+			Bugün
 		</Badge>
 	);
 }
@@ -56,14 +56,14 @@ export function LeadTable({ onEdit }: Props) {
 			const today = new Date().toISOString();
 			// Keep a lightweight contact history by prepending a dated line to
 			// the free-text notes, so past calls stay visible in the lead form.
-			const logLine = `[${today.slice(0, 10)}] Called.`;
+			const logLine = `[${today.slice(0, 10)}] Arandı.`;
 			const notes = lead.notes ? `${logLine}\n${lead.notes}` : logLine;
 			const updated = await updateLead(lead.id, { last_call_at: today, notes });
 			upsertLead(updated);
 			// The attention panel's "gone quiet" list depends on last_call_at.
 			invalidateCache("attention");
 			invalidateCache("leads");
-			toast.success(`Marked ${lead.full_name} as called today.`);
+			toast.success(`${lead.full_name} bugün arandı olarak işaretlendi.`);
 		} catch (e) {
 			toast.error(humanizeError(e));
 		} finally {
@@ -95,14 +95,14 @@ export function LeadTable({ onEdit }: Props) {
 			<Card>
 				<EmptyState
 					icon={Users}
-					title="No leads yet"
-					hint="Tap Add to record your first client."
+					title="Henüz müşteri yok"
+					hint="İlk müşterinizi kaydetmek için Ekle'ye dokunun."
 				/>
 			</Card>
 		);
 	}
 
-	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400";
+	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-base-content/50";
 
 	return (
 		<>
@@ -117,13 +117,13 @@ export function LeadTable({ onEdit }: Props) {
 						tabIndex={0}
 						onClick={() => onEdit(l)}
 						onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(l); } }}
-						className="w-full text-left bg-white border border-slate-200/80 rounded-2xl shadow-card p-4 active:bg-slate-50 transition-colors cursor-pointer"
+						className="w-full text-left bg-base-100 border border-base-300 rounded-2xl shadow-card p-4 active:bg-base-200 transition-colors cursor-pointer"
 					>
 						<div className="flex items-start justify-between gap-3">
 							<div className="min-w-0 flex-1">
-								<p className="text-base font-bold text-slate-900 truncate">{l.full_name}</p>
+								<p className="text-base font-bold text-base-content truncate">{l.full_name}</p>
 								{l.phone && (
-									<p className="text-sm text-slate-500 mt-0.5 truncate">
+									<p className="text-sm text-base-content/60 mt-0.5 truncate">
 										{l.phone} <WhatsAppButton phone={l.phone} name={l.full_name} />
 									</p>
 								)}
@@ -131,10 +131,10 @@ export function LeadTable({ onEdit }: Props) {
 							<StatusBadge status={l.status} />
 						</div>
 						{l.interested_in && (
-							<p className="text-sm text-slate-600 mt-2 line-clamp-2">{l.interested_in}</p>
+							<p className="text-sm text-base-content/70 mt-2 line-clamp-2">{l.interested_in}</p>
 						)}
 						<div className="mt-3 flex items-center justify-between gap-2">
-							<span className="text-xs text-slate-400">Last call: {fmtCallDate(l.last_call_at)}</span>
+							<span className="text-xs text-base-content/50">Son arama: {fmtCallDate(l.last_call_at)}</span>
 							{isToday(l.last_call_at) ? (
 								<CalledTodayPill />
 							) : (
@@ -142,10 +142,10 @@ export function LeadTable({ onEdit }: Props) {
 									type="button"
 									onClick={(e) => { e.stopPropagation(); markCalledToday(l); }}
 									disabled={callBusyId === l.id}
-									className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 active:bg-emerald-100 transition-colors disabled:opacity-50"
+									className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-semibold text-success bg-success/10 active:bg-success/20 transition-colors disabled:opacity-50"
 								>
 									<PhoneCall className="w-3.5 h-3.5" />
-									Called today
+									Bugün arandı
 								</button>
 							)}
 						</div>
@@ -157,14 +157,14 @@ export function LeadTable({ onEdit }: Props) {
 			<Card padded={false} className="hidden sm:block overflow-hidden">
 				<div className="overflow-x-auto">
 					<table className="w-full min-w-140 text-sm">
-						<thead className="bg-slate-50/60 border-b border-slate-100">
+						<thead className="bg-base-200/60 border-b border-base-300">
 							<tr>
-								<th className={headerCls}>Name</th>
-								<th className={headerCls}>Phone</th>
-								<th className={headerCls}>Interested in</th>
-								<th className={headerCls}>Status</th>
-								<th className={headerCls}>Matches</th>
-								<th className={headerCls}>Last call</th>
+								<th className={headerCls}>Ad</th>
+								<th className={headerCls}>Telefon</th>
+								<th className={headerCls}>İlgilendiği</th>
+								<th className={headerCls}>Durum</th>
+								<th className={headerCls}>Eşleşmeler</th>
+								<th className={headerCls}>Son arama</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -172,31 +172,31 @@ export function LeadTable({ onEdit }: Props) {
 								<tr
 									key={l.id}
 									onClick={() => onEdit(l)}
-									className="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors cursor-pointer"
+									className="border-b border-base-300 last:border-0 hover:bg-base-200 transition-colors cursor-pointer"
 								>
-									<td className="px-4 py-3 text-sm font-medium text-slate-800">{l.full_name}</td>
-									<td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+									<td className="px-4 py-3 text-sm font-medium text-base-content">{l.full_name}</td>
+									<td className="px-4 py-3 text-sm text-base-content/70 whitespace-nowrap">
 										{l.phone ?? "—"}
 										{l.phone && <span className="ml-1"><WhatsAppButton phone={l.phone} name={l.full_name} /></span>}
 									</td>
-									<td className="px-4 py-3 text-sm text-slate-600 max-w-xs truncate">{l.interested_in ?? "—"}</td>
+									<td className="px-4 py-3 text-sm text-base-content/70 max-w-xs truncate">{l.interested_in ?? "—"}</td>
 									<td className="px-4 py-3"><StatusBadge status={l.status} /></td>
 									<td className="px-4 py-3 text-sm whitespace-nowrap">
 										{(matchCounts.get(l.id) ?? 0) > 0 ? (
 											<span
-												className="inline-flex items-center gap-1 text-emerald-600 font-semibold"
-												title="Properties in your portfolio matching this client's preferences"
+												className="inline-flex items-center gap-1 text-success font-semibold"
+												title="Portföyünüzde bu müşterinin tercihleriyle eşleşen taşınmazlar"
 											>
 												<Home className="w-3.5 h-3.5" />
 												{matchCounts.get(l.id)}
 											</span>
 										) : (
-											<span className="text-slate-300">—</span>
+											<span className="text-base-content/30">—</span>
 										)}
 									</td>
 									<td className="px-4 py-3 text-sm whitespace-nowrap">
 										<span className="inline-flex items-center gap-2">
-											<span className="text-slate-500">{fmtCallDate(l.last_call_at)}</span>
+											<span className="text-base-content/60">{fmtCallDate(l.last_call_at)}</span>
 											{isToday(l.last_call_at) ? (
 												<CalledTodayPill />
 											) : (
@@ -204,9 +204,9 @@ export function LeadTable({ onEdit }: Props) {
 													type="button"
 													onClick={(e) => { e.stopPropagation(); markCalledToday(l); }}
 													disabled={callBusyId === l.id}
-													aria-label={`Mark ${l.full_name} as called today`}
-													title="Mark as called today"
-													className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+													aria-label={`${l.full_name} bugün arandı olarak işaretle`}
+													title="Bugün arandı olarak işaretle"
+													className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-base-content/50 hover:text-success hover:bg-success/10 transition-colors disabled:opacity-50"
 												>
 													<PhoneCall className="w-3.5 h-3.5" />
 												</button>

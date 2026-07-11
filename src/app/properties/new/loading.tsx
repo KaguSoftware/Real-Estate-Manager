@@ -1,5 +1,5 @@
 import { RouteLoading } from "@/src/components/ui/RouteLoading";
 
 export default function Loading() {
-	return <RouteLoading label="Opening new property form" />;
+	return <RouteLoading label="Yeni taşınmaz formu açılıyor" />;
 }

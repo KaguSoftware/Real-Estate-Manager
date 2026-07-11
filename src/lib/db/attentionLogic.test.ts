@@ -74,7 +74,7 @@ describe("classifyLeases", () => {
 		const out = classifyLeases(rows, NOW);
 		expect(out.map((l) => l.leaseId)).toEqual(["l1", "l2"]);
 		expect(out[0].daysLeft).toBe(7);
-		expect(out[0].propertyLabel).toBe("Unknown property");
+		expect(out[0].propertyLabel).toBe("Bilinmeyen taşınmaz");
 	});
 });
 

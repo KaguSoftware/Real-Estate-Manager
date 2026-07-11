@@ -40,8 +40,8 @@ export function RenewLeaseSheet({ open, lease, onClose, onRenewed }: Props) {
 	async function handleRenew() {
 		setError(null);
 		const errors = compactErrors({
-			monthlyRent: positiveNumber(monthlyRent, "Monthly rent"),
-			startDate: !startDate ? "Start date is required." : undefined,
+			monthlyRent: positiveNumber(monthlyRent, "Aylık kira"),
+			startDate: !startDate ? "Başlangıç tarihi zorunludur." : undefined,
 		});
 		setFieldErrors(errors);
 		if (Object.keys(errors).length > 0) return;
@@ -56,7 +56,7 @@ export function RenewLeaseSheet({ open, lease, onClose, onRenewed }: Props) {
 			});
 			invalidateCache("stats");
 			invalidateCache("attention");
-			toast.success(`Lease renewed for ${lease.tenant.full_name}.`);
+			toast.success(`${lease.tenant.full_name} için kira sözleşmesi yenilendi.`);
 			onRenewed();
 			onClose();
 		} catch (e) {
@@ -70,45 +70,45 @@ export function RenewLeaseSheet({ open, lease, onClose, onRenewed }: Props) {
 		<Sheet
 			open={open}
 			onClose={onClose}
-			title="Renew lease"
+			title="Sözleşmeyi yenile"
 			footer={
 				<div className="flex gap-2 justify-end">
-					<Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
-					<Button onClick={handleRenew} loading={busy}>Renew lease</Button>
+					<Button variant="ghost" onClick={onClose} disabled={busy}>Vazgeç</Button>
+					<Button onClick={handleRenew} loading={busy}>Sözleşmeyi yenile</Button>
 				</div>
 			}
 		>
 			<div className="space-y-5">
-				<p className="text-sm text-slate-600">
-					The current lease for <span className="font-semibold">{lease.tenant.full_name}</span> ends
-					on the new start date and a new one begins with the terms below. Payment history is kept.
+				<p className="text-sm text-base-content/70">
+					<span className="font-semibold">{lease.tenant.full_name}</span> ile mevcut kira sözleşmesi
+					yeni başlangıç tarihinde sona erer ve aşağıdaki koşullarla yenisi başlar. Ödeme geçmişi korunur.
 				</p>
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="New start date" error={fieldErrors.startDate}>
+					<FormField label="Yeni başlangıç tarihi" error={fieldErrors.startDate}>
 						<Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
 					</FormField>
 					<FormField
-						label="Term"
-						hint={newEndDate ? `Ends ${newEndDate}` : "Open-ended"}
+						label="Süre"
+						hint={newEndDate ? `Bitiş: ${newEndDate}` : "Süresiz"}
 					>
 						<Select value={term} onChange={(e) => setTerm(e.target.value as LeaseTerm)}>
-							<option value="1yr">1 year</option>
-							<option value="2yr">2 years</option>
-							<option value="undefined">Open-ended</option>
+							<option value="1yr">1 yıl</option>
+							<option value="2yr">2 yıl</option>
+							<option value="undefined">Süresiz</option>
 						</Select>
 					</FormField>
 				</div>
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label={`Monthly rent (${lease.currency})`} error={fieldErrors.monthlyRent}>
+					<FormField label={`Aylık kira (${lease.currency})`} error={fieldErrors.monthlyRent}>
 						<Input
 							type="number" inputMode="decimal" min="0"
 							value={monthlyRent}
 							onChange={(e) => setMonthlyRent(e.target.value)}
 						/>
 					</FormField>
-					<FormField label={`Security deposit (${lease.currency})`}>
+					<FormField label={`Depozito (${lease.currency})`}>
 						<Input
 							type="number" inputMode="decimal" min="0"
 							value={deposit}

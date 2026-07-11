@@ -8,6 +8,7 @@ import { getTeamLogoUrl } from "@/src/lib/db/teams";
 import { useAppStore } from "@/src/store";
 import { cn } from "./cn";
 import { useFocusTrap } from "./useFocusTrap";
+import { ThemeToggle } from "./ThemeToggle";
 import { LayoutDashboard, Home, Users, ContactRound, FilePlus2, Shield, UsersRound, CreditCard, UserCog, LogOut, X } from "lucide-react";
 
 interface NavItem {
@@ -18,15 +19,15 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-	{ href: "/", label: "Dashboard", icon: LayoutDashboard },
-	{ href: "/properties", label: "Properties", icon: Home },
-	{ href: "/leads", label: "Clients", icon: Users },
-	{ href: "/tenants", label: "Tenants", icon: ContactRound },
-	{ href: "/documents/new", label: "New document", icon: FilePlus2 },
-	{ href: "/team", label: "Team", icon: UsersRound },
-	{ href: "/settings/billing", label: "Billing", icon: CreditCard },
-	{ href: "/settings/profile", label: "Profile", icon: UserCog },
-	{ href: "/admin", label: "Admin", icon: Shield, adminOnly: true },
+	{ href: "/", label: "Genel bakış", icon: LayoutDashboard },
+	{ href: "/properties", label: "Portföy", icon: Home },
+	{ href: "/leads", label: "Müşteriler", icon: Users },
+	{ href: "/tenants", label: "Kiracılar", icon: ContactRound },
+	{ href: "/documents/new", label: "Yeni belge", icon: FilePlus2 },
+	{ href: "/team", label: "Ekip", icon: UsersRound },
+	{ href: "/settings/billing", label: "Abonelik", icon: CreditCard },
+	{ href: "/settings/profile", label: "Profil", icon: UserCog },
+	{ href: "/admin", label: "Yönetim", icon: Shield, adminOnly: true },
 ];
 
 /** Spinner shown while this link's navigation is in flight (useLinkStatus). */
@@ -36,7 +37,7 @@ function PendingHint() {
 	return (
 		<span
 			aria-hidden
-			className="ml-auto h-4 w-4 rounded-full border-2 border-slate-200 border-t-primary animate-spin"
+			className="ml-auto h-4 w-4 rounded-full border-2 border-base-300 border-t-primary animate-spin"
 		/>
 	);
 }
@@ -73,7 +74,7 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 			{/* Backdrop */}
 			<div
 				className={cn(
-					"fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] transition-opacity duration-200",
+					"fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] transition-opacity duration-200",
 					open ? "opacity-100" : "opacity-0 pointer-events-none",
 				)}
 				onClick={onClose}
@@ -83,16 +84,16 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 				ref={panelRef}
 				role="dialog"
 				aria-modal="true"
-				aria-label="Navigation menu"
+				aria-label="Gezinme menüsü"
 				tabIndex={-1}
 				inert={!open}
 				className={cn(
-					"fixed inset-y-0 left-0 z-50 w-[82%] max-w-xs bg-white shadow-pop flex flex-col",
+					"fixed inset-y-0 left-0 z-50 w-[82%] max-w-xs bg-base-100 shadow-pop flex flex-col",
 					"transition-transform duration-200 ease-out safe-top safe-bottom",
 					open ? "translate-x-0" : "-translate-x-full",
 				)}
 			>
-				<div className="flex items-center justify-between px-5 h-16 border-b border-slate-100">
+				<div className="flex items-center justify-between px-5 h-16 border-b border-base-300">
 					<div className="min-w-0 flex items-center gap-2.5">
 						{team?.logo_path && (
 							// eslint-disable-next-line @next/next/no-img-element
@@ -103,14 +104,14 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 							/>
 						)}
 						<div className="min-w-0">
-							<p className="text-base font-bold text-slate-900 leading-tight truncate">{team?.name ?? "Real Estate"}</p>
-							<p className="text-xs text-slate-400 truncate">{team ? "Workspace" : "Manager"}</p>
+							<p className="text-base font-bold text-base-content leading-tight truncate">{team?.name ?? "Kagu Emlak"}</p>
+							<p className="text-xs text-base-content/50 truncate">{team ? "Çalışma alanı" : "Yönetici"}</p>
 						</div>
 					</div>
 					<button
 						onClick={onClose}
-						aria-label="Close menu"
-						className="-mr-2 h-11 w-11 inline-flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100"
+						aria-label="Menüyü kapat"
+						className="-mr-2 h-11 w-11 inline-flex items-center justify-center rounded-xl text-base-content/50 hover:bg-base-200"
 					>
 						<X className="w-5 h-5" />
 					</button>
@@ -128,7 +129,7 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 									"flex items-center gap-3 h-12 px-3 rounded-xl text-sm font-semibold transition-colors",
 									active
 										? "bg-primary/10 text-primary"
-										: "text-slate-700 hover:bg-slate-100",
+										: "text-base-content/80 hover:bg-base-200",
 								)}
 							>
 								<Icon className="w-5 h-5 shrink-0" />
@@ -139,21 +140,27 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 					})}
 				</nav>
 
-				{user && (
-					<div className="border-t border-slate-100 p-3">
-						<div className="px-3 py-2">
-							<p className="text-xs text-slate-400">Signed in as</p>
-							<p className="text-sm font-medium text-slate-700 truncate">{user.email}</p>
-						</div>
-						<button
-							onClick={handleSignOut}
-							className="flex items-center gap-3 w-full h-12 px-3 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
-						>
-							<LogOut className="w-5 h-5" />
-							Sign out
-						</button>
+				<div className="border-t border-base-300 p-3 space-y-1">
+					<div className="px-3 py-2">
+						<p className="text-xs text-base-content/50 mb-1.5">Görünüm</p>
+						<ThemeToggle />
 					</div>
-				)}
+					{user && (
+						<>
+							<div className="px-3 py-2">
+								<p className="text-xs text-base-content/50">Oturum açık:</p>
+								<p className="text-sm font-medium text-base-content/80 truncate">{user.email}</p>
+							</div>
+							<button
+								onClick={handleSignOut}
+								className="flex items-center gap-3 w-full h-12 px-3 rounded-xl text-sm font-semibold text-error hover:bg-error/10 transition-colors"
+							>
+								<LogOut className="w-5 h-5" />
+								Çıkış yap
+							</button>
+						</>
+					)}
+				</div>
 			</aside>
 		</>
 	);

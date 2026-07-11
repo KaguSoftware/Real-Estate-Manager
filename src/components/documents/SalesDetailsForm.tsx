@@ -82,17 +82,17 @@ interface Props {
 /** Wizard-level validation for the sales details step. Keys map to FormField ids below. */
 export function validateSales(s: SalesFormState): Record<string, string> {
 	const errors: Record<string, string> = {};
-	if (!s.sellerName.trim()) errors.sellerName = "Seller name is required.";
-	if (!s.buyerName.trim()) errors.buyerName = "Buyer name is required.";
+	if (!s.sellerName.trim()) errors.sellerName = "Satıcı adı zorunludur.";
+	if (!s.buyerName.trim()) errors.buyerName = "Alıcı adı zorunludur.";
 	if (!s.buyerPhone.trim() && !s.buyerEmail.trim())
-		errors.buyerContact = "Provide at least a phone or an email for the buyer.";
-	if (!(Number(s.salePrice) > 0)) errors.salePrice = "Sale price must be greater than zero.";
-	if (s.saleDate.length !== 10) errors.saleDate = "Sale date is required.";
+		errors.buyerContact = "Alıcı için en az bir telefon veya e-posta girin.";
+	if (!(Number(s.salePrice) > 0)) errors.salePrice = "Satış bedeli sıfırdan büyük olmalıdır.";
+	if (s.saleDate.length !== 10) errors.saleDate = "Sözleşme tarihi zorunludur.";
 	return errors;
 }
 
 function fmtMoney(n: number) {
-	return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+	return n.toLocaleString("tr-TR", { maximumFractionDigits: 2 });
 }
 
 export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
@@ -119,18 +119,18 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 		<div className="space-y-8">
 			{/* A — Seller */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-					A — Mal Sahibi (Seller)
+				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+					A — Satıcı (Mal Sahibi)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Adı Soyadı / Firma (Full name)" id="sellerName" error={errors.sellerName}>
+					<FormField label="Adı Soyadı / Firma" id="sellerName" error={errors.sellerName}>
 						<Input required value={state.sellerName} onChange={set("sellerName")} />
 					</FormField>
-					<FormField label="Telefon (Phone)">
+					<FormField label="Telefon">
 						<Input type="tel" inputMode="tel" value={state.sellerPhone} onChange={set("sellerPhone")} />
 					</FormField>
 				</div>
-				<FormField label="Adresi (Address)">
+				<FormField label="Adresi">
 					<Input value={state.sellerAddress} onChange={set("sellerAddress")} />
 				</FormField>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -140,29 +140,29 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 					<FormField label="Vergi No">
 						<Input value={state.sellerTaxNo} onChange={set("sellerTaxNo")} />
 					</FormField>
-					<FormField label="V. Dairesi (Tax office)">
+					<FormField label="Vergi Dairesi">
 						<Input value={state.sellerTaxOffice} onChange={set("sellerTaxOffice")} />
 					</FormField>
 				</div>
-				<FormField label="E-posta (Email)">
+				<FormField label="E-posta">
 					<Input type="email" value={state.sellerEmail} onChange={set("sellerEmail")} />
 				</FormField>
 			</section>
 
 			{/* B — Buyer */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-					B — Alıcı (Buyer)
+				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+					B — Alıcı
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Adı Soyadı / Firma (Full name)" id="buyerName" error={errors.buyerName}>
+					<FormField label="Adı Soyadı / Firma" id="buyerName" error={errors.buyerName}>
 						<Input required value={state.buyerName} onChange={set("buyerName")} />
 					</FormField>
-					<FormField label="Telefon (Phone)" id="buyerContact" error={errors.buyerContact}>
+					<FormField label="Telefon" id="buyerContact" error={errors.buyerContact}>
 						<Input type="tel" inputMode="tel" value={state.buyerPhone} onChange={set("buyerPhone")} />
 					</FormField>
 				</div>
-				<FormField label="Adresi (Address)">
+				<FormField label="Adresi">
 					<Input value={state.buyerAddress} onChange={set("buyerAddress")} />
 				</FormField>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -172,54 +172,54 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 					<FormField label="Vergi No">
 						<Input value={state.buyerTaxNo} onChange={set("buyerTaxNo")} />
 					</FormField>
-					<FormField label="V. Dairesi (Tax office)">
+					<FormField label="Vergi Dairesi">
 						<Input value={state.buyerTaxOffice} onChange={set("buyerTaxOffice")} />
 					</FormField>
 				</div>
-				<FormField label="E-posta (Email)">
+				<FormField label="E-posta">
 					<Input type="email" value={state.buyerEmail} onChange={set("buyerEmail")} />
 				</FormField>
-				<p className="text-xs text-slate-400">Provide at least an email or phone for the buyer.</p>
+				<p className="text-xs text-base-content/50">Alıcı için en az bir e-posta veya telefon girin.</p>
 			</section>
 
 			{/* Sale info */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-					Satış Bilgileri (Sale info)
+				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+					Satış Bilgileri
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-					<FormField label="Satış Bedeli (Sale price)" id="salePrice" error={errors.salePrice}>
+					<FormField label="Satış Bedeli" id="salePrice" error={errors.salePrice}>
 						<Input required type="number" inputMode="decimal" min="0" step="0.01" value={state.salePrice} onChange={set("salePrice")} />
 					</FormField>
-					<FormField label="Para Birimi (Currency)">
+					<FormField label="Para Birimi">
 						<Select value="TRY" disabled>
 							<option value="TRY">TRY (₺)</option>
 						</Select>
 					</FormField>
-					<FormField label="Sözleşme Tarihi (Sale date)" id="saleDate" error={errors.saleDate}>
+					<FormField label="Sözleşme Tarihi" id="saleDate" error={errors.saleDate}>
 						<Input required type="date" value={state.saleDate} onChange={set("saleDate")} />
 					</FormField>
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-					<FormField label="Kapora (Deposit)">
+					<FormField label="Kapora">
 						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.depositAmount} onChange={set("depositAmount")} />
 					</FormField>
-					<FormField label="Cezai Şart (Penalty)">
+					<FormField label="Cezai Şart">
 						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.penaltyAmount} onChange={set("penaltyAmount")} />
 					</FormField>
-					<FormField label="Tapu Devir Tarihi (Target close date)">
+					<FormField label="Tapu Devir Tarihi">
 						<Input type="date" value={state.targetCloseDate} onChange={set("targetCloseDate")} />
 					</FormField>
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Protokol Süresi / gün (Validity days)">
+					<FormField label="Protokol Süresi (gün)">
 						<Input type="number" inputMode="numeric" min="0" step="1" value={state.validityDays} onChange={set("validityDays")} />
 					</FormField>
-					<FormField label="Vergi Sorumluluğu (Tax responsibility)">
+					<FormField label="Vergi Sorumluluğu">
 						<Select value={state.taxResponsibility} onChange={set("taxResponsibility")}>
-							<option value="buyer">Alıcı tarafından (Buyer pays)</option>
-							<option value="seller">Satıcı tarafından (Seller pays)</option>
-							<option value="legal">Yasal sorumluluklar çerçevesinde (Legal)</option>
+							<option value="buyer">Alıcı tarafından</option>
+							<option value="seller">Satıcı tarafından</option>
+							<option value="legal">Yasal sorumluluklar çerçevesinde</option>
 						</Select>
 					</FormField>
 				</div>
@@ -227,19 +227,19 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 
 			{/* Commission */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-					Komisyon (Commission)
+				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+					Komisyon
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Alıcı Hizmet Bedeli Oranı % (Buyer rate)">
+					<FormField label="Alıcı Hizmet Bedeli Oranı %">
 						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.buyerCommissionRate} onChange={set("buyerCommissionRate")} />
 					</FormField>
-					<FormField label="Satıcı Hizmet Bedeli Oranı % (Seller rate)">
+					<FormField label="Satıcı Hizmet Bedeli Oranı %">
 						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.sellerCommissionRate} onChange={set("sellerCommissionRate")} />
 					</FormField>
 				</div>
 				{(commissionPreview.buyer || commissionPreview.seller) && (
-					<div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-sm text-slate-600 space-y-1.5">
+					<div className="rounded-xl bg-base-200 border border-base-300 p-3.5 text-sm text-base-content/70 space-y-1.5">
 						{commissionPreview.buyer && (
 							<p><span className="font-bold">Alıcı:</span> matrah {fmtMoney(commissionPreview.buyer.matrah)} {state.currency}
 								{" · "}KDV {fmtMoney(commissionPreview.buyer.kdv)}
@@ -256,10 +256,10 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 
 			{/* Special conditions */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-					Özel Şartlar (Special conditions)
+				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+					Özel Şartlar
 				</h3>
-				<FormField label="Özel Şartlar — optional, free text">
+				<FormField label="Özel Şartlar — opsiyonel">
 					<Textarea rows={4} value={state.specialConditions} onChange={set("specialConditions")} />
 				</FormField>
 			</section>

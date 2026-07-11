@@ -39,19 +39,19 @@ function clearPendingInvite() {
 }
 
 const SIZE_BRACKETS: { value: TeamSizeBracket; label: string }[] = [
-	{ value: "solo", label: "Just me" },
+	{ value: "solo", label: "Sadece ben" },
 	{ value: "2-5", label: "2–5" },
 	{ value: "6-20", label: "6–20" },
 	{ value: "20+", label: "20+" },
 ];
 
 const REFERRAL_SOURCES = [
-	{ value: "", label: "Select one (optional)" },
-	{ value: "google", label: "Google search" },
-	{ value: "social", label: "Social media" },
-	{ value: "referral", label: "A colleague or friend" },
-	{ value: "ad", label: "An advertisement" },
-	{ value: "other", label: "Other" },
+	{ value: "", label: "Seçin (isteğe bağlı)" },
+	{ value: "google", label: "Google araması" },
+	{ value: "social", label: "Sosyal medya" },
+	{ value: "referral", label: "Bir meslektaş veya arkadaş" },
+	{ value: "ad", label: "Bir reklam" },
+	{ value: "other", label: "Diğer" },
 ];
 
 type Step = "choose" | "profile" | "team" | "join";
@@ -108,13 +108,13 @@ export default function OnboardingPage() {
 				void teamId;
 				const team = await fetchTeamContext();
 				setTeam(team);
-				toast.success(`You've joined ${team?.name ?? "the team"} as an agent 🎉`);
+				toast.success(team?.name ? `${team.name} ekibine danışman olarak katıldınız 🎉` : "Ekibe danışman olarak katıldınız 🎉");
 				router.replace("/");
 			})
 			.catch((e: Error) => {
 				clearPendingInvite();
 				setBusy(null);
-				setError(e.message || "Invite could not be accepted");
+				setError(e.message || "Davet kabul edilemedi");
 			});
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [user?.id]);
@@ -136,10 +136,10 @@ export default function OnboardingPage() {
 				country: country.trim() || undefined,
 				referralSource: referralSource || undefined,
 			});
-			await finish("Your 14-day free trial has started 🎉");
+			await finish("14 günlük ücretsiz denemeniz başladı 🎉");
 		} catch (err) {
 			setBusy(null);
-			setError(err instanceof Error ? err.message : "Could not create the team");
+			setError(err instanceof Error ? err.message : "Ekip oluşturulamadı");
 		}
 	}
 
@@ -152,11 +152,11 @@ export default function OnboardingPage() {
 			await acceptInvite(code.trim());
 			const team = await fetchTeamContext();
 			setTeam(team);
-			toast.success(`You've joined ${team?.name ?? "the team"} as an agent 🎉`);
+			toast.success(team?.name ? `${team.name} ekibine danışman olarak katıldınız 🎉` : "Ekibe danışman olarak katıldınız 🎉");
 			router.replace("/");
 		} catch (err) {
 			setBusy(null);
-			setError(err instanceof Error ? err.message : "Could not join the team");
+			setError(err instanceof Error ? err.message : "Ekibe katılınamadı");
 		}
 	}
 
@@ -165,9 +165,9 @@ export default function OnboardingPage() {
 			<button
 				type="button"
 				onClick={() => { setError(null); setStep(to); }}
-				className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600"
+				className="inline-flex items-center gap-1 text-sm text-base-content/50 hover:text-base-content/70"
 			>
-				<ArrowLeft className="w-4 h-4" /> Back
+				<ArrowLeft className="w-4 h-4" /> Geri
 			</button>
 		);
 	}
@@ -178,9 +178,9 @@ export default function OnboardingPage() {
 		<div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
 			<div className="w-full max-w-md space-y-4">
 				<div className="text-center">
-					<h1 className="text-2xl font-bold text-slate-900">Welcome to Kagu</h1>
-					<p className="text-sm text-slate-500 mt-1">
-						Set up your agency team, or join one you were invited to.
+					<h1 className="text-2xl font-bold text-base-content">Kagu&apos;ya hoş geldiniz</h1>
+					<p className="text-sm text-base-content/60 mt-1">
+						Ofisinizin ekibini kurun veya davet edildiğiniz bir ekibe katılın.
 					</p>
 				</div>
 
@@ -192,7 +192,7 @@ export default function OnboardingPage() {
 								key={i}
 								className={cn(
 									"h-1.5 rounded-full transition-all",
-									i === stepIndex ? "w-6 bg-primary" : "w-1.5 bg-slate-300",
+									i === stepIndex ? "w-6 bg-primary" : "w-1.5 bg-base-300",
 								)}
 							/>
 						))}
@@ -203,12 +203,12 @@ export default function OnboardingPage() {
 
 				{!user ? (
 					<Card className="text-center space-y-3">
-						<p className="text-sm text-slate-600">Sign in or create an account to continue.</p>
-						<Button block onClick={() => setShowAuth(true)}>Sign in</Button>
+						<p className="text-sm text-base-content/70">Devam etmek için giriş yapın veya hesap oluşturun.</p>
+						<Button block onClick={() => setShowAuth(true)}>Giriş yap</Button>
 					</Card>
 				) : busy === "auto" ? (
 					<Card className="text-center">
-						<p className="text-sm text-slate-600">Accepting your invite…</p>
+						<p className="text-sm text-base-content/70">Davetiniz kabul ediliyor…</p>
 					</Card>
 				) : step === "choose" ? (
 					<div className="space-y-3">
@@ -218,11 +218,11 @@ export default function OnboardingPage() {
 							className="w-full text-left"
 						>
 							<Card className="space-y-1 hover:border-primary/40 border border-transparent transition-colors">
-								<div className="flex items-center gap-2 text-slate-900 font-semibold">
-									<Building2 className="w-5 h-5 text-primary" /> Start a new team
+								<div className="flex items-center gap-2 text-base-content font-semibold">
+									<Building2 className="w-5 h-5 text-primary" /> Yeni ekip kur
 								</div>
-								<p className="text-xs text-slate-500">
-									You become the owner and get a 14-day free trial for your whole team.
+								<p className="text-xs text-base-content/60">
+									Ekip sahibi olursunuz ve tüm ekibiniz için 14 günlük ücretsiz deneme başlar.
 								</p>
 							</Card>
 						</button>
@@ -232,11 +232,11 @@ export default function OnboardingPage() {
 							className="w-full text-left"
 						>
 							<Card className="space-y-1 hover:border-primary/40 border border-transparent transition-colors">
-								<div className="flex items-center gap-2 text-slate-900 font-semibold">
-									<UserPlus className="w-5 h-5 text-primary" /> Join an existing team
+								<div className="flex items-center gap-2 text-base-content font-semibold">
+									<UserPlus className="w-5 h-5 text-primary" /> Mevcut bir ekibe katıl
 								</div>
-								<p className="text-xs text-slate-500">
-									Someone sent you an invite link or code? You&apos;ll join as an agent.
+								<p className="text-xs text-base-content/60">
+									Size bir davet bağlantısı veya kodu mu gönderildi? Danışman olarak katılırsınız.
 								</p>
 							</Card>
 						</button>
@@ -248,18 +248,18 @@ export default function OnboardingPage() {
 							className="space-y-4"
 						>
 							{backBtn("choose")}
-							<div className="text-slate-900 font-semibold">Tell us about yourself</div>
-							<FormField label="Full name">
+							<div className="text-base-content font-semibold">Kendinizi tanıtın</div>
+							<FormField label="Ad Soyad">
 								<Input
 									value={fullName}
 									onChange={(e) => setFullName(e.target.value)}
-									placeholder="e.g. Ayşe Yılmaz"
+									placeholder="örn. Ayşe Yılmaz"
 									required
 									maxLength={80}
 									autoFocus
 								/>
 							</FormField>
-							<FormField label="Phone (optional)">
+							<FormField label="Telefon (isteğe bağlı)">
 								<Input
 									type="tel"
 									value={phone}
@@ -268,28 +268,28 @@ export default function OnboardingPage() {
 									maxLength={30}
 								/>
 							</FormField>
-							<Button type="submit" block disabled={!fullName.trim()}>Continue</Button>
+							<Button type="submit" block disabled={!fullName.trim()}>Devam et</Button>
 						</form>
 					</Card>
 				) : step === "team" ? (
 					<Card>
 						<form onSubmit={onCreate} className="space-y-4">
 							{backBtn("profile")}
-							<div className="flex items-center gap-2 text-slate-900 font-semibold">
-								<Building2 className="w-5 h-5 text-primary" /> Create your team
+							<div className="flex items-center gap-2 text-base-content font-semibold">
+								<Building2 className="w-5 h-5 text-primary" /> Ekibinizi oluşturun
 							</div>
-							<FormField label="Team name">
+							<FormField label="Ekip adı">
 								<Input
 									value={teamName}
 									onChange={(e) => setTeamName(e.target.value)}
-									placeholder="e.g. Kagu Real Estate"
+									placeholder="örn. Kagu Emlak"
 									required
 									maxLength={80}
 									autoFocus
 								/>
 							</FormField>
-							<FormField label="How many people will use Kagu?">
-								<div className="grid grid-cols-4 gap-1 bg-slate-100 rounded-xl p-1">
+							<FormField label="Kagu&apos;yu kaç kişi kullanacak?">
+								<div className="grid grid-cols-4 gap-1 bg-base-200 rounded-xl p-1">
 									{SIZE_BRACKETS.map((b) => (
 										<button
 											key={b.value}
@@ -298,8 +298,8 @@ export default function OnboardingPage() {
 											className={cn(
 												"h-9 text-sm font-medium rounded-lg transition-colors",
 												sizeBracket === b.value
-													? "bg-white text-slate-800 shadow-soft"
-													: "text-slate-500 hover:text-slate-700",
+													? "bg-base-100 text-base-content shadow-soft"
+													: "text-base-content/60 hover:text-base-content/80",
 											)}
 										>
 											{b.label}
@@ -308,14 +308,14 @@ export default function OnboardingPage() {
 								</div>
 							</FormField>
 							<div className="grid grid-cols-2 gap-3">
-								<FormField label="City">
-									<Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Istanbul" maxLength={60} />
+								<FormField label="Şehir">
+									<Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="örn. İstanbul" maxLength={60} />
 								</FormField>
-								<FormField label="Country">
-									<Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. Türkiye" maxLength={60} />
+								<FormField label="Ülke">
+									<Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="örn. Türkiye" maxLength={60} />
 								</FormField>
 							</div>
-							<FormField label="How did you hear about us?">
+							<FormField label="Bizi nereden duydunuz?">
 								<Select value={referralSource} onChange={(e) => setReferralSource(e.target.value)}>
 									{REFERRAL_SOURCES.map((o) => (
 										<option key={o.value} value={o.value}>{o.label}</option>
@@ -323,7 +323,7 @@ export default function OnboardingPage() {
 								</Select>
 							</FormField>
 							<Button type="submit" block loading={busy === "create"} disabled={!teamName.trim()}>
-								Create team & start free trial
+								Ekibi oluştur ve ücretsiz denemeyi başlat
 							</Button>
 						</form>
 					</Card>
@@ -331,20 +331,20 @@ export default function OnboardingPage() {
 					<Card>
 						<form onSubmit={onJoin} className="space-y-4">
 							{backBtn("profile")}
-							<div className="flex items-center gap-2 text-slate-900 font-semibold">
-								<UserPlus className="w-5 h-5 text-primary" /> Join with an invite code
+							<div className="flex items-center gap-2 text-base-content font-semibold">
+								<UserPlus className="w-5 h-5 text-primary" /> Davet koduyla katıl
 							</div>
-							<FormField label="Invite code">
+							<FormField label="Davet kodu">
 								<Input
 									value={code}
 									onChange={(e) => setCode(e.target.value)}
-									placeholder="Paste your invite code"
+									placeholder="Davet kodunuzu yapıştırın"
 									required
 									autoFocus
 								/>
 							</FormField>
 							<Button type="submit" block loading={busy === "join"} disabled={!code.trim()}>
-								Join team
+								Ekibe katıl
 							</Button>
 						</form>
 					</Card>

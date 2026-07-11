@@ -31,10 +31,10 @@ export function OfflineBanner() {
 	return (
 		<div
 			role="status"
-			className="fixed top-0 inset-x-0 z-[60] flex items-center justify-center gap-2 bg-slate-900 text-white text-xs font-semibold py-2 px-4 safe-top"
+			className="fixed top-0 inset-x-0 z-[60] flex items-center justify-center gap-2 bg-neutral text-neutral-content text-xs font-semibold py-2 px-4 safe-top"
 		>
 			<WifiOff className="w-3.5 h-3.5" />
-			You&apos;re offline — changes can&apos;t be saved until the connection is back.
+			Çevrimdışısınız — bağlantı geri gelene kadar değişiklikler kaydedilemez.
 		</div>
 	);
 }

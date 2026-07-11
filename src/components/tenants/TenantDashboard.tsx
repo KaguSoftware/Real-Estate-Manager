@@ -47,23 +47,23 @@ export function TenantDashboard() {
 	const tenants = data ?? [];
 
 	return (
-		<AppShell title="Tenants" subtitle="Renters, buyers & guarantors" width="7xl">
+		<AppShell title="Kiracılar" subtitle="Kiracılar, alıcılar ve kefiller" width="7xl">
 			{!user ? (
 				<Card className="p-10 text-center">
-					<p className="text-sm text-slate-600">Sign in to manage tenants.</p>
-					<p className="text-xs text-slate-400 mt-1">Use the Sign in button in the top bar.</p>
+					<p className="text-sm text-base-content/70">Kiracıları yönetmek için giriş yapın.</p>
+					<p className="text-xs text-base-content/50 mt-1">Üst çubuktaki Giriş yap düğmesini kullanın.</p>
 				</Card>
 			) : (
 				<>
 					<div className="mb-4 flex items-center gap-2">
 						<div className="relative flex-1 max-w-md">
-							<Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+							<Search className="w-4 h-4 text-base-content/50 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
 							<Input
 								value={q}
 								onChange={(e) => onSearchChange(e.target.value)}
-								placeholder="Search name, phone or email…"
+								placeholder="İsim, telefon veya e-posta ara…"
 								className="pl-10"
-								aria-label="Search tenants"
+								aria-label="Kiracı ara"
 							/>
 						</div>
 						<Button
@@ -72,26 +72,26 @@ export function TenantDashboard() {
 							onClick={() =>
 								downloadCsv(
 									"tenants",
-									["Name", "Phone", "Email", "National ID", "Notes", "Added"],
+									["Ad soyad", "Telefon", "E-posta", "TC Kimlik No", "Notlar", "Eklenme tarihi"],
 									tenants.map((t) => [t.full_name, t.phone, t.email, t.national_id, t.notes, t.created_at?.slice(0, 10)]),
 								)
 							}
 						>
 							<Download className="w-4 h-4" />
-							CSV
+							CSV indir
 						</Button>
 						<Button className="hidden sm:inline-flex" onClick={() => setEditing({ mode: "create" })}>
 							<Plus className="w-4 h-4" />
-							Add tenant
+							Kiracı ekle
 						</Button>
 					</div>
 
 					{error && (
 						<Alert
 							className="mb-4"
-							action={<Button size="sm" variant="outline" onClick={refetch}>Retry</Button>}
+							action={<Button size="sm" variant="outline" onClick={refetch}>Tekrar dene</Button>}
 						>
-							Couldn&apos;t load tenants: {error}
+							Kiracılar yüklenemedi: {error}
 						</Alert>
 					)}
 
@@ -103,7 +103,7 @@ export function TenantDashboard() {
 
 					<button
 						onClick={() => setEditing({ mode: "create" })}
-						aria-label="Add tenant"
+						aria-label="Kiracı ekle"
 						className="sm:hidden fixed right-4 bottom-4 z-20 h-14 w-14 rounded-full bg-primary text-primary-content shadow-pop flex items-center justify-center active:brightness-95 safe-bottom"
 					>
 						<Plus className="w-6 h-6" />

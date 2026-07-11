@@ -174,7 +174,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 
 		const joined = addressPreview;
 		if (!joined) {
-			setError("Address is required — fill in at least one of the address fields.");
+			setError("Adres zorunludur — adres alanlarından en az birini doldurun.");
 			return;
 		}
 
@@ -248,9 +248,9 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					: await updateProperty(initial!.id, input);
 			upsertProperty(row);
 			if (geocodeMissed && row.latitude == null) {
-				toast.info("Saved without a map location — set the pin on the map to place this property.");
+				toast.info("Harita konumu olmadan kaydedildi — taşınmazı haritada göstermek için iğneyi yerleştirin.");
 			} else {
-				toast.success(mode === "create" ? "Property created." : "Property updated.");
+				toast.success(mode === "create" ? "Taşınmaz oluşturuldu." : "Taşınmaz güncellendi.");
 			}
 			if (mode === "create") {
 				router.push(`/properties/${row.id}`);
@@ -269,7 +269,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 		try {
 			await deleteProperty(initial.id);
 			removeProperty(initial.id);
-			toast.success("Property deleted.");
+			toast.success("Taşınmaz silindi.");
 			router.push("/properties");
 			onDone?.();
 		} catch (e) {
@@ -283,30 +283,30 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	return (
 		<form onSubmit={handleSubmit} className="space-y-5">
 			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-				<FormField label="Homeowner Name">
+				<FormField label="Mülk sahibi">
 					<Input required value={homeowner_name} onChange={(e) => setHomeownerName(e.target.value)} placeholder="Ahmet Yılmaz" />
 				</FormField>
-				<FormField label="Listing Type">
+				<FormField label="İlan türü">
 					<Select value={listing_type} onChange={(e) => setListingType(e.target.value as ListingType)}>
-						<option value="for_rent">For Rent (Kiralık)</option>
-						<option value="for_sale">For Sale (Satılık)</option>
+						<option value="for_rent">Kiralık</option>
+						<option value="for_sale">Satılık</option>
 					</Select>
 				</FormField>
 			</div>
 
 			{/* Address — Turkish parts */}
-			<div className="space-y-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
-				<p className="text-xs font-bold uppercase tracking-wider text-slate-500">Address</p>
+			<div className="space-y-4 p-4 rounded-2xl bg-base-200 border border-base-300">
+				<p className="text-xs font-bold uppercase tracking-wider text-base-content/60">Adres</p>
 
 				{/* Location — paste a maps link or tap/drag the pin. Reverse-geocoded
 				    address parts autofill the empty fields below. */}
 				<LocationPicker value={coords} onChange={handleLocationChange} />
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<FormField label="Mahalle (Neighborhood)">
+					<FormField label="Mahalle">
 						<Input value={mahalle} onChange={(e) => setMahalle(e.target.value)} placeholder="Atatürk" />
 					</FormField>
-					<FormField label="Sokak / Cadde (Street)">
+					<FormField label="Sokak / Cadde">
 						<Input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Cumhuriyet Cd." />
 					</FormField>
 				</div>
@@ -318,75 +318,75 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					<FormField label="Daire">
 						<Input value={apartmentNo} onChange={(e) => setApartmentNo(e.target.value)} placeholder="8" />
 					</FormField>
-					<FormField label="İlçe (District)">
+					<FormField label="İlçe">
 						<Input value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="Kadıköy" />
 					</FormField>
-					<FormField label="İl (City)">
+					<FormField label="İl">
 						<Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="İstanbul" />
 					</FormField>
 				</div>
 
 				{addressPreview && (
-					<p className="text-xs text-slate-500">
-						<span className="font-bold uppercase tracking-wider text-slate-400 mr-2">Preview</span>
+					<p className="text-xs text-base-content/60">
+						<span className="font-bold uppercase tracking-wider text-base-content/50 mr-2">Önizleme</span>
 						{addressPreview}{city ? `, ${city}` : ""}
 					</p>
 				)}
 			</div>
 
 			<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-				<FormField label="Size (m²)">
+				<FormField label="Büyüklük (m²)">
 					<Input type="number" inputMode="numeric" min="0" value={size_sqm} onChange={(e) => setSizeSqm(e.target.value)} />
 				</FormField>
-				<FormField label="Bedrooms">
+				<FormField label="Yatak odası">
 					<Input type="number" inputMode="numeric" min="0" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} />
 				</FormField>
-				<FormField label="Bathrooms">
+				<FormField label="Banyo">
 					<Input type="number" inputMode="numeric" min="0" value={bathrooms} onChange={(e) => setBathrooms(e.target.value)} />
 				</FormField>
-				<FormField label="Furnished">
+				<FormField label="Eşya durumu">
 					<Select value={furnished} onChange={(e) => setFurnished(e.target.value)}>
-						<option value="">Not specified</option>
-						<option value="yes">Furnished</option>
-						<option value="no">Unfurnished</option>
+						<option value="">Belirtilmedi</option>
+						<option value="yes">Eşyalı</option>
+						<option value="no">Eşyasız</option>
 					</Select>
 				</FormField>
 			</div>
 
 			<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-				<FormField label="Status">
+				<FormField label="Durum">
 					<Select value={status} onChange={(e) => setStatus(e.target.value as PropertyStatus)}>
-						<option value="vacant">Vacant</option>
-						<option value="occupied">Occupied</option>
-						<option value="sold">Sold</option>
+						<option value="vacant">Boş</option>
+						<option value="occupied">Kirada</option>
+						<option value="sold">Satıldı</option>
 					</Select>
 				</FormField>
-				<FormField label={listing_type === "for_rent" ? "Monthly Rent" : "Sale Price"}>
+				<FormField label={listing_type === "for_rent" ? "Aylık kira" : "Satış fiyatı"}>
 					<Input type="number" inputMode="decimal" min="0" value={list_price} onChange={(e) => setListPrice(e.target.value)} placeholder="0.00" />
 				</FormField>
-				<FormField label="Currency">
+				<FormField label="Para birimi">
 					<Select value="TRY" disabled>
 						<option value="TRY">TRY (₺)</option>
 					</Select>
 				</FormField>
 			</div>
 
-			<FormField label="Assigned agent" hint="Who is responsible — the whole team can still see it.">
+			<FormField label="Sorumlu danışman" hint="Sorumlu kişi — tüm ekip yine de görebilir.">
 				<AssigneeSelect value={assignedTo} onChange={setAssignedTo} />
 			</FormField>
 
-			<FormField label="Notes">
+			<FormField label="Notlar">
 				<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
 			</FormField>
 
 			{/* Tapu Bilgileri (title deed) — used by the sales agreement PDF. */}
-			<div className="space-y-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+			<div className="space-y-4 p-4 rounded-2xl bg-base-200 border border-base-300">
 				<div>
-					<p className="text-xs font-bold uppercase tracking-wider text-slate-500">Tapu Bilgileri</p>
-					<p className="text-xs text-slate-400 mt-0.5">Title deed details — populated into the Sales Agreement PDF (optional).</p>
+					<p className="text-xs font-bold uppercase tracking-wider text-base-content/60">Tapu Bilgileri</p>
+					<p className="text-xs text-base-content/50 mt-0.5">Tapu bilgileri — Satış Sözleşmesi PDF&apos;ine eklenir (isteğe bağlı).</p>
 				</div>
 				<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-					<FormField label="Niteliği (Type/Kind)">
+					<FormField label="Niteliği">
 						<Input value={nitelik} onChange={(e) => setNitelik(e.target.value)} placeholder="Mesken" />
 					</FormField>
 					<FormField label="Ada No">
@@ -399,8 +399,8 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 						<Input value={mevkii} onChange={(e) => setMevkii(e.target.value)} />
 					</FormField>
 				</div>
-				<FormField label="Mahalle (per tapu)">
-					<Input value={tapuMahalle} onChange={(e) => setTapuMahalle(e.target.value)} placeholder="As written on the title deed" />
+				<FormField label="Mahalle (tapudaki)">
+					<Input value={tapuMahalle} onChange={(e) => setTapuMahalle(e.target.value)} placeholder="Tapuda yazdığı şekilde" />
 				</FormField>
 			</div>
 
@@ -408,29 +408,29 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 
 			<div className="flex items-center justify-between gap-2 pt-2">
 				{mode === "edit" ? (
-					<Button type="button" variant="danger" size="md" onClick={() => setConfirmingDelete(true)} disabled={busy} aria-label="Delete property">
+					<Button type="button" variant="danger" size="md" onClick={() => setConfirmingDelete(true)} disabled={busy} aria-label="Taşınmazı sil">
 						<Trash2 className="w-4 h-4" />
-						<span className="hidden sm:inline">Delete</span>
+						<span className="hidden sm:inline">Sil</span>
 					</Button>
 				) : <span />}
 
 				<div className="flex gap-2">
 					{onCancel && (
-						<Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+						<Button type="button" variant="ghost" onClick={onCancel}>Vazgeç</Button>
 					)}
 					<Button type="submit" loading={busy}>
 						{locating
-							? "Locating address…"
-							: mode === "create" ? "Create property" : "Save changes"}
+							? "Adres konumlandırılıyor…"
+							: mode === "create" ? "Taşınmaz oluştur" : "Değişiklikleri kaydet"}
 					</Button>
 				</div>
 			</div>
 
 			<ConfirmDialog
 				open={confirmingDelete}
-				title="Delete this property?"
-				message={initial ? `"${initial.address_line}" and its photos, leases and payment history will be removed. This cannot be undone.` : undefined}
-				confirmLabel="Delete property"
+				title="Bu taşınmaz silinsin mi?"
+				message={initial ? `"${initial.address_line}" ile fotoğrafları, kira sözleşmeleri ve ödeme geçmişi kaldırılacak. Bu işlem geri alınamaz.` : undefined}
+				confirmLabel="Taşınmazı sil"
 				loading={busy}
 				onConfirm={handleDelete}
 				onCancel={() => setConfirmingDelete(false)}

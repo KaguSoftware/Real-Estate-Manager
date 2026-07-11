@@ -43,9 +43,9 @@ export const toast = {
 };
 
 const KIND_STYLES: Record<ToastKind, { box: string; icon: React.ComponentType<{ className?: string }> }> = {
-	success: { box: "bg-emerald-50 border-emerald-200 text-emerald-800", icon: CheckCircle2 },
-	error:   { box: "bg-red-50 border-red-200 text-red-800", icon: AlertCircle },
-	info:    { box: "bg-slate-50 border-slate-200 text-slate-700", icon: Info },
+	success: { box: "bg-success/10 border-success/30 text-success", icon: CheckCircle2 },
+	error:   { box: "bg-error/10 border-error/40 text-error", icon: AlertCircle },
+	info:    { box: "bg-base-200 border-base-300 text-base-content/80", icon: Info },
 };
 
 /** Fixed toast stack. Mounted once in the root layout. */
@@ -75,7 +75,7 @@ export function ToastHost() {
 						<span className="flex-1 min-w-0 break-words">{message}</span>
 						<button
 							onClick={() => dismiss(id)}
-							aria-label="Dismiss notification"
+							aria-label="Bildirimi kapat"
 							className="shrink-0 -m-1 p-1 rounded-lg opacity-60 hover:opacity-100 transition-opacity"
 						>
 							<X className="w-4 h-4" />

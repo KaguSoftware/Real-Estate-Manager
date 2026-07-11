@@ -3,11 +3,11 @@ import type { BadgeTone } from "@/src/components/ui";
 
 /** Display labels + badge tone for each lead pipeline status. */
 export const LEAD_STATUS_META: Record<LeadStatus, { label: string; tone: BadgeTone }> = {
-	new:             { label: "New",               tone: "slate" },
-	called_rejected: { label: "Called – rejected", tone: "red" },
-	follow_up:       { label: "Follow-up needed",  tone: "amber" },
-	interested:      { label: "Interested",        tone: "indigo" },
-	closed:          { label: "Closed",            tone: "emerald" },
+	new:             { label: "Yeni",              tone: "slate" },
+	called_rejected: { label: "Arandı – reddetti", tone: "red" },
+	follow_up:       { label: "Takip gerekli",     tone: "amber" },
+	interested:      { label: "İlgileniyor",       tone: "indigo" },
+	closed:          { label: "Sonuçlandı",        tone: "emerald" },
 };
 
 export const LEAD_STATUS_ORDER: LeadStatus[] = [

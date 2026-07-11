@@ -29,10 +29,10 @@ const ICONS: Record<NotificationType, React.ComponentType<{ className?: string }
 
 function timeAgo(iso: string): string {
 	const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-	if (s < 60) return "just now";
-	if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-	if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-	return `${Math.floor(s / 86400)}d ago`;
+	if (s < 60) return "az önce";
+	if (s < 3600) return `${Math.floor(s / 60)} dk önce`;
+	if (s < 86400) return `${Math.floor(s / 3600)} sa önce`;
+	return `${Math.floor(s / 86400)} gün önce`;
 }
 
 export function NotificationBell() {
@@ -70,8 +70,8 @@ export function NotificationBell() {
 		<>
 			<button
 				onClick={openSheet}
-				aria-label={unread > 0 ? `Notifications (${unread} unread)` : "Notifications"}
-				className="relative h-11 w-11 inline-flex items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+				aria-label={unread > 0 ? `Bildirimler (${unread} okunmamış)` : "Bildirimler"}
+				className="relative h-11 w-11 inline-flex items-center justify-center rounded-xl text-base-content/70 hover:bg-base-200 transition-colors"
 			>
 				<Bell className="w-5 h-5" />
 				{unread > 0 && (
@@ -81,28 +81,28 @@ export function NotificationBell() {
 				)}
 			</button>
 
-			<Sheet open={open} onClose={() => { setOpen(false); refreshCount(); }} title="Notifications">
+			<Sheet open={open} onClose={() => { setOpen(false); refreshCount(); }} title="Bildirimler">
 				{items === null ? (
 					<div className="py-8 flex justify-center"><Spinner /></div>
 				) : items.length === 0 ? (
 					<EmptyState
 						icon={Bell}
-						title="Nothing here yet"
-						hint="Team and billing updates will show up here."
+						title="Henüz bildirim yok"
+						hint="Ekip ve abonelik güncellemeleri burada görünecek."
 					/>
 				) : (
-					<ul className="divide-y divide-slate-100 -mx-1">
+					<ul className="divide-y divide-base-300 -mx-1">
 						{items.map((n) => {
 							const Icon = ICONS[n.type] ?? Bell;
 							return (
 								<li key={n.id} className={cn("flex gap-3 px-1 py-3", !n.read_at && "bg-primary/5")}>
-									<span className="shrink-0 mt-0.5 h-8 w-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+									<span className="shrink-0 mt-0.5 h-8 w-8 rounded-full bg-base-200 text-base-content/60 flex items-center justify-center">
 										<Icon className="w-4 h-4" />
 									</span>
 									<div className="min-w-0">
-										<p className="text-sm font-semibold text-slate-800">{n.title}</p>
-										{n.body && <p className="text-sm text-slate-500">{n.body}</p>}
-										<p className="text-xs text-slate-400 mt-0.5">{timeAgo(n.created_at)}</p>
+										<p className="text-sm font-semibold text-base-content">{n.title}</p>
+										{n.body && <p className="text-sm text-base-content/60">{n.body}</p>}
+										<p className="text-xs text-base-content/50 mt-0.5">{timeAgo(n.created_at)}</p>
 									</div>
 								</li>
 							);

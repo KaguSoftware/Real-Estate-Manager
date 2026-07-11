@@ -116,7 +116,7 @@ function CellMarkers({
 			} else {
 				marker.bindTooltip(
 					`<div style="font-size:11px;font-weight:600;color:#0f172a">` +
-						`${cell.items.length} properties — click to choose` +
+						`${cell.items.length} taşınmaz — seçmek için tıklayın` +
 						`</div>`,
 					{ direction: "top", offset: L.point(0, -PIN_SIZE + 4), opacity: 1 },
 				);
@@ -185,13 +185,13 @@ function ClusterPopover({
 
 			<div
 				role="listbox"
-				aria-label={`${cell.items.length} properties at this location`}
-				className="absolute bg-white rounded-2xl border border-slate-200 shadow-pop overflow-hidden animate-[popIn_.14s_ease-out]"
+				aria-label={`Bu konumda ${cell.items.length} taşınmaz`}
+				className="absolute bg-base-100 rounded-2xl border border-base-300 shadow-pop overflow-hidden animate-[popIn_.14s_ease-out]"
 				style={{ left, top, width: CARD_W, maxHeight: Math.min(280, containerSize.h - 16) }}
 				onClick={(e) => e.stopPropagation()}
 			>
-				<p className="px-3.5 pt-3 pb-2 text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
-					{cell.items.length} properties here
+				<p className="px-3.5 pt-3 pb-2 text-xs font-bold uppercase tracking-wider text-base-content/50 border-b border-base-300">
+					Burada {cell.items.length} taşınmaz var
 				</p>
 				<ul className="overflow-y-auto" style={{ maxHeight: 224 }}>
 					{cell.items.map((p) => (
@@ -199,15 +199,15 @@ function ClusterPopover({
 							<button
 								type="button"
 								onClick={() => onPick(p.id)}
-								className="w-full flex items-center gap-2 px-3.5 py-2.5 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors"
+								className="w-full flex items-center gap-2 px-3.5 py-2.5 text-left hover:bg-base-200 active:bg-base-300 transition-colors"
 							>
 								<span className="min-w-0 flex-1">
-									<span className="block text-sm font-semibold text-slate-800 truncate">{p.homeowner_name}</span>
-									<span className="block text-xs text-slate-500 truncate">
+									<span className="block text-sm font-semibold text-base-content truncate">{p.homeowner_name}</span>
+									<span className="block text-xs text-base-content/60 truncate">
 										{[p.listingLabel, p.price].filter(Boolean).join(" · ")}
 									</span>
 								</span>
-								<ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+								<ChevronRight className="w-4 h-4 text-base-content/30 shrink-0" />
 							</button>
 						</li>
 					))}
@@ -238,8 +238,8 @@ export function PropertyMapInner({
 					lon: Number(p.longitude),
 					address_line: p.address_line,
 					homeowner_name: p.homeowner_name,
-					price: p.list_price != null ? `${p.list_price.toLocaleString()} ${p.currency}` : null,
-					listingLabel: p.listing_type === "for_rent" ? "For Rent" : "For Sale",
+					price: p.list_price != null ? `${p.list_price.toLocaleString("tr-TR")} ${p.currency}` : null,
+					listingLabel: p.listing_type === "for_rent" ? "Kiralık" : "Satılık",
 				}))
 				.filter(
 					(p) =>
@@ -294,7 +294,7 @@ export function PropertyMapInner({
 		return () => { cancelled = true; };
 	}, []);
 	if (!mounted) {
-		return <div className={`${heightClass} w-full rounded-2xl bg-slate-100 animate-pulse`} />;
+		return <div className={`${heightClass} w-full rounded-2xl bg-base-200 animate-pulse`} />;
 	}
 
 	return (

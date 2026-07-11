@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Home, Users, UserPlus, FilePlus2 } from "lucide-react";
+import { Plus, Home, Users, UserPlus, FilePlus2, Lock } from "lucide-react";
+import { useAppStore, useIsWritable } from "@/src/store";
 import { cn } from "./cn";
 
 interface AddItem {
@@ -12,12 +14,12 @@ interface AddItem {
 }
 
 const ITEMS: AddItem[] = [
-	{ href: "/properties/new", label: "Add property", icon: Home },
+	{ href: "/properties/new", label: "Taşınmaz ekle", icon: Home },
 	// Clients are created via an in-page modal on /leads (no dedicated route);
 	// the ?new=1 flag tells LeadDashboard to open the create form on arrival.
-	{ href: "/leads?new=1", label: "Add client", icon: Users },
-	{ href: "/tenants?new=1", label: "Add tenant", icon: UserPlus },
-	{ href: "/documents/new", label: "New document", icon: FilePlus2 },
+	{ href: "/leads?new=1", label: "Müşteri ekle", icon: Users },
+	{ href: "/tenants?new=1", label: "Kiracı ekle", icon: UserPlus },
+	{ href: "/documents/new", label: "Yeni belge", icon: FilePlus2 },
 ];
 
 /**
@@ -28,6 +30,10 @@ export function AddMenu() {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const rootRef = useRef<HTMLDivElement | null>(null);
+	// RLS would reject the write anyway; surfacing the paywall here beats a
+	// form that fails on submit.
+	const writable = useIsWritable();
+	const isOwner = useAppStore((s) => s.team?.role === "owner");
 
 	useEffect(() => {
 		if (!open) return;
@@ -58,12 +64,26 @@ export function AddMenu() {
 				aria-expanded={open}
 			>
 				<Plus className="w-4 h-4" />
-				<span className="hidden sm:inline">Add</span>
+				<span className="hidden sm:inline">Ekle</span>
 			</button>
 
-			{open && (
+			{open && !writable && (
+				<div className="absolute right-0 z-40 mt-1.5 w-64 rounded-xl border border-base-300 bg-base-100 shadow-pop p-4 text-sm text-base-content/70">
+					<p className="flex items-center gap-2 font-semibold text-base-content">
+						<Lock className="w-4 h-4" /> Çalışma alanı salt okunur
+					</p>
+					<p className="mt-1.5">
+						{isOwner ? (
+							<>Yeni kayıt eklemek için <Link href="/settings/billing" className="text-primary underline" onClick={() => setOpen(false)}>aboneliğinizi etkinleştirin</Link>.</>
+						) : (
+							"Yeni kayıt eklemek için ekip sahibinizin abonelik başlatması gerekiyor."
+						)}
+					</p>
+				</div>
+			)}
+			{open && writable && (
 				<div
-					className="absolute right-0 z-40 mt-1.5 w-48 rounded-xl border border-slate-200 bg-white shadow-pop p-1"
+					className="absolute right-0 z-40 mt-1.5 w-48 rounded-xl border border-base-300 bg-base-100 shadow-pop p-1"
 					role="menu"
 				>
 					{ITEMS.map(({ href, label, icon: Icon }) => (
@@ -72,12 +92,12 @@ export function AddMenu() {
 							type="button"
 							onClick={() => go(href)}
 							className={cn(
-								"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-left text-slate-700",
-								"hover:bg-slate-100 transition-colors",
+								"w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-left text-base-content/80",
+								"hover:bg-base-200 transition-colors",
 							)}
 							role="menuitem"
 						>
-							<Icon className="w-4 h-4 shrink-0 text-slate-500" />
+							<Icon className="w-4 h-4 shrink-0 text-base-content/60" />
 							{label}
 						</button>
 					))}

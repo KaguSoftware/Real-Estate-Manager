@@ -56,7 +56,7 @@ export function AttentionPanel() {
 		<div
 			className={cn(
 				"mb-4 rounded-2xl border shadow-card overflow-hidden",
-				hasUrgent ? "border-red-200 bg-red-50/60" : "border-amber-200 bg-amber-50/60",
+				hasUrgent ? "border-error/40 bg-error/10" : "border-warning/40 bg-warning/10",
 			)}
 		>
 			{/* div (not button) so the settings gear can live inside without
@@ -69,12 +69,12 @@ export function AttentionPanel() {
 				aria-expanded={open}
 				className="w-full flex items-center gap-2 px-4 py-3 text-left cursor-pointer"
 			>
-				<AlertTriangle className={cn("w-4 h-4", hasUrgent ? "text-red-500" : "text-amber-500")} />
-				<span className="text-sm font-semibold text-slate-800 flex-1">
-					Needs attention
+				<AlertTriangle className={cn("w-4 h-4", hasUrgent ? "text-error" : "text-warning")} />
+				<span className="text-sm font-semibold text-base-content flex-1">
+					Dikkat gerektirenler
 					<span className={cn(
-						"ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold text-white",
-						hasUrgent ? "bg-red-500" : "bg-amber-500",
+						"ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold",
+						hasUrgent ? "bg-error text-error-content" : "bg-warning text-warning-content",
 					)}>
 						{data.total}
 					</span>
@@ -82,8 +82,8 @@ export function AttentionPanel() {
 				<span
 					role="button"
 					tabIndex={0}
-					aria-label="Attention settings"
-					title="Adjust attention thresholds"
+					aria-label="Uyarı ayarları"
+					title="Uyarı eşiklerini ayarla"
 					onClick={(e) => { e.stopPropagation(); setEditing((v) => !v); }}
 					onKeyDown={(e) => {
 						if (e.key === "Enter" || e.key === " ") {
@@ -92,11 +92,11 @@ export function AttentionPanel() {
 							setEditing((v) => !v);
 						}
 					}}
-					className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white/70 transition-colors"
+					className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-base-content/50 hover:text-base-content/80 hover:bg-base-100/70 transition-colors"
 				>
 					<Settings2 className="w-4 h-4" />
 				</span>
-				{open ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+				{open ? <ChevronDown className="w-4 h-4 text-base-content/50" /> : <ChevronRight className="w-4 h-4 text-base-content/50" />}
 			</div>
 
 			{editing && (
@@ -109,40 +109,40 @@ export function AttentionPanel() {
 			{open && (
 				<div className="px-4 pb-3 space-y-3">
 					{data.overduePayments.length > 0 && (
-						<Section icon={Wallet} title="Overdue rent" tone="red">
+						<Section icon={Wallet} title="Gecikmiş kira" tone="red">
 							{data.overduePayments.map((p) => (
 								<Row key={p.paymentId} href={`/properties/${p.propertyId}`}>
 									<span className="flex-1 min-w-0 truncate">{p.propertyLabel}</span>
-									<span className="font-semibold text-red-600 whitespace-nowrap">
+									<span className="font-semibold text-error whitespace-nowrap">
 										{fmtMoney(p.outstanding, p.currency)}
 									</span>
-									<span className="text-xs text-slate-400 whitespace-nowrap">due {p.periodEnd}</span>
+									<span className="text-xs text-base-content/50 whitespace-nowrap">vade {p.periodEnd}</span>
 								</Row>
 							))}
 						</Section>
 					)}
 
 					{data.upcomingPayments.length > 0 && (
-						<Section icon={Wallet} title={`Rent due in the next ${thresholds.upcomingDays} days`} tone="amber">
+						<Section icon={Wallet} title={`Önümüzdeki ${thresholds.upcomingDays} gün içinde vadesi gelen kiralar`} tone="amber">
 							{data.upcomingPayments.map((p) => (
 								<Row key={p.paymentId} href={`/properties/${p.propertyId}`}>
 									<span className="flex-1 min-w-0 truncate">{p.propertyLabel}</span>
-									<span className="font-semibold text-slate-700 whitespace-nowrap">
+									<span className="font-semibold text-base-content/80 whitespace-nowrap">
 										{fmtMoney(p.outstanding, p.currency)}
 									</span>
-									<span className="text-xs text-slate-400 whitespace-nowrap">due {p.periodEnd}</span>
+									<span className="text-xs text-base-content/50 whitespace-nowrap">vade {p.periodEnd}</span>
 								</Row>
 							))}
 						</Section>
 					)}
 
 					{data.endingLeases.length > 0 && (
-						<Section icon={CalendarClock} title={`Leases ending within ${thresholds.leaseWarnDays} days`} tone="amber">
+						<Section icon={CalendarClock} title={`${thresholds.leaseWarnDays} gün içinde sona erecek kira sözleşmeleri`} tone="amber">
 							{data.endingLeases.map((l) => (
 								<Row key={l.leaseId} href={`/properties/${l.propertyId}`}>
 									<span className="flex-1 min-w-0 truncate">{l.propertyLabel}</span>
-									<span className="text-slate-500 whitespace-nowrap">
-										ends {l.endDate} ({l.daysLeft} day{l.daysLeft === 1 ? "" : "s"})
+									<span className="text-base-content/60 whitespace-nowrap">
+										bitiş {l.endDate} ({l.daysLeft} gün)
 									</span>
 								</Row>
 							))}
@@ -150,12 +150,12 @@ export function AttentionPanel() {
 					)}
 
 					{data.staleLeads.length > 0 && (
-						<Section icon={PhoneMissed} title="Leads waiting on a follow-up" tone="amber">
+						<Section icon={PhoneMissed} title="Takip bekleyen müşteriler" tone="amber">
 							{data.staleLeads.map((l) => (
 								<Row key={l.leadId} href="/leads">
 									<span className="flex-1 min-w-0 truncate">{l.name}</span>
-									<span className="text-slate-400 whitespace-nowrap">
-										{l.lastCallAt ? `last call ${l.daysSilent} days ago` : `no call in ${l.daysSilent} days`}
+									<span className="text-base-content/50 whitespace-nowrap">
+										{l.lastCallAt ? `son arama ${l.daysSilent} gün önce` : `${l.daysSilent} gündür arama yok`}
 									</span>
 								</Row>
 							))}
@@ -179,7 +179,7 @@ function ThresholdEditor({ initial, onClose }: { initial: UserSettings; onClose:
 			mutateCache("settings", next);
 			// New thresholds change what the queries fetch — refetch the feed.
 			invalidateCache("attention");
-			toast.success("Attention settings saved.");
+			toast.success("Uyarı ayarları kaydedildi.");
 			onClose();
 		} catch (e) {
 			toast.error(humanizeError(e));
@@ -189,17 +189,17 @@ function ThresholdEditor({ initial, onClose }: { initial: UserSettings; onClose:
 	}
 
 	const fields: { key: keyof UserSettings; label: string; max: number }[] = [
-		{ key: "upcomingDays", label: "Rent due within (days)", max: 90 },
-		{ key: "leaseWarnDays", label: "Lease ending within (days)", max: 365 },
-		{ key: "leadSilentDays", label: "Lead silent for (days)", max: 365 },
+		{ key: "upcomingDays", label: "Kira vadesi yaklaşan (gün)", max: 90 },
+		{ key: "leaseWarnDays", label: "Sözleşme bitişi yaklaşan (gün)", max: 365 },
+		{ key: "leadSilentDays", label: "Müşteri sessiz kaldığında (gün)", max: 365 },
 	];
 
 	return (
-		<div className="mx-4 mb-3 rounded-xl bg-white/80 border border-slate-200/70 p-3">
+		<div className="mx-4 mb-3 rounded-xl bg-base-100/80 border border-base-300 p-3">
 			<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 				{fields.map(({ key, label, max }) => (
 					<label key={key} className="block">
-						<span className="text-xs font-semibold text-slate-500">{label}</span>
+						<span className="text-xs font-semibold text-base-content/60">{label}</span>
 						<input
 							type="number"
 							min={1}
@@ -209,15 +209,15 @@ function ThresholdEditor({ initial, onClose }: { initial: UserSettings; onClose:
 								const n = Number(e.target.value);
 								setForm((f) => ({ ...f, [key]: Number.isFinite(n) ? n : f[key] }));
 							}}
-							className="mt-1 w-full h-9 rounded-lg border border-slate-200 px-2.5 text-sm text-slate-800 bg-white"
+							className="mt-1 w-full h-9 rounded-lg border border-base-300 px-2.5 text-sm text-base-content bg-base-100"
 						/>
 					</label>
 				))}
 			</div>
 			<div className="mt-3 flex justify-end gap-2">
-				<Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
+				<Button size="sm" variant="outline" onClick={onClose}>Vazgeç</Button>
 				<Button size="sm" onClick={save} disabled={saving}>
-					{saving ? "Saving…" : "Save"}
+					{saving ? "Kaydediliyor…" : "Kaydet"}
 				</Button>
 			</div>
 		</div>
@@ -238,10 +238,10 @@ function Section({
 	return (
 		<div>
 			<div className="flex items-center gap-1.5 mb-1">
-				<Icon className={cn("w-3.5 h-3.5", tone === "red" ? "text-red-500" : "text-amber-500")} />
-				<p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+				<Icon className={cn("w-3.5 h-3.5", tone === "red" ? "text-error" : "text-warning")} />
+				<p className="text-xs font-semibold uppercase tracking-wide text-base-content/60">{title}</p>
 			</div>
-			<div className="divide-y divide-slate-200/60 rounded-xl bg-white/70 border border-slate-200/60">
+			<div className="divide-y divide-base-300 rounded-xl bg-base-100/70 border border-base-300">
 				{children}
 			</div>
 		</div>
@@ -252,7 +252,7 @@ function Row({ href, children }: { href: string; children: React.ReactNode }) {
 	return (
 		<Link
 			href={href}
-			className="flex items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors first:rounded-t-xl last:rounded-b-xl"
+			className="flex items-center gap-3 px-3 py-2 text-sm text-base-content/80 hover:bg-base-200 transition-colors first:rounded-t-xl last:rounded-b-xl"
 		>
 			{children}
 		</Link>

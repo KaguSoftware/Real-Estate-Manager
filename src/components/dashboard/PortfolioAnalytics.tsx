@@ -7,11 +7,11 @@ import { Card, CardLabel } from "@/src/components/ui";
 import { TrendingUp } from "lucide-react";
 
 function pct(v: number): string {
-	return `${Math.round(v * 100)}%`;
+	return `%${Math.round(v * 100)}`;
 }
 
 function fmtAmount(n: number): string {
-	return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+	return n.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 }
 
 /**
@@ -36,23 +36,23 @@ export function PortfolioAnalytics() {
 	return (
 		<Card className="mb-4">
 			<div className="flex items-center gap-2 mb-3">
-				<TrendingUp className="w-4 h-4 text-slate-400" />
-				<CardLabel>Portfolio health</CardLabel>
+				<TrendingUp className="w-4 h-4 text-base-content/50" />
+				<CardLabel>Portföy sağlığı</CardLabel>
 			</div>
 			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				{occupancyRate != null && (
 					<Meter
-						label="Occupancy"
+						label="Doluluk"
 						ratio={occupancyRate}
-						caption={`${pct(occupancyRate)} of rentable properties occupied`}
+						caption={`Kiralanabilir taşınmazlarda doluluk oranı: ${pct(occupancyRate)}`}
 					/>
 				)}
 				{collections.map(([cur, c]) => (
 					<Meter
 						key={cur}
-						label={`Collected this month (${cur})`}
+						label={`Bu ay tahsil edilen (${cur})`}
 						ratio={c.due > 0 ? Math.min(c.paid / c.due, 1) : 0}
-						caption={`${fmtAmount(c.paid)} of ${fmtAmount(c.due)} ${cur} collected`}
+						caption={`${fmtAmount(c.paid)} / ${fmtAmount(c.due)} ${cur} tahsil edildi`}
 						danger={c.paid < c.due}
 					/>
 				))}
@@ -75,16 +75,16 @@ function Meter({
 	return (
 		<div>
 			<div className="flex items-baseline justify-between mb-1.5">
-				<p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-				<p className={`text-sm font-bold ${danger ? "text-amber-600" : "text-slate-800"}`}>{pct(ratio)}</p>
+				<p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">{label}</p>
+				<p className={`text-sm font-bold ${danger ? "text-warning" : "text-base-content"}`}>{pct(ratio)}</p>
 			</div>
-			<div className="h-2 rounded-full bg-slate-100 overflow-hidden" role="meter" aria-valuenow={Math.round(ratio * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
+			<div className="h-2 rounded-full bg-base-200 overflow-hidden" role="meter" aria-valuenow={Math.round(ratio * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
 				<div
-					className={`h-full rounded-full transition-all ${danger ? "bg-amber-400" : "bg-emerald-400"}`}
+					className={`h-full rounded-full transition-all ${danger ? "bg-warning" : "bg-success"}`}
 					style={{ width: `${Math.round(ratio * 100)}%` }}
 				/>
 			</div>
-			<p className="text-xs text-slate-500 mt-1.5">{caption}</p>
+			<p className="text-xs text-base-content/60 mt-1.5">{caption}</p>
 		</div>
 	);
 }

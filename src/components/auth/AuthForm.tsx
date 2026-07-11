@@ -54,6 +54,7 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
+	const [acceptedTerms, setAcceptedTerms] = useState(false);
 	const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 	const [errorMsg, setErrorMsg] = useState("");
 	const [successMsg, setSuccessMsg] = useState("");
@@ -79,7 +80,7 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 		}
 		setTeam(team);
 		onClose?.();
-		if (team) toast.success("Welcome back!");
+		if (team) toast.success("Tekrar hoş geldiniz!");
 		router.replace(team ? (next || "/") : "/onboarding");
 		router.refresh();
 	}
@@ -100,12 +101,14 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 		setStatus("loading");
 		setErrorMsg("");
 		const supabase = createClient();
+		// shouldCreateUser:false — the login form must sign in, not silently
+		// register whatever address was typed (spam/enumeration surface).
 		const { error } = await supabase.auth.signInWithOtp({
 			email: email.trim(),
-			options: { emailRedirectTo: authCallbackUrl() },
+			options: { emailRedirectTo: authCallbackUrl(), shouldCreateUser: false },
 		});
 		if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); }
-		else { setStatus("done"); setSuccessMsg(`Magic link sent to ${email.trim()}. Check your inbox.`); }
+		else { setStatus("done"); setSuccessMsg(`Giriş bağlantısı ${email.trim()} adresine gönderildi. Gelen kutunuzu kontrol edin.`); }
 	}
 
 	async function handleForgot(e: React.FormEvent) {
@@ -119,14 +122,24 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 			redirectTo: `${authCallbackUrl()}?next=/reset-password`,
 		});
 		if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); }
-		else { setStatus("done"); setSuccessMsg(`If an account exists for ${email.trim()}, a reset link is on its way.`); }
+		else { setStatus("done"); setSuccessMsg(`${email.trim()} adresine ait bir hesap varsa, şifre sıfırlama bağlantısı gönderildi.`); }
 	}
 
 	async function handleSignUp(e: React.FormEvent) {
 		e.preventDefault();
+		if (!acceptedTerms) {
+			setStatus("error");
+			setErrorMsg("Devam etmek için Kullanım Koşulları'nı ve KVKK Aydınlatma Metni'ni kabul etmelisiniz.");
+			return;
+		}
+		if (password.length < 8) {
+			setStatus("error");
+			setErrorMsg("Şifre en az 8 karakter olmalı.");
+			return;
+		}
 		if (password !== confirmPassword) {
 			setStatus("error");
-			setErrorMsg("Passwords do not match.");
+			setErrorMsg("Şifreler eşleşmiyor.");
 			return;
 		}
 		setStatus("loading");
@@ -142,23 +155,23 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 		// route straight into onboarding instead of asking them to check email.
 		if (data.session) { setStatus("done"); await routeAfterAuth(); return; }
 		setStatus("done");
-		setSuccessMsg("Check your email to confirm your account. The link will drop you right into setup.");
+		setSuccessMsg("Hesabınızı doğrulamak için e-postanızı kontrol edin. Bağlantı sizi doğrudan kuruluma yönlendirecek.");
 	}
 
 	const doneScreen = status === "done" && successMsg && (
 		<div className="text-center space-y-3">
 			<div className="text-4xl">✉️</div>
-			<p className="text-slate-700 font-medium">{successMsg}</p>
-			{onClose && <Button block variant="outline" onClick={onClose} className="mt-2">Done</Button>}
+			<p className="text-base-content/80 font-medium">{successMsg}</p>
+			{onClose && <Button block variant="outline" onClick={onClose} className="mt-2">Tamam</Button>}
 		</div>
 	);
 
 	return (
 		<div className="space-y-4">
 			{inviteTeam && (
-				<div className="rounded-xl bg-primary/10 border border-primary/20 px-4 py-3 text-sm text-slate-700">
-					You&apos;ve been invited to join <span className="font-semibold">{inviteTeam}</span>.
-					{mode === "signup" ? " Create your account to accept." : " Sign in to accept."}
+				<div className="rounded-xl bg-primary/10 border border-primary/20 px-4 py-3 text-sm text-base-content/80">
+					<span className="font-semibold">{inviteTeam}</span> ekibine katılmaya davet edildiniz.
+					{mode === "signup" ? " Kabul etmek için hesabınızı oluşturun." : " Kabul etmek için giriş yapın."}
 				</div>
 			)}
 
@@ -167,85 +180,98 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 			) : mode === "login" ? (
 				signInMode === "password" ? (
 					<form onSubmit={handleSignIn} className="space-y-4">
-						<FormField label="Email address">
-							<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+						<FormField label="E-posta adresi">
+							<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@eposta.com" />
 						</FormField>
-						<FormField label="Password">
+						<FormField label="Şifre">
 							<Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
 						</FormField>
 						{status === "error" && <Alert>{errorMsg}</Alert>}
-						<Button type="submit" block loading={status === "loading"}>Sign In</Button>
+						<Button type="submit" block loading={status === "loading"}>Giriş yap</Button>
 						<div className="text-center space-x-3">
 							<button type="button" onClick={() => setSignInMode("magic")}
-								className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2">
-								Send magic link instead
+								className="text-sm text-base-content/50 hover:text-base-content/70 underline underline-offset-2">
+								Giriş bağlantısı gönder
 							</button>
 							<button type="button" onClick={() => { setSignInMode("forgot"); setStatus("idle"); setErrorMsg(""); }}
-								className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2">
-								Forgot password?
+								className="text-sm text-base-content/50 hover:text-base-content/70 underline underline-offset-2">
+								Şifrenizi mi unuttunuz?
 							</button>
 						</div>
 					</form>
 				) : signInMode === "magic" ? (
 					<form onSubmit={handleMagicLink} className="space-y-4">
-						<p className="text-sm text-slate-500">
-							Enter your email and we&apos;ll send you a sign-in link — no password needed.
+						<p className="text-sm text-base-content/60">
+							E-posta adresinizi girin, size bir giriş bağlantısı gönderelim — şifre gerekmez.
 						</p>
-						<FormField label="Email address">
-							<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+						<FormField label="E-posta adresi">
+							<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@eposta.com" />
 						</FormField>
 						{status === "error" && <Alert>{errorMsg}</Alert>}
-						<Button type="submit" block loading={status === "loading"}>Send magic link</Button>
+						<Button type="submit" block loading={status === "loading"}>Giriş bağlantısı gönder</Button>
 						<div className="text-center">
 							<button type="button" onClick={() => setSignInMode("password")}
-								className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2">
-								Back to password sign in
+								className="text-sm text-base-content/50 hover:text-base-content/70 underline underline-offset-2">
+								Şifreyle girişe dön
 							</button>
 						</div>
 					</form>
 				) : (
 					<form onSubmit={handleForgot} className="space-y-4">
-						<p className="text-sm text-slate-500">
-							Enter your email and we&apos;ll send you a link to reset your password.
+						<p className="text-sm text-base-content/60">
+							E-posta adresinizi girin, şifrenizi sıfırlamanız için size bir bağlantı gönderelim.
 						</p>
-						<FormField label="Email address">
-							<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+						<FormField label="E-posta adresi">
+							<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@eposta.com" />
 						</FormField>
 						{status === "error" && <Alert>{errorMsg}</Alert>}
-						<Button type="submit" block loading={status === "loading"}>Send reset link</Button>
+						<Button type="submit" block loading={status === "loading"}>Sıfırlama bağlantısı gönder</Button>
 						<div className="text-center">
 							<button type="button" onClick={() => setSignInMode("password")}
-								className="text-sm text-slate-400 hover:text-slate-600 underline underline-offset-2">
-								Back to password sign in
+								className="text-sm text-base-content/50 hover:text-base-content/70 underline underline-offset-2">
+								Şifreyle girişe dön
 							</button>
 						</div>
 					</form>
 				)
 			) : (
 				<form onSubmit={handleSignUp} className="space-y-4">
-					<FormField label="Email address">
-						<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+					<FormField label="E-posta adresi">
+						<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@eposta.com" />
 					</FormField>
-					<FormField label="Password">
+					<FormField label="Şifre">
 						<Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
 					</FormField>
-					<FormField label="Confirm password">
+					<FormField label="Şifre tekrarı">
 						<Input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" />
 					</FormField>
+					<label className="flex items-start gap-2.5 text-sm text-base-content/70 cursor-pointer">
+						<input
+							type="checkbox"
+							checked={acceptedTerms}
+							onChange={(e) => setAcceptedTerms(e.target.checked)}
+							className="checkbox checkbox-sm checkbox-primary mt-0.5 shrink-0"
+						/>
+						<span>
+							<Link href="/kullanim-kosullari" target="_blank" className="underline hover:text-base-content">Kullanım Koşulları</Link>&apos;nı
+							ve <Link href="/kvkk-aydinlatma" target="_blank" className="underline hover:text-base-content">KVKK Aydınlatma Metni</Link>&apos;ni
+							okudum, kabul ediyorum.
+						</span>
+					</label>
 					{status === "error" && <Alert>{errorMsg}</Alert>}
-					<Button type="submit" block loading={status === "loading"}>Create Account</Button>
+					<Button type="submit" block loading={status === "loading"}>Hesap oluştur</Button>
 				</form>
 			)}
 
 			{standalone && !doneScreen && (
-				<p className="text-center text-sm text-slate-500">
+				<p className="text-center text-sm text-base-content/60">
 					{mode === "login" ? (
-						<>New to Kagu?{" "}
-							<Link href="/signup" className="text-primary font-medium hover:underline">Create an account</Link>
+						<>Kagu&apos;da yeni misiniz?{" "}
+							<Link href="/signup" className="text-primary font-medium hover:underline">Hesap oluşturun</Link>
 						</>
 					) : (
-						<>Already have an account?{" "}
-							<Link href="/login" className="text-primary font-medium hover:underline">Sign in</Link>
+						<>Zaten hesabınız var mı?{" "}
+							<Link href="/login" className="text-primary font-medium hover:underline">Giriş yapın</Link>
 						</>
 					)}
 				</p>

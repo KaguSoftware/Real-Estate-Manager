@@ -35,12 +35,20 @@ import {
 
 const PDFBlobProvider = dynamic(
 	() => import("@react-pdf/renderer").then((m) => m.BlobProvider),
-	{ ssr: false, loading: () => <div className="text-sm text-slate-400 p-6">Loading preview…</div> },
+	{ ssr: false, loading: () => <div className="text-sm text-base-content/50 p-6">Önizleme yükleniyor…</div> },
 );
 
 type Step = "type" | "property" | "client" | "details" | "preview";
 
 const STEPS: Step[] = ["type", "property", "client", "details", "preview"];
+
+const STEP_LABELS: Record<Step, string> = {
+	type: "Tür",
+	property: "Taşınmaz",
+	client: "Müşteri",
+	details: "Detaylar",
+	preview: "Önizleme",
+};
 
 // Wizard progress survives a refresh/accidental close via localStorage.
 const DRAFT_KEY = "docwizard:draft:v1";
@@ -469,10 +477,10 @@ export function DocumentWizard() {
 				try {
 					await saveDocumentPdf({ table: "leases", id: lease.id }, pdfFile);
 				} catch {
-					toast.error("Contract downloaded, but saving a copy online failed.");
+					toast.error("Sözleşme indirildi ancak çevrimiçi kopya kaydedilemedi.");
 				}
 				clearDraft();
-				toast.success("Lease created and contract downloaded.");
+				toast.success("Kira sözleşmesi oluşturuldu ve indirildi.");
 				router.push(`/properties/${updated.id}`);
 				return;
 			}
@@ -503,16 +511,16 @@ export function DocumentWizard() {
 				const updated = await updateProperty(property.id, { status: "sold" });
 				upsertProperty(updated);
 				invalidateCache("tenants");
-				const filename = `sales-${safeFilename(buyer.full_name)}-${safeFilename(property.address_line)}.pdf`;
+				const filename = `satis-${safeFilename(buyer.full_name)}-${safeFilename(property.address_line)}.pdf`;
 				const pdfFile = await generatePdfFile("sales", salesData, filename, await getPdfBrandingFromStore());
 				await downloadPdfFile(pdfFile);
 				try {
 					await saveDocumentPdf({ table: "sales", id: sale.id }, pdfFile);
 				} catch {
-					toast.error("Agreement downloaded, but saving a copy online failed.");
+					toast.error("Sözleşme indirildi ancak çevrimiçi kopya kaydedilemedi.");
 				}
 				clearDraft();
-				toast.success("Sale recorded and agreement downloaded.");
+				toast.success("Satış kaydedildi ve sözleşme indirildi.");
 				router.push(`/properties/${updated.id}`);
 				return;
 			}
@@ -525,7 +533,7 @@ export function DocumentWizard() {
 
 	const previewData: RentalPDFData | SalesPDFData | null =
 		kind === "rental" ? rentalData : salesData;
-	const previewLabel = kind === "rental" ? "Kira sözleşmesi önizleme" : "Sales agreement preview";
+	const previewLabel = kind === "rental" ? "Kira sözleşmesi önizleme" : "Satış sözleşmesi önizleme";
 
 	const stepIndex = STEPS.indexOf(step);
 
@@ -541,12 +549,12 @@ export function DocumentWizard() {
 								step === s
 									? "bg-primary text-primary-content"
 									: i < stepIndex
-										? "bg-emerald-500 text-white"
-										: "bg-slate-200 text-slate-500",
+										? "bg-success text-success-content"
+										: "bg-base-300 text-base-content/60",
 							)}
 						>{i + 1}</span>
-						<span className={cn("capitalize hidden sm:inline", step === s ? "text-slate-900" : "text-slate-400")}>{s}</span>
-						{i < STEPS.length - 1 && <span className="text-slate-300">›</span>}
+						<span className={cn("hidden sm:inline", step === s ? "text-base-content" : "text-base-content/50")}>{STEP_LABELS[s]}</span>
+						{i < STEPS.length - 1 && <span className="text-base-content/30">›</span>}
 					</li>
 				))}
 			</ol>
@@ -557,13 +565,12 @@ export function DocumentWizard() {
 					className="mb-4"
 					action={
 						<div className="flex items-center gap-2">
-							<Button size="sm" onClick={resumeDraft}>Resume</Button>
-							<Button size="sm" variant="ghost" onClick={discardDraft}>Discard</Button>
+							<Button size="sm" onClick={resumeDraft}>Devam et</Button>
+							<Button size="sm" variant="ghost" onClick={discardDraft}>Sil</Button>
 						</div>
 					}
 				>
-					You have an unfinished {pendingDraft.kind === "rental" ? "rental" : "sales"} document from a
-					previous session.
+					Önceki oturumdan yarım kalmış bir {pendingDraft.kind === "rental" ? "kira sözleşmesi" : "satış sözleşmesi"} belgeniz var.
 				</Alert>
 			)}
 
@@ -572,27 +579,27 @@ export function DocumentWizard() {
 			{/* Step 1: type */}
 			{step === "type" && (
 				<div className="space-y-4">
-					<h2 className="text-lg font-bold text-slate-900">Choose a document type</h2>
+					<h2 className="text-lg font-bold text-base-content">Belge türünü seçin</h2>
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 						<button
 							onClick={() => { setKind("rental"); setPropertyId(null); setClientId(null); setStep("property"); }}
-							className="text-left p-5 rounded-2xl border-2 border-slate-200 hover:border-primary/60 active:bg-primary/5 transition-colors"
+							className="text-left p-5 rounded-2xl border-2 border-base-300 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
-							<p className="text-base font-bold text-slate-900">Kira Sözleşmesi</p>
-							<p className="text-sm text-slate-500 mt-1">Boş bir kiralık taşınmazı yeni bir kiracıya kiralayın.</p>
+							<p className="text-base font-bold text-base-content">Kira Sözleşmesi</p>
+							<p className="text-sm text-base-content/60 mt-1">Boş bir kiralık taşınmazı yeni bir kiracıya kiralayın.</p>
 						</button>
 						<button
 							onClick={() => { setKind("sales"); setPropertyId(null); setClientId(null); setStep("property"); }}
-							className="text-left p-5 rounded-2xl border-2 border-slate-200 hover:border-primary/60 active:bg-primary/5 transition-colors"
+							className="text-left p-5 rounded-2xl border-2 border-base-300 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
-							<p className="text-base font-bold text-slate-900">Sales Agreement</p>
-							<p className="text-sm text-slate-500 mt-1">Sell a for-sale property to a new buyer.</p>
+							<p className="text-base font-bold text-base-content">Satış Sözleşmesi</p>
+							<p className="text-sm text-base-content/60 mt-1">Satılık bir taşınmazı yeni bir alıcıya satın.</p>
 						</button>
-						<div className="p-5 rounded-2xl border border-slate-200 bg-slate-50">
-							<p className="text-base font-bold text-slate-900">Rent Receipt</p>
-							<p className="text-sm text-slate-500 mt-1">
-								Generated per payment — open a property&apos;s Payments list and use the receipt
-								action on a row.
+						<div className="p-5 rounded-2xl border border-base-300 bg-base-200">
+							<p className="text-base font-bold text-base-content">Kira Makbuzu</p>
+							<p className="text-sm text-base-content/60 mt-1">
+								Her ödeme için ayrı oluşturulur — taşınmazın Ödemeler listesini açın ve
+								satırdaki makbuz işlemini kullanın.
 							</p>
 						</div>
 					</div>
@@ -602,7 +609,7 @@ export function DocumentWizard() {
 			{/* Step 2: property */}
 			{step === "property" && (
 				<div className="space-y-4">
-					<h2 className="text-lg font-bold text-slate-900">Pick a property</h2>
+					<h2 className="text-lg font-bold text-base-content">Taşınmaz seçin</h2>
 					{loadingProperties ? (
 						<div className="flex justify-center py-8"><Spinner size="sm" /></div>
 					) : (
@@ -612,14 +619,14 @@ export function DocumentWizard() {
 							onSelect={setPropertyId}
 							emptyHint={
 								kind === "rental"
-									? "The rental wizard only lists for-rent properties that are currently vacant."
-									: "The sales wizard only lists for-sale properties that aren't already sold."
+									? "Kiralama sihirbazı yalnızca şu anda boş olan kiralık taşınmazları listeler."
+									: "Satış sihirbazı yalnızca henüz satılmamış satılık taşınmazları listeler."
 							}
 						/>
 					)}
 					<div className="flex justify-between gap-2 pt-4">
-						<Button variant="ghost" onClick={() => setStep("type")}>← Back</Button>
-						<Button onClick={() => setStep("client")} disabled={!propertyId}>Continue →</Button>
+						<Button variant="ghost" onClick={() => setStep("type")}>← Geri</Button>
+						<Button onClick={() => setStep("client")} disabled={!propertyId}>Devam →</Button>
 					</div>
 				</div>
 			)}
@@ -628,10 +635,10 @@ export function DocumentWizard() {
 			{step === "client" && (
 				<div className="space-y-4">
 					<div>
-						<h2 className="text-lg font-bold text-slate-900">Pick a client</h2>
-						<p className="text-sm text-slate-500 mt-1">
-							Optional — selecting a client prefills the {kind === "rental" ? "tenant" : "buyer"} details.
-							You can also skip and enter them manually.
+						<h2 className="text-lg font-bold text-base-content">Müşteri seçin</h2>
+						<p className="text-sm text-base-content/60 mt-1">
+							İsteğe bağlı — bir müşteri seçmek {kind === "rental" ? "kiracı" : "alıcı"} bilgilerini önceden doldurur.
+							Bu adımı atlayıp bilgileri elle de girebilirsiniz.
 						</p>
 					</div>
 					{loadingClients ? (
@@ -641,14 +648,14 @@ export function DocumentWizard() {
 							clients={clients}
 							selectedId={clientId}
 							onSelect={applyClient}
-							emptyHint="Add clients from the Clients page to prefill documents from them."
+							emptyHint="Belgeleri önceden doldurabilmek için Müşteriler sayfasından müşteri ekleyin."
 						/>
 					)}
 					<div className="flex justify-between gap-2 pt-4">
-						<Button variant="ghost" onClick={() => setStep("property")}>← Back</Button>
+						<Button variant="ghost" onClick={() => setStep("property")}>← Geri</Button>
 						<div className="flex gap-2">
-							<Button variant="ghost" onClick={() => { applyClient(null); setStep("details"); }}>Skip</Button>
-							<Button onClick={() => setStep("details")}>Continue →</Button>
+							<Button variant="ghost" onClick={() => { applyClient(null); setStep("details"); }}>Atla</Button>
+							<Button onClick={() => setStep("details")}>Devam →</Button>
 						</div>
 					</div>
 				</div>
@@ -658,19 +665,19 @@ export function DocumentWizard() {
 			{step === "details" && property && kind === "rental" && (
 				<div className="space-y-5">
 					<div>
-						<h2 className="text-lg font-bold text-slate-900">Kira sözleşmesi detayları</h2>
-						<p className="text-sm text-slate-500 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
+						<h2 className="text-lg font-bold text-base-content">Kira sözleşmesi detayları</h2>
+						<p className="text-sm text-base-content/60 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
 					</div>
 
 					<RentalDetailsForm state={rentalState} onChange={patchRental} errors={fieldErrors} />
 
 					{Object.keys(fieldErrors).length > 0 && (
-						<Alert>Some required fields are missing — check the highlighted fields above.</Alert>
+						<Alert>Bazı zorunlu alanlar eksik — yukarıda işaretlenen alanları kontrol edin.</Alert>
 					)}
 
 					<div className="flex justify-between gap-2 pt-4">
-						<Button variant="ghost" onClick={() => setStep("client")}>← Back</Button>
-						<Button onClick={goToPreview}>Preview →</Button>
+						<Button variant="ghost" onClick={() => setStep("client")}>← Geri</Button>
+						<Button onClick={goToPreview}>Önizleme →</Button>
 					</div>
 				</div>
 			)}
@@ -678,19 +685,19 @@ export function DocumentWizard() {
 			{step === "details" && property && kind === "sales" && (
 				<div className="space-y-5">
 					<div>
-						<h2 className="text-lg font-bold text-slate-900">Sales agreement details</h2>
-						<p className="text-sm text-slate-500 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
+						<h2 className="text-lg font-bold text-base-content">Satış sözleşmesi detayları</h2>
+						<p className="text-sm text-base-content/60 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
 					</div>
 
 					<SalesDetailsForm state={salesState} onChange={patchSales} errors={fieldErrors} />
 
 					{Object.keys(fieldErrors).length > 0 && (
-						<Alert>Some required fields are missing — check the highlighted fields above.</Alert>
+						<Alert>Bazı zorunlu alanlar eksik — yukarıda işaretlenen alanları kontrol edin.</Alert>
 					)}
 
 					<div className="flex justify-between gap-2 pt-4">
-						<Button variant="ghost" onClick={() => setStep("client")}>← Back</Button>
-						<Button onClick={goToPreview}>Preview →</Button>
+						<Button variant="ghost" onClick={() => setStep("client")}>← Geri</Button>
+						<Button onClick={goToPreview}>Önizleme →</Button>
 					</div>
 				</div>
 			)}
@@ -698,8 +705,8 @@ export function DocumentWizard() {
 			{/* Step 4: preview */}
 			{step === "preview" && previewData && (
 				<div className="space-y-4">
-					<h2 className="text-lg font-bold text-slate-900">Review &amp; generate</h2>
-					<div className="h-[60vh] sm:h-[72vh] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
+					<h2 className="text-lg font-bold text-base-content">İncele ve oluştur</h2>
+					<div className="h-[60vh] sm:h-[72vh] bg-base-200 rounded-2xl overflow-hidden border border-base-300">
 						{!fontsLoaded ? (
 							<div className="h-full flex items-center justify-center"><Spinner /></div>
 						) : (
@@ -712,8 +719,8 @@ export function DocumentWizard() {
 								}
 								if (blobError) {
 									return (
-										<div className="h-full flex items-center justify-center text-sm text-red-600 p-6">
-											Preview failed to render: {String(blobError)}
+										<div className="h-full flex items-center justify-center text-sm text-error p-6">
+											Önizleme oluşturulamadı: {String(blobError)}
 										</div>
 									);
 								}
@@ -729,13 +736,13 @@ export function DocumentWizard() {
 						)}
 					</div>
 					<div className="flex justify-between gap-2 pt-2">
-						<Button variant="ghost" onClick={() => setStep("details")} disabled={submitting}>← Back</Button>
+						<Button variant="ghost" onClick={() => setStep("details")} disabled={submitting}>← Geri</Button>
 						<Button
 							onClick={handleConfirm}
 							loading={submitting}
-							className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-soft"
+							className="bg-success text-success-content hover:brightness-110 shadow-soft"
 						>
-							{submitting ? "Generating…" : "Confirm & generate PDF"}
+							{submitting ? "Oluşturuluyor…" : "Onayla ve PDF oluştur"}
 						</Button>
 					</div>
 				</div>
