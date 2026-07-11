@@ -11,7 +11,7 @@ import { getDocumentUrl } from "@/src/lib/db/documents";
 import { cancelSale, closeSale, getActiveSaleForProperty, listSalesForProperty } from "@/src/lib/db/sales";
 import { listPropertyImages } from "@/src/lib/db/propertyImages";
 import { invalidateCache } from "@/src/lib/useCachedResource";
-import { exportToPDF, type ListingPDFData, type ReceiptPDFData } from "@/src/lib/pdf";
+import { exportToPDF, getPdfBrandingFromStore, type ListingPDFData, type ReceiptPDFData } from "@/src/lib/pdf";
 import { fmtMoney } from "@/src/lib/format";
 import type { Lease, Payment, PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
 import { PaymentList } from "@/src/components/payments/PaymentList";
@@ -122,7 +122,7 @@ export function PropertyDetail({ propertyId }: Props) {
 			};
 
 			const safeName = data.address_line.replace(/[^\w\s-]/g, "").trim().slice(0, 60) || "listing";
-			await exportToPDF("listing", listing, safeName);
+			await exportToPDF("listing", listing, safeName, await getPdfBrandingFromStore());
 		} catch (e) {
 			setError(humanizeError(e));
 		} finally {
@@ -146,7 +146,7 @@ export function PropertyDetail({ propertyId }: Props) {
 				paid_at: payment.paid_at,
 				generatedAt: new Date().toISOString(),
 			};
-			await exportToPDF("receipt", receipt, `receipt-${payment.period_start}`);
+			await exportToPDF("receipt", receipt, `receipt-${payment.period_start}`, await getPdfBrandingFromStore());
 		} catch (e) {
 			toast.error(humanizeError(e));
 		}

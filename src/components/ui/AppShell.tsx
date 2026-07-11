@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu } from "lucide-react";
 import { useAppStore } from "@/src/store";
+import { getTeamLogoUrl } from "@/src/lib/db/teams";
 import { NotificationBell } from "@/src/components/notifications/NotificationBell";
 import { NavDrawer } from "./NavDrawer";
 import { Button } from "./Button";
@@ -32,6 +33,7 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 	const [drawerOpen, setDrawerOpen] = useState(false);
 
 	const maxW = width === "7xl" ? "max-w-7xl" : width === "3xl" ? "max-w-3xl" : "max-w-5xl";
+	const logoUrl = getTeamLogoUrl(team?.logo_path ?? null);
 
 	return (
 		<div className="min-h-screen bg-base-200">
@@ -44,6 +46,11 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 					>
 						<Menu className="w-5 h-5" />
 					</button>
+
+					{logoUrl && (
+						// eslint-disable-next-line @next/next/no-img-element
+						<img src={logoUrl} alt={team?.name ?? "Team logo"} className="h-8 w-auto max-w-27.5 object-contain shrink-0" />
+					)}
 
 					<div className="min-w-0 flex-1">
 						<h1 className="text-base font-bold text-slate-900 truncate leading-tight">{title}</h1>

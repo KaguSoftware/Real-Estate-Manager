@@ -81,7 +81,7 @@ export function NotificationBell() {
 				)}
 			</button>
 
-			<Sheet open={open} onClose={() => setOpen(false)} title="Notifications">
+			<Sheet open={open} onClose={() => { setOpen(false); refreshCount(); }} title="Notifications">
 				{items === null ? (
 					<div className="py-8 flex justify-center"><Spinner /></div>
 				) : items.length === 0 ? (
@@ -95,7 +95,7 @@ export function NotificationBell() {
 						{items.map((n) => {
 							const Icon = ICONS[n.type] ?? Bell;
 							return (
-								<li key={n.id} className={cn("flex gap-3 px-1 py-3", !n.read_at && "bg-primary/4")}>
+								<li key={n.id} className={cn("flex gap-3 px-1 py-3", !n.read_at && "bg-primary/5")}>
 									<span className="shrink-0 mt-0.5 h-8 w-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
 										<Icon className="w-4 h-4" />
 									</span>

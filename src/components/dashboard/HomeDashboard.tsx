@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { listProperties } from "@/src/lib/db/properties";
 import { listLeads } from "@/src/lib/db/leads";
@@ -28,7 +30,17 @@ function statusTone(status: string): BadgeTone {
 
 /** Landing page: cross-section of the whole CRM rather than one entity list. */
 export function HomeDashboard() {
+	const router = useRouter();
 	const user = useAppStore((s) => s.user);
+	const team = useAppStore((s) => s.team);
+	const teamLoaded = useAppStore((s) => s.teamLoaded);
+
+	// Client-side counterpart of the proxy's no-team redirect: soft navigations
+	// (e.g. right after signup) never hit the middleware, so a signed-in user
+	// without a team would sit on an empty dashboard until a hard refresh.
+	useEffect(() => {
+		if (user && teamLoaded && !team) router.replace("/onboarding");
+	}, [user, teamLoaded, team, router]);
 
 	const { data: recentProperties } = useCachedResource(
 		user ? "properties:recent" : null,

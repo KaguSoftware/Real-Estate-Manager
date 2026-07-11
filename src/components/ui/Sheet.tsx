@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "./cn";
 import { useFocusTrap } from "./useFocusTrap";
@@ -45,7 +46,9 @@ export function Sheet({ open, onClose, title, footer, children, size = "md" }: S
 
 	const maxW = size === "lg" ? "sm:max-w-2xl" : "sm:max-w-lg";
 
-	return (
+	// Portal to <body>: ancestors with backdrop-filter/transform (e.g. the
+	// sticky app header) create a containing block that traps fixed elements.
+	return createPortal(
 		<div
 			className="fixed inset-0 z-50 flex sm:items-center sm:justify-center sm:p-6 bg-slate-900/40 backdrop-blur-[2px]"
 			onClick={onClose}
@@ -89,6 +92,7 @@ export function Sheet({ open, onClose, title, footer, children, size = "md" }: S
 			</div>
 
 			<style>{`@keyframes sheetIn{from{opacity:.4;transform:translateY(8px)}to{opacity:1;transform:none}}`}</style>
-		</div>
+		</div>,
+		document.body,
 	);
 }

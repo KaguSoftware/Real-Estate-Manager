@@ -51,5 +51,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(`${siteUrl}/`);
+  // Exchange failed (expired/reused link) — send them to sign in with context
+  // instead of silently dropping them on the dashboard.
+  return NextResponse.redirect(`${siteUrl}/login?error=confirm`);
 }

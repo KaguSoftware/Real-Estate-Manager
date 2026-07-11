@@ -24,6 +24,7 @@ import {
 	ConfirmDialog, toast, SpinnerBlock,
 } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
+import { BrandingCard } from "@/src/components/team/BrandingCard";
 
 export default function TeamPage() {
 	const user = useAppStore((s) => s.user);
@@ -172,6 +173,8 @@ export default function TeamPage() {
 
 				{isOwner && (
 					<>
+						<BrandingCard />
+
 						<Card>
 							<CardLabel>Invite by email</CardLabel>
 							<form onSubmit={onInvite} className="mt-3 flex flex-col sm:flex-row gap-3">

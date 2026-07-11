@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/src/lib/supabase/client";
+import { getTeamLogoUrl } from "@/src/lib/db/teams";
 import { useAppStore } from "@/src/store";
 import { cn } from "./cn";
 import { useFocusTrap } from "./useFocusTrap";
@@ -41,6 +42,7 @@ function PendingHint() {
 
 export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const user = useAppStore((s) => s.user);
+	const team = useAppStore((s) => s.team);
 	const pathname = usePathname();
 	const router = useRouter();
 	const panelRef = useRef<HTMLElement>(null);
@@ -90,9 +92,19 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 				)}
 			>
 				<div className="flex items-center justify-between px-5 h-16 border-b border-slate-100">
-					<div className="min-w-0">
-						<p className="text-base font-bold text-slate-900 leading-tight">Real Estate</p>
-						<p className="text-xs text-slate-400 truncate">Manager</p>
+					<div className="min-w-0 flex items-center gap-2.5">
+						{team?.logo_path && (
+							// eslint-disable-next-line @next/next/no-img-element
+							<img
+								src={getTeamLogoUrl(team.logo_path) ?? undefined}
+								alt=""
+								className="h-8 w-auto max-w-20 object-contain shrink-0"
+							/>
+						)}
+						<div className="min-w-0">
+							<p className="text-base font-bold text-slate-900 leading-tight truncate">{team?.name ?? "Real Estate"}</p>
+							<p className="text-xs text-slate-400 truncate">{team ? "Workspace" : "Manager"}</p>
+						</div>
 					</div>
 					<button
 						onClick={onClose}

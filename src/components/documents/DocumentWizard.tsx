@@ -10,7 +10,7 @@ import { listLeads } from "@/src/lib/db/leads";
 import { createTenant } from "@/src/lib/db/tenants";
 import { createLease, computeLeaseEndDate } from "@/src/lib/db/leases";
 import { createSale } from "@/src/lib/db/sales";
-import { downloadPdfFile, generatePdfFile } from "@/src/lib/pdf";
+import { downloadPdfFile, generatePdfFile, getPdfBrandingFromStore, type PdfBranding } from "@/src/lib/pdf";
 import { saveDocumentPdf } from "@/src/lib/db/documents";
 import type { DocKind, RentalPDFData, SalesPDFData } from "@/src/lib/pdf";
 import { PDFDocument } from "@/src/lib/pdf";
@@ -295,12 +295,16 @@ export function DocumentWizard() {
 	// so without this gate its first pass can run before the fonts arrive and
 	// text collapses onto a single baseline. Hold the preview until fonts load.
 	const [fontsLoaded, setFontsLoaded] = useState(false);
+	const [previewBranding, setPreviewBranding] = useState<PdfBranding | undefined>(undefined);
 	useEffect(() => {
 		if (step !== "preview" || fontsLoaded) return;
 		let cancelled = false;
-		import("@/src/lib/pdf/styles")
-			.then((m) => m.loadPdfFonts())
-			.then(() => { if (!cancelled) setFontsLoaded(true); });
+		// Team branding (name/logo/palette) is resolved with the fonts so the
+		// preview matches the downloaded document.
+		Promise.all([
+			import("@/src/lib/pdf/styles").then((m) => m.loadPdfFonts()),
+			getPdfBrandingFromStore().then((b) => { if (!cancelled) setPreviewBranding(b); }),
+		]).then(() => { if (!cancelled) setFontsLoaded(true); });
 		return () => { cancelled = true; };
 	}, [step, fontsLoaded]);
 
@@ -458,7 +462,7 @@ export function DocumentWizard() {
 				upsertProperty(updated);
 				invalidateCache("tenants");
 				const filename = `kira-${safeFilename(tenant.full_name)}-${safeFilename(property.address_line)}.pdf`;
-				const pdfFile = await generatePdfFile("rental", rentalData, filename);
+				const pdfFile = await generatePdfFile("rental", rentalData, filename, await getPdfBrandingFromStore());
 				await downloadPdfFile(pdfFile);
 				// Keep a copy in storage for later reference. Best-effort: the
 				// user already has the download, so a failed upload only warns.
@@ -500,7 +504,7 @@ export function DocumentWizard() {
 				upsertProperty(updated);
 				invalidateCache("tenants");
 				const filename = `sales-${safeFilename(buyer.full_name)}-${safeFilename(property.address_line)}.pdf`;
-				const pdfFile = await generatePdfFile("sales", salesData, filename);
+				const pdfFile = await generatePdfFile("sales", salesData, filename, await getPdfBrandingFromStore());
 				await downloadPdfFile(pdfFile);
 				try {
 					await saveDocumentPdf({ table: "sales", id: sale.id }, pdfFile);
@@ -699,7 +703,7 @@ export function DocumentWizard() {
 						{!fontsLoaded ? (
 							<div className="h-full flex items-center justify-center"><Spinner /></div>
 						) : (
-						<PDFBlobProvider document={<PDFDocument kind={kind} data={previewData} />}>
+						<PDFBlobProvider document={<PDFDocument kind={kind} data={previewData} branding={previewBranding} />}>
 							{({ url, loading, error: blobError }) => {
 								if (loading || !url) {
 									return (

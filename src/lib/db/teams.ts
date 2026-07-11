@@ -15,6 +15,10 @@ export interface TeamContext {
 	current_period_end: string | null;
 	/** Mirror of the DB-side team_is_writable() check; RLS is authoritative. */
 	is_writable: boolean;
+	/** Path inside the team-logos bucket, or null when no logo uploaded. */
+	logo_path: string | null;
+	/** Preset id from BRAND_PALETTES (src/lib/pdf/branding.ts). */
+	brand_palette: string;
 }
 
 export interface TeamMember {
@@ -69,7 +73,7 @@ export async function fetchTeamContext(): Promise<TeamContext | null> {
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
 		.from("team_members")
-		.select("role, teams(id, name, trial_ends_at, subscriptions(status, plan_id, current_period_end))")
+		.select("role, teams(id, name, trial_ends_at, logo_path, brand_palette, subscriptions(status, plan_id, current_period_end))")
 		.maybeSingle();
 	if (error) throw error;
 	if (!data) return null;
@@ -80,6 +84,8 @@ export async function fetchTeamContext(): Promise<TeamContext | null> {
 		id: string;
 		name: string;
 		trial_ends_at: string;
+		logo_path: string | null;
+		brand_palette: string;
 		subscriptions:
 			| { status: TeamContext["subscription_status"]; plan_id: string | null; current_period_end: string | null }
 			| { status: TeamContext["subscription_status"]; plan_id: string | null; current_period_end: string | null }[]
@@ -97,6 +103,8 @@ export async function fetchTeamContext(): Promise<TeamContext | null> {
 		plan_id: sub?.plan_id ?? null,
 		current_period_end: sub?.current_period_end ?? null,
 		is_writable: computeIsWritable(team.trial_ends_at, sub?.status ?? null, sub?.current_period_end ?? null),
+		logo_path: team.logo_path ?? null,
+		brand_palette: team.brand_palette ?? "slate",
 	};
 }
 
@@ -205,5 +213,54 @@ export async function renameTeam(name: string): Promise<void> {
 	const { supabase } = await requireUser();
 	const teamId = requireTeamId();
 	const { error } = await supabase.from("teams").update({ name }).eq("id", teamId);
+	if (error) throw error;
+}
+
+// ── Branding ─────────────────────────────────────────────────────────────────
+
+const LOGO_BUCKET = "team-logos";
+const LOGO_MAX_BYTES = 1024 * 1024; // 1 MB
+// PNG/JPEG only — react-pdf's <Image> cannot render WebP/SVG.
+const LOGO_TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg" };
+
+/** Public CDN URL for a stored logo; `v` busts caches after re-uploads. */
+export function getTeamLogoUrl(logoPath: string | null): string | null {
+	if (!logoPath) return null;
+	const { data } = createClient().storage.from(LOGO_BUCKET).getPublicUrl(logoPath);
+	return data.publicUrl;
+}
+
+/** Owner-only (RLS). Uploads {team_id}/logo-{ts}.{ext} and points logo_path at it. */
+export async function uploadTeamLogo(file: File): Promise<string> {
+	const ext = LOGO_TYPES[file.type];
+	if (!ext) throw new Error("Logo must be a PNG or JPEG image.");
+	if (file.size > LOGO_MAX_BYTES) throw new Error("Logo must be under 1 MB.");
+	const { supabase } = await requireUser();
+	const teamId = requireTeamId();
+	// Timestamped filename: a stable path would serve stale CDN copies after re-upload.
+	const path = `${teamId}/logo-${Date.now()}.${ext}`;
+	const { error: upErr } = await supabase.storage.from(LOGO_BUCKET).upload(path, file, {
+		cacheControl: "3600",
+		upsert: true,
+	});
+	if (upErr) throw upErr;
+	const { error } = await supabase.from("teams").update({ logo_path: path }).eq("id", teamId);
+	if (error) throw error;
+	return path;
+}
+
+export async function removeTeamLogo(logoPath: string): Promise<void> {
+	const { supabase } = await requireUser();
+	const teamId = requireTeamId();
+	const { error } = await supabase.from("teams").update({ logo_path: null }).eq("id", teamId);
+	if (error) throw error;
+	// Best-effort cleanup; a dangling object is harmless.
+	await supabase.storage.from(LOGO_BUCKET).remove([logoPath]).catch(() => {});
+}
+
+export async function updateTeamPalette(paletteId: string): Promise<void> {
+	const { supabase } = await requireUser();
+	const teamId = requireTeamId();
+	const { error } = await supabase.from("teams").update({ brand_palette: paletteId }).eq("id", teamId);
 	if (error) throw error;
 }

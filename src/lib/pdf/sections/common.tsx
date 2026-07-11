@@ -1,7 +1,8 @@
 // Small primitive components shared across PDF templates.
 
-import { View, Text } from "@react-pdf/renderer";
+import { View, Text, Image } from "@react-pdf/renderer";
 import { styles, colors } from "../styles";
+import { useBranding } from "../branding";
 
 export const formatDate = (iso?: string) => {
 	const d = iso ? new Date(iso) : new Date();
@@ -18,20 +19,26 @@ export const DocHeader = ({
 }: {
 	title: string;
 	subtitle?: string;
-}) => (
-	<View>
-		<View style={styles.headerRow}>
-			<View>
-				<Text style={styles.docType}>{title}</Text>
-				{subtitle ? <Text style={styles.refLine}>{subtitle}</Text> : null}
+}) => {
+	const { logoDataUrl } = useBranding();
+	return (
+		<View>
+			<View style={styles.headerRow}>
+				<View>
+					<Text style={styles.docType}>{title}</Text>
+					{subtitle ? <Text style={styles.refLine}>{subtitle}</Text> : null}
+				</View>
+				<View style={{ alignItems: "flex-end" }}>
+					{logoDataUrl ? (
+						<Image src={logoDataUrl} style={{ maxHeight: 28, maxWidth: 110, objectFit: "contain", marginBottom: 4 }} />
+					) : null}
+					<Text style={styles.refLine}>{formatDate()}</Text>
+				</View>
 			</View>
-			<View style={{ alignItems: "flex-end" }}>
-				<Text style={styles.refLine}>{formatDate()}</Text>
-			</View>
+			<View style={styles.dividerThin} />
 		</View>
-		<View style={styles.dividerThin} />
-	</View>
-);
+	);
+};
 
 /** Hero block at the top of the document with the property address. */
 export const HeroAddress = ({
@@ -255,9 +262,11 @@ export const SignatureBlock = ({
 	</View>
 );
 
-export const PageFooter = () => (
+export const PageFooter = () => {
+	const { teamName } = useBranding();
+	return (
 	<View style={styles.footer} fixed>
-		<Text style={styles.footerText}>Kagu Real Estate</Text>
+		<Text style={styles.footerText}>{teamName}</Text>
 		<Text
 			style={styles.pageNumber}
 			render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
@@ -266,6 +275,7 @@ export const PageFooter = () => (
 			Confidential {"•"} {new Date().getFullYear()}
 		</Text>
 	</View>
-);
+	);
+};
 
 export { colors };

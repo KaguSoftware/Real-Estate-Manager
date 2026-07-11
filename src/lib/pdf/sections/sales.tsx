@@ -1,5 +1,6 @@
-import { View, Text } from "@react-pdf/renderer";
-import { styles, colors } from "../styles";
+import { View, Text, Image } from "@react-pdf/renderer";
+import { styles } from "../styles";
+import { useBranding } from "../branding";
 import {
 	TextSection,
 	ClausesList,
@@ -20,8 +21,9 @@ const fmtDateOrBlank = (s: string | null | undefined) =>
 const fmtOrBlank = (s: string | null | undefined) => (s && String(s).trim() ? String(s) : "—");
 
 function SectionChip({ letter, title }: { letter: string; title: string }) {
+	const { palette } = useBranding();
 	return (
-		<View style={styles.salesSectionChip}>
+		<View style={[styles.salesSectionChip, { backgroundColor: palette.primary }]}>
 			<Text style={styles.salesSectionChipText}>
 				{letter}  ·  {title}
 			</Text>
@@ -60,9 +62,10 @@ function CardLine({ children }: { children: string }) {
 }
 
 function PartyCard({ party }: { party: PartyInfo }) {
+	const { palette } = useBranding();
 	return (
 		// wrap={false} keeps the bordered card from splitting across a page break.
-		<View style={styles.salesCard} wrap={false}>
+		<View style={[styles.salesCard, { borderColor: palette.muted, borderLeftColor: palette.primary }]} wrap={false}>
 			<CardLabelValue label="Adı Soyadı / Firma" value={party.full_name || "—"} />
 
 			<View style={styles.salesCardFieldLabel}>
@@ -99,9 +102,13 @@ function CommissionRow({
 	line: CommissionLine;
 	alt?: boolean;
 }) {
+	const { palette } = useBranding();
 	return (
-		<View style={alt ? styles.commissionRowAlt : styles.commissionRow} wrap={false}>
-			<Text style={styles.commissionLabelCell}>{label}</Text>
+		<View
+			style={[alt ? styles.commissionRowAlt : styles.commissionRow, alt ? { backgroundColor: palette.tint } : {}]}
+			wrap={false}
+		>
+			<Text style={[styles.commissionLabelCell, { color: palette.primary }]}>{label}</Text>
 			<Text style={styles.commissionDataCell}>
 				{line.rate == null ? "—" : `${line.rate.toFixed(2)} %`}
 			</Text>
@@ -120,6 +127,7 @@ function CommissionRow({
 
 export function SalesAgreement({ data }: { data: SalesPDFData }) {
 	const { seller, buyer, property, sale, commission, special_conditions, generatedAt } = data;
+	const { palette, teamName, logoDataUrl } = useBranding();
 
 	const clauseVars = {
 		sale_price: fmtMoney(sale.sale_price),
@@ -135,9 +143,14 @@ export function SalesAgreement({ data }: { data: SalesPDFData }) {
 	return (
 		<View>
 			{/* Title bar (bleeds beyond page padding via negative margins) */}
-			<View style={styles.salesHero} fixed={false}>
+			<View style={[styles.salesHero, { backgroundColor: palette.primary }]} fixed={false}>
 				<Text style={styles.salesHeroTitle}>Satılık Alım, Satış Sözleşmesi</Text>
-				<Text style={styles.salesHeroDate}>Düzenleme: {formatDate(generatedAt)}</Text>
+				<View style={{ alignItems: "flex-end" }}>
+					{logoDataUrl ? (
+						<Image src={logoDataUrl} style={{ maxHeight: 24, maxWidth: 100, objectFit: "contain", marginBottom: 3 }} />
+					) : null}
+					<Text style={[styles.salesHeroDate, { color: palette.muted }]}>Düzenleme: {formatDate(generatedAt)}</Text>
+				</View>
 			</View>
 
 			{/* A — Mal sahibi */}
@@ -155,8 +168,8 @@ export function SalesAgreement({ data }: { data: SalesPDFData }) {
 			{/* C — Gayrimenkul */}
 			<View style={styles.section}>
 				<SectionChip letter="C" title="Gayrimenkule Ait Bilgiler" />
-				<View style={styles.propBlock} wrap={false}>
-					<Text style={styles.propAddressLabel}>Adresi</Text>
+				<View style={[styles.propBlock, { borderColor: palette.muted, borderLeftColor: palette.primary }]} wrap={false}>
+					<Text style={[styles.propAddressLabel, { color: palette.primary }]}>Adresi</Text>
 					<Text style={styles.propAddressValue}>{property.address || "—"}</Text>
 
 					<View style={styles.propGrid}>
@@ -182,12 +195,12 @@ export function SalesAgreement({ data }: { data: SalesPDFData }) {
 			{/* E — Hizmet bedeli (commission) */}
 			<View style={styles.section}>
 				<SectionChip letter="E" title="Yapılacak İşleme Ait Bilgiler" />
-				<View style={styles.commissionTable}>
-					<View style={styles.commissionHeaderRow} wrap={false}>
-						<Text style={styles.commissionHeaderCellLeft}>Hizmet Bedeli</Text>
-						<Text style={styles.commissionHeaderCell}>Oran %</Text>
-						<Text style={styles.commissionHeaderCell}>Matrah</Text>
-						<Text style={styles.commissionHeaderCell}>KDV (%18)</Text>
+				<View style={[styles.commissionTable, { borderColor: palette.muted }]}>
+					<View style={[styles.commissionHeaderRow, { backgroundColor: palette.primary }]} wrap={false}>
+						<Text style={[styles.commissionHeaderCellLeft, { borderRightColor: palette.primaryDark }]}>Hizmet Bedeli</Text>
+						<Text style={[styles.commissionHeaderCell, { borderRightColor: palette.primaryDark }]}>Oran %</Text>
+						<Text style={[styles.commissionHeaderCell, { borderRightColor: palette.primaryDark }]}>Matrah</Text>
+						<Text style={[styles.commissionHeaderCell, { borderRightColor: palette.primaryDark }]}>KDV (%18)</Text>
 						<Text style={[styles.commissionHeaderCell, { borderRightWidth: 0 }]}>Toplam Tutar</Text>
 					</View>
 					<CommissionRow label="Alıcı" line={commission.buyer} />
@@ -198,26 +211,26 @@ export function SalesAgreement({ data }: { data: SalesPDFData }) {
 			{/* Sale price + kapora highlight pair */}
 			<View style={styles.section} wrap={false}>
 				<View style={{ flexDirection: "row", gap: 12 }}>
-					<View style={styles.salesPriceBox}>
-						<Text style={styles.salesPriceLabel}>Satış Bedeli</Text>
+					<View style={[styles.salesPriceBox, { backgroundColor: palette.primary }]}>
+						<Text style={[styles.salesPriceLabel, { color: palette.muted }]}>Satış Bedeli</Text>
 						<View style={{ flexDirection: "row", alignItems: "baseline" }}>
 							<Text style={styles.salesPriceValue}>{fmtMoney(sale.sale_price)}</Text>
-							<Text style={[styles.salesCurrencyTag, { color: colors.gray_brand }]}>{sale.currency}</Text>
+							<Text style={[styles.salesCurrencyTag, { color: palette.muted }]}>{sale.currency}</Text>
 						</View>
 					</View>
-					<View style={styles.salesDepositBox}>
-						<Text style={styles.salesDepositLabel}>Kapora</Text>
+					<View style={[styles.salesDepositBox, { borderColor: palette.accent }]}>
+						<Text style={[styles.salesDepositLabel, { color: palette.accent }]}>Kapora</Text>
 						<View style={{ flexDirection: "row", alignItems: "baseline" }}>
-							<Text style={styles.salesDepositValue}>
+							<Text style={[styles.salesDepositValue, { color: palette.primary }]}>
 								{sale.deposit_amount != null ? fmtMoney(sale.deposit_amount) : "—"}
 							</Text>
-							<Text style={[styles.salesCurrencyTag, { color: colors.red_brand }]}>{sale.currency}</Text>
+							<Text style={[styles.salesCurrencyTag, { color: palette.accent }]}>{sale.currency}</Text>
 						</View>
 					</View>
 				</View>
 
 				<Text style={styles.avaraLine}>
-					Bundan böyle, AVERA GAYRİMENKUL yetkilendiren MAL SAHİBİ olarak anılacaktır.
+					Bundan böyle, {teamName.toLocaleUpperCase("tr")} yetkilendiren MAL SAHİBİ olarak anılacaktır.
 				</Text>
 			</View>
 
@@ -227,14 +240,14 @@ export function SalesAgreement({ data }: { data: SalesPDFData }) {
 				<ClausesList label="" clauses={resolvedClauses} />
 			</View>
 
-			{/* Signatures with navy accent bars matching the reference */}
+			{/* Signatures with brand accent bars matching the reference */}
 			<SignatureBlock
 				label="İmzalar"
-				accentColor={colors.navy_brand}
+				accentColor={palette.primary}
 				signers={[
 					{ role: "Mal Sahibi", name: seller.full_name },
 					{ role: "Alıcı",      name: buyer.full_name },
-					{ role: "AVERA Gayrimenkul" },
+					{ role: teamName },
 				]}
 			/>
 

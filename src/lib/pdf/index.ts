@@ -1,6 +1,9 @@
 import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData } from "./types";
+import type { PdfBranding } from "./branding";
 
 export type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData };
+export type { PdfBranding };
+export { getPdfBrandingFromStore, BRAND_PALETTES } from "./branding";
 export { PDFDocument } from "./document";
 
 /** Render a document to a PDF File without downloading it — callers can
@@ -9,6 +12,7 @@ export async function generatePdfFile(
 	kind: DocKind,
 	data: RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData,
 	filename: string,
+	branding?: PdfBranding,
 ): Promise<File> {
 	// Dynamic import keeps @react-pdf/renderer out of the SSR bundle
 	const { generatePDFBlob } = await import("./document");
@@ -16,7 +20,7 @@ export async function generatePdfFile(
 	// is laid out with fallback metrics and lines collapse onto each other.
 	const { loadPdfFonts } = await import("./styles");
 	await loadPdfFonts();
-	const blob = await generatePDFBlob(kind, data);
+	const blob = await generatePDFBlob(kind, data, branding);
 
 	const safeFilename = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
 	return new File([blob], safeFilename, { type: "application/pdf" });
@@ -26,8 +30,9 @@ export async function exportToPDF(
 	kind: DocKind,
 	data: RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData,
 	filename: string,
+	branding?: PdfBranding,
 ) {
-	const file = await generatePdfFile(kind, data, filename);
+	const file = await generatePdfFile(kind, data, filename, branding);
 	await downloadPdfFile(file);
 }
 
