@@ -579,24 +579,24 @@ export function DocumentWizard() {
 			{/* Step 1: type */}
 			{step === "type" && (
 				<div className="space-y-4">
-					<h2 className="text-lg font-bold text-base-content">Belge türünü seçin</h2>
+					<h2 className="font-display text-lg font-semibold text-base-content">Belge türünü seçin</h2>
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 						<button
 							onClick={() => { setKind("rental"); setPropertyId(null); setClientId(null); setStep("property"); }}
 							className="text-left p-5 rounded-2xl border-2 border-base-300 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
-							<p className="text-base font-bold text-base-content">Kira Sözleşmesi</p>
+							<p className="font-display text-base font-semibold text-base-content">Kira Sözleşmesi</p>
 							<p className="text-sm text-base-content/60 mt-1">Boş bir kiralık taşınmazı yeni bir kiracıya kiralayın.</p>
 						</button>
 						<button
 							onClick={() => { setKind("sales"); setPropertyId(null); setClientId(null); setStep("property"); }}
 							className="text-left p-5 rounded-2xl border-2 border-base-300 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
-							<p className="text-base font-bold text-base-content">Satış Sözleşmesi</p>
+							<p className="font-display text-base font-semibold text-base-content">Satış Sözleşmesi</p>
 							<p className="text-sm text-base-content/60 mt-1">Satılık bir taşınmazı yeni bir alıcıya satın.</p>
 						</button>
 						<div className="p-5 rounded-2xl border border-base-300 bg-base-200">
-							<p className="text-base font-bold text-base-content">Kira Makbuzu</p>
+							<p className="font-display text-base font-semibold text-base-content">Kira Makbuzu</p>
 							<p className="text-sm text-base-content/60 mt-1">
 								Her ödeme için ayrı oluşturulur — taşınmazın Ödemeler listesini açın ve
 								satırdaki makbuz işlemini kullanın.
@@ -609,7 +609,7 @@ export function DocumentWizard() {
 			{/* Step 2: property */}
 			{step === "property" && (
 				<div className="space-y-4">
-					<h2 className="text-lg font-bold text-base-content">Taşınmaz seçin</h2>
+					<h2 className="font-display text-lg font-semibold text-base-content">Taşınmaz seçin</h2>
 					{loadingProperties ? (
 						<div className="flex justify-center py-8"><Spinner size="sm" /></div>
 					) : (
@@ -635,7 +635,7 @@ export function DocumentWizard() {
 			{step === "client" && (
 				<div className="space-y-4">
 					<div>
-						<h2 className="text-lg font-bold text-base-content">Müşteri seçin</h2>
+						<h2 className="font-display text-lg font-semibold text-base-content">Müşteri seçin</h2>
 						<p className="text-sm text-base-content/60 mt-1">
 							İsteğe bağlı — bir müşteri seçmek {kind === "rental" ? "kiracı" : "alıcı"} bilgilerini önceden doldurur.
 							Bu adımı atlayıp bilgileri elle de girebilirsiniz.
@@ -665,7 +665,7 @@ export function DocumentWizard() {
 			{step === "details" && property && kind === "rental" && (
 				<div className="space-y-5">
 					<div>
-						<h2 className="text-lg font-bold text-base-content">Kira sözleşmesi detayları</h2>
+						<h2 className="font-display text-lg font-semibold text-base-content">Kira sözleşmesi detayları</h2>
 						<p className="text-sm text-base-content/60 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
 					</div>
 
@@ -685,7 +685,7 @@ export function DocumentWizard() {
 			{step === "details" && property && kind === "sales" && (
 				<div className="space-y-5">
 					<div>
-						<h2 className="text-lg font-bold text-base-content">Satış sözleşmesi detayları</h2>
+						<h2 className="font-display text-lg font-semibold text-base-content">Satış sözleşmesi detayları</h2>
 						<p className="text-sm text-base-content/60 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
 					</div>
 
@@ -705,7 +705,7 @@ export function DocumentWizard() {
 			{/* Step 4: preview */}
 			{step === "preview" && previewData && (
 				<div className="space-y-4">
-					<h2 className="text-lg font-bold text-base-content">İncele ve oluştur</h2>
+					<h2 className="font-display text-lg font-semibold text-base-content">İncele ve oluştur</h2>
 					<div className="h-[60vh] sm:h-[72vh] bg-base-200 rounded-2xl overflow-hidden border border-base-300">
 						{!fontsLoaded ? (
 							<div className="h-full flex items-center justify-center"><Spinner /></div>

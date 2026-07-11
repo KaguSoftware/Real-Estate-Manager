@@ -11,9 +11,9 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
 		<div className="min-h-dvh bg-base-200 flex flex-col">
 			<header className="safe-top border-b border-base-300 bg-base-100/80 backdrop-blur sticky top-0 z-30">
 				<div className="mx-auto max-w-6xl safe-x flex items-center justify-between h-16">
-					<Link href="/" className="flex items-center gap-2 font-bold text-base-content">
+					<Link href="/" className="font-display flex items-center gap-2.5 text-lg font-semibold text-base-content">
 						<span className="h-8 w-8 rounded-xl bg-primary text-primary-content flex items-center justify-center">
-							<Building2 className="w-[18px] h-[18px]" />
+							<Building2 className="w-4.5 h-4.5" />
 						</span>
 						Kagu Emlak
 					</Link>
@@ -64,7 +64,7 @@ export function LegalArticle({ title, updated, children }: {
 }) {
 	return (
 		<article className="mx-auto max-w-3xl safe-x py-10 sm:py-14">
-			<h1 className="text-2xl sm:text-3xl font-bold text-base-content">{title}</h1>
+			<h1 className="font-display text-3xl sm:text-4xl font-semibold text-base-content">{title}</h1>
 			<p className="mt-1 text-sm text-base-content/50">Son güncelleme: {updated}</p>
 			<div className="mt-8 space-y-6 text-[15px] leading-relaxed text-base-content/80 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-base-content [&_h2]:mt-8 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-1.5 [&_strong]:text-base-content">
 				{children}

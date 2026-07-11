@@ -37,12 +37,12 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 
 	return (
 		<div className="min-h-screen bg-base-200">
-			<header className="safe-top sticky top-0 z-30 bg-base-100/90 backdrop-blur border-b border-base-300/80">
-				<div className={cn("mx-auto px-3 sm:px-6 h-14 flex items-center gap-2", maxW)}>
+			<header className="safe-top sticky top-0 z-30 bg-base-100/85 backdrop-blur border-b border-base-300/70">
+				<div className={cn("mx-auto px-3 sm:px-6 h-16 flex items-center gap-2.5", maxW)}>
 					<button
 						onClick={() => setDrawerOpen(true)}
 						aria-label="Menüyü aç"
-						className="h-11 w-11 -ml-1 inline-flex items-center justify-center rounded-xl text-base-content/70 hover:bg-base-200 transition-colors"
+						className="h-11 w-11 -ml-1 inline-flex items-center justify-center rounded-lg text-base-content/70 hover:bg-base-200 transition-colors"
 					>
 						<Menu className="w-5 h-5" />
 					</button>
@@ -53,8 +53,8 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 					)}
 
 					<div className="min-w-0 flex-1">
-						<h1 className="text-base font-bold text-base-content truncate leading-tight">{title}</h1>
-						{subtitle && <p className="text-xs text-base-content/50 truncate">{subtitle}</p>}
+						<h1 className="font-display text-lg font-semibold text-base-content truncate leading-tight">{title}</h1>
+						{subtitle && <p className="text-xs text-base-content/50 truncate tracking-wide">{subtitle}</p>}
 					</div>
 
 					<div className="flex items-center gap-2">
@@ -65,7 +65,7 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 							<button
 								onClick={() => setDrawerOpen(true)}
 								aria-label="Hesap"
-								className="h-9 w-9 rounded-full bg-primary text-primary-content flex items-center justify-center text-sm font-bold uppercase select-none shadow-soft"
+								className="h-9 w-9 rounded-full bg-primary text-primary-content ring-1 ring-primary/40 ring-offset-2 ring-offset-base-100 flex items-center justify-center text-sm font-bold uppercase select-none"
 							>
 								{user.email.charAt(0)}
 							</button>
@@ -78,7 +78,7 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 
 			{/* `safe-x` owns horizontal padding (base 12/24px + notch insets); don't
 			    also set `px-*` here or the two longhands race in the cascade. */}
-			<main className={cn("mx-auto py-4 sm:py-6 safe-x", maxW)}>{children}</main>
+			<main className={cn("mx-auto py-6 sm:py-10 safe-x", maxW)}>{children}</main>
 
 			<NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 		</div>

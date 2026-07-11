@@ -86,14 +86,14 @@ export const FormField = ({ label, children, hint, error, id, onDelete }: FormFi
  * the className constant OR through the <Input/Textarea/Select> wrappers below.
  */
 export const inputClass =
-	"w-full h-12 bg-base-100 border border-base-300 rounded-xl px-3.5 text-base sm:text-sm text-base-content " +
+	"w-full h-12 bg-base-100 border border-base-300 rounded-lg px-3.5 text-base sm:text-sm text-base-content " +
 	"placeholder:text-base-content/40 shadow-soft outline-none transition-all " +
 	"focus:border-primary focus:ring-4 focus:ring-primary/15 " +
 	"disabled:bg-base-200 disabled:text-base-content/50";
 
 /** Textarea variant — same skin, auto height. */
 export const textareaClass =
-	"w-full min-h-24 bg-base-100 border border-base-300 rounded-xl px-3.5 py-3 text-base sm:text-sm text-base-content " +
+	"w-full min-h-24 bg-base-100 border border-base-300 rounded-lg px-3.5 py-3 text-base sm:text-sm text-base-content " +
 	"placeholder:text-base-content/40 shadow-soft outline-none transition-all resize-y " +
 	"focus:border-primary focus:ring-4 focus:ring-primary/15";
 
@@ -115,7 +115,7 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
 			<select ref={ref} className={cn(inputClass, "appearance-none pr-9 bg-no-repeat", className)}
 				style={{
 					backgroundImage:
-						"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+						"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23a29a88' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
 					backgroundPosition: "right 0.625rem center",
 				}}
 				{...rest}

@@ -176,9 +176,9 @@ export default function OnboardingPage() {
 
 	return (
 		<div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
-			<div className="w-full max-w-md space-y-4">
+			<div className="w-full max-w-md space-y-5">
 				<div className="text-center">
-					<h1 className="text-2xl font-bold text-base-content">Kagu&apos;ya hoş geldiniz</h1>
+					<h1 className="font-display text-2xl font-semibold text-base-content">Kagu&apos;ya hoş geldiniz</h1>
 					<p className="text-sm text-base-content/60 mt-1">
 						Ofisinizin ekibini kurun veya davet edildiğiniz bir ekibe katılın.
 					</p>
@@ -218,7 +218,7 @@ export default function OnboardingPage() {
 							className="w-full text-left"
 						>
 							<Card className="space-y-1 hover:border-primary/40 border border-transparent transition-colors">
-								<div className="flex items-center gap-2 text-base-content font-semibold">
+								<div className="font-display flex items-center gap-2 text-base-content font-semibold">
 									<Building2 className="w-5 h-5 text-primary" /> Yeni ekip kur
 								</div>
 								<p className="text-xs text-base-content/60">
@@ -232,7 +232,7 @@ export default function OnboardingPage() {
 							className="w-full text-left"
 						>
 							<Card className="space-y-1 hover:border-primary/40 border border-transparent transition-colors">
-								<div className="flex items-center gap-2 text-base-content font-semibold">
+								<div className="font-display flex items-center gap-2 text-base-content font-semibold">
 									<UserPlus className="w-5 h-5 text-primary" /> Mevcut bir ekibe katıl
 								</div>
 								<p className="text-xs text-base-content/60">
@@ -248,7 +248,7 @@ export default function OnboardingPage() {
 							className="space-y-4"
 						>
 							{backBtn("choose")}
-							<div className="text-base-content font-semibold">Kendinizi tanıtın</div>
+							<div className="font-display text-base-content font-semibold">Kendinizi tanıtın</div>
 							<FormField label="Ad Soyad">
 								<Input
 									value={fullName}
@@ -275,7 +275,7 @@ export default function OnboardingPage() {
 					<Card>
 						<form onSubmit={onCreate} className="space-y-4">
 							{backBtn("profile")}
-							<div className="flex items-center gap-2 text-base-content font-semibold">
+							<div className="font-display flex items-center gap-2 text-base-content font-semibold">
 								<Building2 className="w-5 h-5 text-primary" /> Ekibinizi oluşturun
 							</div>
 							<FormField label="Ekip adı">
@@ -331,7 +331,7 @@ export default function OnboardingPage() {
 					<Card>
 						<form onSubmit={onJoin} className="space-y-4">
 							{backBtn("profile")}
-							<div className="flex items-center gap-2 text-base-content font-semibold">
+							<div className="font-display flex items-center gap-2 text-base-content font-semibold">
 								<UserPlus className="w-5 h-5 text-primary" /> Davet koduyla katıl
 							</div>
 							<FormField label="Davet kodu">

@@ -248,7 +248,7 @@ export function PropertyDetail({ propertyId }: Props) {
 		<AppShell title="Taşınmaz" subtitle={data.city ?? undefined}>
 			{/* Address header */}
 			<div className="mb-5">
-				<h1 className="text-xl sm:text-2xl font-bold text-base-content leading-tight wrap-break-word">
+				<h1 className="font-display text-xl sm:text-2xl font-semibold text-base-content leading-tight wrap-break-word">
 					{data.address_line}
 				</h1>
 				{data.city && <p className="text-sm text-base-content/60 mt-1">{data.city}</p>}

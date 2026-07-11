@@ -114,8 +114,8 @@ function StatCard({
 			</div>
 			<p
 				className={cn(
-					"font-bold text-base-content truncate",
-					value.length > 12 ? "text-sm leading-6" : "text-lg",
+					"font-display font-semibold text-base-content truncate",
+					value.length > 12 ? "text-sm leading-6" : "text-xl",
 					danger && "text-error",
 				)}
 				title={value}

@@ -104,7 +104,7 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 							/>
 						)}
 						<div className="min-w-0">
-							<p className="text-base font-bold text-base-content leading-tight truncate">{team?.name ?? "Kagu Emlak"}</p>
+							<p className="font-display text-base font-semibold text-base-content leading-tight truncate">{team?.name ?? "Kagu Emlak"}</p>
 							<p className="text-xs text-base-content/50 truncate">{team ? "Çalışma alanı" : "Yönetici"}</p>
 						</div>
 					</div>
