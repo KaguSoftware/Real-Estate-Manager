@@ -305,12 +305,15 @@ export async function uploadTeamLogo(file: File): Promise<string> {
 	}
 	if (payload.size > LOGO_MAX_BYTES) throw new Error("Dosya çok büyük — logo 1 MB'den küçük olmalı.");
 
-	// Timestamped filename: a stable path would serve stale CDN copies after re-upload.
+	// Timestamped filename: a stable path would serve stale CDN copies after
+	// re-upload. NO upsert — the path can never collide, and x-upsert makes
+	// storage demand the UPDATE policy on top of INSERT (a plain insert only
+	// needs the INSERT policy). This exact flag was why uploads failed with
+	// "no permission" on databases missing the team_logos UPDATE policy.
 	const path = `${teamId}/logo-${Date.now()}.${ext}`;
 	const { error: upErr } = await supabase.storage.from(LOGO_BUCKET).upload(path, payload, {
 		cacheControl: "3600",
 		contentType: file.type,
-		upsert: true,
 	});
 	if (upErr) throw mapLogoUploadError(upErr);
 	const { error } = await supabase.from("teams").update({ logo_path: path }).eq("id", teamId);
