@@ -43,6 +43,7 @@ export const propertyInputSchema = z.object({
 	mevkii: z.string().nullish(),
 	latitude: z.number().min(-90).max(90).nullish(),
 	longitude: z.number().min(-180).max(180).nullish(),
+	assigned_to: z.string().uuid().nullish(),
 });
 
 export const leadInputSchema = z.object({
@@ -57,6 +58,7 @@ export const leadInputSchema = z.object({
 	status: leadStatusSchema.optional(),
 	notes: z.string().nullish(),
 	last_call_at: z.string().nullish(),
+	assigned_to: z.string().uuid().nullish(),
 });
 
 export const tenantInputSchema = z.object({

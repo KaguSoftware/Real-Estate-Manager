@@ -15,6 +15,7 @@ import { FormField, Input, Textarea, Select, Button, Alert, ConfirmDialog, toast
 import type { ReverseAddress } from "@/src/lib/geocode";
 import { splitPlaceName, type ResolveResult } from "@/src/lib/maps-url";
 import { LocationPicker, type LatLon } from "./LocationPicker";
+import { AssigneeSelect } from "@/src/components/team/AssigneeSelect";
 import { Trash2 } from "lucide-react";
 
 interface Props {
@@ -118,7 +119,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const [listing_type, setListingType] = useState<ListingType>(initial?.listing_type ?? "for_rent");
 	const [status,       setStatus]      = useState<PropertyStatus>(initial?.status ?? "vacant");
 	const [list_price,   setListPrice]   = useState(initial?.list_price?.toString() ?? "");
-	const [currency,     setCurrency]    = useState(initial?.currency ?? "TRY");
+	const currency = "TRY"; // product is TRY-only
 	const [notes,        setNotes]       = useState(initial?.notes ?? "");
 
 	// Turkish title-deed (tapu) fields — used by the sales agreement.
@@ -127,6 +128,8 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const [parselNo,  setParselNo]  = useState(initial?.parsel_no ?? "");
 	const [tapuMahalle, setTapuMahalle] = useState(initial?.mahalle ?? "");
 	const [mevkii,    setMevkii]    = useState(initial?.mevkii    ?? "");
+
+	const [assignedTo, setAssignedTo] = useState<string | null>(initial?.assigned_to ?? null);
 
 	const [busy, setBusy] = useState(false);
 	const [locating, setLocating] = useState(false);
@@ -195,6 +198,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			parsel_no: parselNo.trim()     || null,
 			mahalle:   tapuMahalle.trim()  || null,
 			mevkii:    mevkii.trim()       || null,
+			assigned_to: assignedTo,
 		};
 
 		// Coordinates: prefer the pin (maps link / map tap — precise and
@@ -361,13 +365,15 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					<Input type="number" inputMode="decimal" min="0" value={list_price} onChange={(e) => setListPrice(e.target.value)} placeholder="0.00" />
 				</FormField>
 				<FormField label="Currency">
-					<Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+					<Select value="TRY" disabled>
 						<option value="TRY">TRY (₺)</option>
-						<option value="USD">USD ($)</option>
-						<option value="EUR">EUR (€)</option>
 					</Select>
 				</FormField>
 			</div>
+
+			<FormField label="Assigned agent" hint="Who is responsible — the whole team can still see it.">
+				<AssigneeSelect value={assignedTo} onChange={setAssignedTo} />
+			</FormField>
 
 			<FormField label="Notes">
 				<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />

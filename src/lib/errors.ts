@@ -1,13 +1,28 @@
 // Map raw Supabase/Postgres errors to messages a non-technical user can act on.
 
+import { useAppStore } from "@/src/store";
+
 interface PgLikeError {
 	code?: string;
 	message?: string;
 }
 
+/** True when the failure is most plausibly the trial/subscription write lock:
+ *  an RLS rejection while the client already knows the team isn't writable. */
+function isPaywallError(code: string | undefined, raw: string): boolean {
+	const rlsHit = code === "42501" || /row-level security/i.test(raw);
+	if (!rlsHit) return false;
+	const team = useAppStore.getState().team;
+	return team !== null && !team.is_writable;
+}
+
 export function humanizeError(e: unknown): string {
 	const err = (typeof e === "object" && e !== null ? e : {}) as PgLikeError;
 	const raw = err.message ?? (e instanceof Error ? e.message : String(e));
+
+	if (isPaywallError(err.code, raw)) {
+		return "Your team's trial has ended — the workspace is read-only until a plan is active. See Billing.";
+	}
 
 	switch (err.code) {
 		case "23503": // foreign key violation

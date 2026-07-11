@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import { createClient } from "@/src/lib/supabase/client";
 import { useAppStore } from "@/src/store";
 import { clearCache } from "@/src/lib/useCachedResource";
+import { fetchTeamContext } from "@/src/lib/db/teams";
 
 async function resolveUser(supabase: ReturnType<typeof createClient>, id: string, email: string) {
   try {
@@ -29,6 +30,7 @@ async function resolveUser(supabase: ReturnType<typeof createClient>, id: string
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAppStore((s) => s.setUser);
+  const setTeam = useAppStore((s) => s.setTeam);
   const setProperties = useAppStore((s) => s.setProperties);
   const setLeads = useAppStore((s) => s.setLeads);
 
@@ -45,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastUserId = user.id;
       setUser({ id: user.id, email: user.email ?? "" });
       resolveUser(supabase, user.id, user.email ?? "").then(setUser);
+      fetchTeamContext().then(setTeam).catch(() => setTeam(null));
     });
 
     // Keep in sync as auth state changes (sign-in, sign-out, token refresh)
@@ -62,17 +65,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Single source of truth for store cleanup on sign-out.
           setProperties([]);
           setLeads([]);
+          setTeam(null);
         }
         if (!u) { setUser(null); return; }
         setUser({ id: u.id, email: u.email ?? "" });
         resolveUser(supabase, u.id, u.email ?? "").then(setUser);
+        fetchTeamContext().then(setTeam).catch(() => setTeam(null));
       }
     );
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [setUser, setProperties, setLeads]);
+  }, [setUser, setTeam, setProperties, setLeads]);
 
   return <>{children}</>;
 }

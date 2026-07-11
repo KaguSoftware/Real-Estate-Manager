@@ -19,7 +19,7 @@ interface Props {
 export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 	const [monthlyRent, setMonthlyRent] = useState(String(lease.monthly_rent));
 	const [deposit, setDeposit] = useState(String(lease.deposit));
-	const [currency, setCurrency] = useState(lease.currency);
+	const currency = "TRY"; // product is TRY-only
 	const [endDate, setEndDate] = useState(lease.end_date ?? "");
 	const [paymentDay, setPaymentDay] = useState(lease.payment_day?.toString() ?? "");
 	const [paymentMethod, setPaymentMethod] = useState(lease.payment_method ?? "");
@@ -105,10 +105,8 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Currency">
-						<Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+						<Select value="TRY" disabled>
 							<option value="TRY">TRY (₺)</option>
-							<option value="USD">USD ($)</option>
-							<option value="EUR">EUR (€)</option>
 						</Select>
 					</FormField>
 					<FormField label="End date" hint="Leave empty for an open-ended lease." error={fieldErrors.endDate}>

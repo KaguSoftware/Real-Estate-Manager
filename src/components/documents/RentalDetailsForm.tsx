@@ -301,10 +301,8 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Input required type="date" value={state.startDate} onChange={set("startDate")} />
 					</FormField>
 					<FormField label="Para Birimi (Currency)">
-						<Select value={state.currency} onChange={set("currency")}>
+						<Select value="TRY" disabled>
 							<option value="TRY">TRY (₺)</option>
-							<option value="USD">USD ($)</option>
-							<option value="EUR">EUR (€)</option>
 						</Select>
 					</FormField>
 				</div>

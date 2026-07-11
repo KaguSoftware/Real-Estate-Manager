@@ -3,6 +3,7 @@
 import { createClient } from "@/src/lib/supabase/client";
 import type { Payment, LeaseBalance } from "./types";
 import { parseInput, paymentInputSchema } from "@/src/lib/schemas/inputs";
+import { requireTeamId } from "./teams";
 
 export interface PaymentInput {
 	lease_id: string;
@@ -39,7 +40,8 @@ export async function recordPayment(input: PaymentInput): Promise<Payment> {
 		.from("payments")
 		.insert({
 			...parsed,
-			owner_id: user.id,
+			team_id: requireTeamId(),
+			created_by: user.id,
 			amount_paid: parsed.amount_paid ?? parsed.amount_due,
 			paid_at: parsed.paid_at ?? new Date().toISOString(),
 		})

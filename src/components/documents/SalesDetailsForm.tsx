@@ -60,7 +60,7 @@ export const initialSalesFormState = (property: Property | null): SalesFormState
 	buyerPhone: "",
 	buyerEmail: "",
 	salePrice: property?.list_price?.toString() ?? "",
-	currency: property?.currency ?? "USD",
+	currency: "TRY",
 	saleDate: new Date().toISOString().slice(0, 10),
 	targetCloseDate: "",
 	depositAmount: "",
@@ -192,10 +192,8 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Input required type="number" inputMode="decimal" min="0" step="0.01" value={state.salePrice} onChange={set("salePrice")} />
 					</FormField>
 					<FormField label="Para Birimi (Currency)">
-						<Select value={state.currency} onChange={set("currency")}>
-							<option value="USD">USD ($)</option>
+						<Select value="TRY" disabled>
 							<option value="TRY">TRY (₺)</option>
-							<option value="EUR">EUR (€)</option>
 						</Select>
 					</FormField>
 					<FormField label="Sözleşme Tarihi (Sale date)" id="saleDate" error={errors.saleDate}>

@@ -4,6 +4,7 @@
 // bucket is private (contracts hold personal data).
 
 import { createClient } from "@/src/lib/supabase/client";
+import { requireTeamId } from "./teams";
 
 const BUCKET = "documents";
 
@@ -16,15 +17,15 @@ async function requireUser() {
 
 /**
  * Upload a contract PDF and link it to its lease or sale row.
- * Path convention: {user_id}/{record_id}.pdf (upsert — regenerating a
+ * Path convention: {team_id}/{record_id}.pdf (upsert — regenerating a
  * contract replaces the stored copy).
  */
 export async function saveDocumentPdf(
 	record: { table: "leases" | "sales"; id: string },
 	file: File,
 ): Promise<string> {
-	const { supabase, user } = await requireUser();
-	const path = `${user.id}/${record.id}.pdf`;
+	const { supabase } = await requireUser();
+	const path = `${requireTeamId()}/${record.id}.pdf`;
 
 	const { error: upErr } = await supabase.storage
 		.from(BUCKET)

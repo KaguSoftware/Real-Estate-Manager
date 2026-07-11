@@ -22,7 +22,10 @@ export type ProfileRow = Profile;
 
 export interface Property {
 	id: string;
-	owner_id: string;
+	team_id: string;
+	created_by: string | null;
+	/** Team member responsible for this property (responsibility only — whole team can see it). */
+	assigned_to: string | null;
 	homeowner_name: string;
 	address_line: string;
 	city: string | null;
@@ -50,7 +53,8 @@ export interface Property {
 
 export interface Tenant {
 	id: string;
-	owner_id: string;
+	team_id: string;
+	created_by: string | null;
 	full_name: string;
 	email: string | null;
 	phone: string | null;
@@ -62,7 +66,10 @@ export interface Tenant {
 
 export interface Lead {
 	id: string;
-	owner_id: string;
+	team_id: string;
+	created_by: string | null;
+	/** Team member responsible for this lead. */
+	assigned_to: string | null;
 	full_name: string;
 	phone: string | null;
 	email: string | null;
@@ -88,7 +95,8 @@ export interface InventoryItem {
 
 export interface Lease {
 	id: string;
-	owner_id: string;
+	team_id: string;
+	created_by: string | null;
 	property_id: string;
 	tenant_id: string;
 	term: LeaseTerm;
@@ -120,7 +128,8 @@ export interface Lease {
 
 export interface Payment {
 	id: string;
-	owner_id: string;
+	team_id: string;
+	created_by: string | null;
 	lease_id: string;
 	period_start: string;
 	period_end: string;
@@ -150,7 +159,8 @@ export interface PropertyWithActiveLease extends Property {
 
 export interface PropertyImage {
 	id: string;
-	owner_id: string;
+	team_id: string;
+	created_by: string | null;
 	property_id: string;
 	storage_path: string;
 	position: number;
@@ -164,7 +174,8 @@ export type TaxResponsibility = "buyer" | "seller" | "legal";
 
 export interface Sale {
 	id: string;
-	owner_id: string;
+	team_id: string;
+	created_by: string | null;
 	property_id: string;
 	buyer_id: string;
 	sale_price: number;

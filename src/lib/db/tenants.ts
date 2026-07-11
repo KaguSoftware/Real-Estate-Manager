@@ -4,6 +4,7 @@ import { createClient } from "@/src/lib/supabase/client";
 import type { Tenant } from "./types";
 import { orIlikeAnyColumn } from "./filterString";
 import { parseInput, tenantInputSchema } from "@/src/lib/schemas/inputs";
+import { requireTeamId } from "./teams";
 
 export interface TenantInput {
 	full_name: string;
@@ -25,7 +26,7 @@ export async function createTenant(input: TenantInput): Promise<Tenant> {
 	const { supabase, user } = await requireUser();
 	const { data, error } = await supabase
 		.from("tenants")
-		.insert({ ...parsed, owner_id: user.id })
+		.insert({ ...parsed, team_id: requireTeamId(), created_by: user.id })
 		.select()
 		.single();
 	if (error) throw error;

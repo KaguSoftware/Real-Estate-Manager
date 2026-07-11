@@ -1,16 +1,18 @@
 // Property image uploads. Files live in the `property-images` Supabase
-// Storage bucket under {user_id}/{property_id}/{uuid}.{ext}; metadata
+// Storage bucket under {team_id}/{property_id}/{uuid}.{ext}; metadata
 // (path + ordering) lives in public.property_images. Storage RLS gates
-// uploads by user-id prefix; table RLS gates row visibility.
+// uploads by team-id prefix; table RLS gates row visibility.
 
 import { createClient } from "@/src/lib/supabase/client";
 import type { PropertyImage } from "./types";
+import { requireTeamId } from "./teams";
 
 const BUCKET = "property-images";
 
 interface PropertyImageRow {
 	id: string;
-	owner_id: string;
+	team_id: string;
+	created_by: string | null;
 	property_id: string;
 	storage_path: string;
 	position: number;
@@ -66,11 +68,12 @@ export async function uploadPropertyImage(
 	file: File,
 ): Promise<PropertyImage> {
 	const { supabase, user } = await requireUser();
+	const teamId = requireTeamId();
 
 	const extMatch = /\.([a-zA-Z0-9]+)$/.exec(file.name);
 	const ext = (extMatch?.[1] ?? "jpg").toLowerCase();
 	const id = (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
-	const path = `${user.id}/${propertyId}/${id}.${ext}`;
+	const path = `${teamId}/${propertyId}/${id}.${ext}`;
 
 	const { error: upErr } = await supabase
 		.storage.from(BUCKET)
@@ -90,7 +93,8 @@ export async function uploadPropertyImage(
 	const { data, error } = await supabase
 		.from("property_images")
 		.insert({
-			owner_id: user.id,
+			team_id: teamId,
+			created_by: user.id,
 			property_id: propertyId,
 			storage_path: path,
 			position: nextPosition,

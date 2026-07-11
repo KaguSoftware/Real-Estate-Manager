@@ -4,6 +4,7 @@
 import { createClient } from "@/src/lib/supabase/client";
 import type { InventoryItem, Lease, LeaseTerm, Tenant, UtilityResponsibility } from "./types";
 import { leaseInputSchema, parseInput } from "@/src/lib/schemas/inputs";
+import { requireTeamId } from "./teams";
 
 export interface LeaseInput {
 	property_id: string;
@@ -47,7 +48,8 @@ export async function createLease(input: LeaseInput): Promise<Lease> {
 		.from("leases")
 		.insert({
 			...parsed,
-			owner_id: user.id,
+			team_id: requireTeamId(),
+			created_by: user.id,
 			deposit: parsed.deposit ?? 0,
 			currency: parsed.currency ?? "TRY",
 		})

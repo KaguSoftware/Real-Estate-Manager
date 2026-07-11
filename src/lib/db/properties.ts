@@ -14,6 +14,7 @@ import type {
 import { getLeaseBalance } from "./payments";
 import { orIlikeAnyColumn, orIlikeAnyValue } from "./filterString";
 import { parseInput, propertyInputSchema } from "@/src/lib/schemas/inputs";
+import { requireTeamId } from "./teams";
 
 export interface PropertyFilter {
 	listing_type?: ListingType;
@@ -48,6 +49,7 @@ export interface PropertyInput {
 	mevkii?: string | null;
 	latitude?: number | null;
 	longitude?: number | null;
+	assigned_to?: string | null;
 }
 
 async function requireUser() {
@@ -128,7 +130,7 @@ export async function createProperty(input: PropertyInput): Promise<Property> {
 	const { supabase, user } = await requireUser();
 	const { data, error } = await supabase
 		.from("properties")
-		.insert({ ...parsed, owner_id: user.id })
+		.insert({ ...parsed, team_id: requireTeamId(), created_by: user.id })
 		.select()
 		.single();
 	if (error) throw error;

@@ -4,6 +4,7 @@
 
 import { createClient } from "@/src/lib/supabase/client";
 import type { Sale, SaleStatus, TaxResponsibility, Tenant } from "./types";
+import { requireTeamId } from "./teams";
 
 export interface SaleInput {
 	property_id: string;
@@ -35,8 +36,9 @@ export async function createSale(input: SaleInput): Promise<Sale> {
 		.from("sales")
 		.insert({
 			...input,
-			owner_id: user.id,
-			currency: input.currency ?? "USD",
+			team_id: requireTeamId(),
+			created_by: user.id,
+			currency: input.currency ?? "TRY",
 			tax_responsibility: input.tax_responsibility ?? "legal",
 		})
 		.select()

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Property, PropertyStatus, ListingType, Lead, LeadStatus } from "@/src/lib/db/types";
+import type { TeamContext } from "@/src/lib/db/teams";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 
 export interface UserProfile {
@@ -39,6 +40,11 @@ interface AppState {
 	user: UserProfile | null;
 	setUser: (u: UserProfile | null) => void;
 
+	/** The signed-in user's team (null = not loaded yet or no team). */
+	team: TeamContext | null;
+	teamLoaded: boolean;
+	setTeam: (t: TeamContext | null) => void;
+
 	properties: Property[];
 	setProperties: (p: Property[]) => void;
 	upsertProperty: (p: Property) => void;
@@ -67,6 +73,10 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
 	user: null,
 	setUser: (user) => set({ user }),
+
+	team: null,
+	teamLoaded: false,
+	setTeam: (team) => set({ team, teamLoaded: true }),
 
 	properties: [],
 	setProperties: (properties) => set({ properties }),

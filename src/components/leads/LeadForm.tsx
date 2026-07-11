@@ -9,6 +9,7 @@ import type { Lead, LeadStatus, ListingType } from "@/src/lib/db/types";
 import { Sheet, Button, FormField, Input, Textarea, Select, Alert, ConfirmDialog, toast } from "@/src/components/ui";
 import { validEmail, compactErrors } from "@/src/lib/validation";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "./leadStatus";
+import { AssigneeSelect } from "@/src/components/team/AssigneeSelect";
 import { Trash2, Search } from "lucide-react";
 
 interface Props {
@@ -45,6 +46,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 	const [pref_min_bedrooms, setPrefMinBedrooms] = useState(initial?.pref_min_bedrooms?.toString() ?? "");
 	const [pref_location, setPrefLocation] = useState(initial?.pref_location ?? "");
 
+	const [assignedTo, setAssignedTo] = useState<string | null>(initial?.assigned_to ?? null);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -63,6 +65,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 			status,
 			notes: notes.trim() || null,
 			last_call_at: last_call_at || null,
+			assigned_to: assignedTo,
 		};
 	}
 
@@ -204,6 +207,10 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 						<Input type="date" value={last_call_at ?? ""} onChange={(e) => setLastCallAt(e.target.value)} />
 					</FormField>
 				</div>
+
+				<FormField label="Assigned agent" hint="Who is responsible — the whole team can still see it.">
+					<AssigneeSelect value={assignedTo} onChange={setAssignedTo} />
+				</FormField>
 
 				{/* Notes */}
 				<GroupTitle>Notes</GroupTitle>

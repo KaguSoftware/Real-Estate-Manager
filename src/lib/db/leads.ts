@@ -5,6 +5,7 @@ import { createClient } from "@/src/lib/supabase/client";
 import type { Lead, LeadStatus, ListingType } from "./types";
 import { orIlikeAnyColumn } from "./filterString";
 import { leadInputSchema, parseInput } from "@/src/lib/schemas/inputs";
+import { requireTeamId } from "./teams";
 
 export interface LeadFilter {
 	status?: LeadStatus;
@@ -23,6 +24,7 @@ export interface LeadInput {
 	status?: LeadStatus;
 	notes?: string | null;
 	last_call_at?: string | null;
+	assigned_to?: string | null;
 }
 
 async function requireUser() {
@@ -63,7 +65,7 @@ export async function createLead(input: LeadInput): Promise<Lead> {
 	const { supabase, user } = await requireUser();
 	const { data, error } = await supabase
 		.from("leads")
-		.insert({ ...parsed, owner_id: user.id })
+		.insert({ ...parsed, team_id: requireTeamId(), created_by: user.id })
 		.select()
 		.single();
 	if (error) throw error;
