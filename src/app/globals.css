@@ -218,8 +218,8 @@
 
 @layer components {
 	.pdf-safe-mode {
-		/* Restores brand colors using safe Hex */
-		--color-primary: #7c3aed;
+		/* Restores brand colors using safe Hex (kagu red-orange) */
+		--color-primary: #b74427;
 		--color-slate-200: #e2e8f0;
 		--color-slate-900: #0f172a;
 
