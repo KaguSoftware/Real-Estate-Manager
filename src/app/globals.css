@@ -7,32 +7,32 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Modern-luxury design language: warm ivory surfaces with bronze-gold
-   accents (default, "estate") and a near-black + champagne dark
-   counterpart ("estate-dark"). Sharper radii, deep soft shadows, serif
-   display headings (see .font-display / --font-display in layout.tsx).
-   Light is the default — applied when no data-theme attribute is set;
-   dark is an explicit choice via data-theme="estate-dark" (ThemeToggle).
+   Kagu design language: the kagu bird — ash-grey plumage, orange-red bill.
+   Cool silver-grey/graphite surfaces with a single saturated red-orange
+   accent (Terracotta + Slate family). Light ("estate") is the default —
+   applied when no data-theme attribute is set; dark ("estate-dark") is an
+   explicit choice via data-theme (ThemeToggle). Weight-driven sans
+   hierarchy (Geist), tabular mono numerals (Geist Mono).
    ───────────────────────────────────────────────────────────────────────── */
 @plugin "daisyui/theme" {
 	name: "estate-dark";
 	color-scheme: dark;
 
-	/* Warm charcoal surface ramp */
-	--color-base-100: oklch(19.5% 0.012 80);
-	--color-base-200: oklch(15.5% 0.01 80);
-	--color-base-300: oklch(27% 0.016 80);
-	--color-base-content: oklch(93% 0.012 90);
+	/* Graphite surface ramp — cool, never pure black */
+	--color-base-100: oklch(21.5% 0.01 255);
+	--color-base-200: oklch(17.5% 0.008 255);
+	--color-base-300: oklch(29% 0.012 255);
+	--color-base-content: oklch(93% 0.006 250);
 
-	/* Champagne gold */
-	--color-primary: oklch(79% 0.105 88);
-	--color-primary-content: oklch(20% 0.045 88);
-	--color-secondary: oklch(66% 0.045 80);
-	--color-secondary-content: oklch(15% 0.01 80);
-	--color-accent: oklch(86% 0.07 95);
-	--color-accent-content: oklch(20% 0.04 95);
-	--color-neutral: oklch(90% 0.012 90);
-	--color-neutral-content: oklch(17% 0.012 80);
+	/* Kagu bill — brightened for dark surfaces */
+	--color-primary: oklch(70% 0.155 38);
+	--color-primary-content: oklch(16% 0.04 38);
+	--color-secondary: oklch(70% 0.02 255);
+	--color-secondary-content: oklch(15% 0.008 255);
+	--color-accent: oklch(78% 0.11 45);
+	--color-accent-content: oklch(18% 0.04 45);
+	--color-neutral: oklch(90% 0.006 250);
+	--color-neutral-content: oklch(18% 0.01 255);
 
 	--color-info: oklch(74% 0.1 240);
 	--color-info-content: oklch(18% 0.05 240);
@@ -53,28 +53,28 @@
 	--noise: 0;
 }
 
-/* Default light theme: warm ivory surfaces, bronze-gold accent. Applies
-   when no data-theme attribute is set. */
+/* Default light theme: cool silver-grey surfaces, red-orange kagu accent.
+   Applies when no data-theme attribute is set. */
 @plugin "daisyui/theme" {
 	name: "estate";
 	default: true;
 	prefersdark: false;
 	color-scheme: light;
 
-	--color-base-100: oklch(98.6% 0.006 90);
-	--color-base-200: oklch(96% 0.01 90);
-	--color-base-300: oklch(90% 0.016 90);
-	--color-base-content: oklch(21% 0.016 80);
+	--color-base-100: oklch(99% 0.001 250);
+	--color-base-200: oklch(96.5% 0.003 250);
+	--color-base-300: oklch(90.5% 0.005 250);
+	--color-base-content: oklch(22% 0.012 255);
 
-	/* Bronze gold (deepened for contrast on ivory) */
-	--color-primary: oklch(56% 0.115 82);
-	--color-primary-content: oklch(97.5% 0.015 90);
-	--color-secondary: oklch(45% 0.035 80);
-	--color-secondary-content: oklch(97% 0.01 90);
-	--color-accent: oklch(72% 0.1 92);
-	--color-accent-content: oklch(24% 0.05 92);
-	--color-neutral: oklch(26% 0.018 80);
-	--color-neutral-content: oklch(97% 0.01 90);
+	/* Kagu bill — deepened for contrast on light grey */
+	--color-primary: oklch(54% 0.155 35);
+	--color-primary-content: oklch(98.5% 0.008 40);
+	--color-secondary: oklch(42% 0.018 255);
+	--color-secondary-content: oklch(97.5% 0.004 250);
+	--color-accent: oklch(62% 0.13 42);
+	--color-accent-content: oklch(98.5% 0.008 42);
+	--color-neutral: oklch(27% 0.012 255);
+	--color-neutral-content: oklch(97.5% 0.004 250);
 
 	--color-info: oklch(56% 0.13 240);
 	--color-info-content: oklch(97% 0.02 240);
@@ -101,11 +101,13 @@
 	--shadow-soft: var(--lx-shadow-soft);
 	--shadow-card: var(--lx-shadow-card);
 	--shadow-pop: var(--lx-shadow-pop);
+	--font-mono: var(--font-mono-face), ui-monospace, "SFMono-Regular", monospace;
 }
 :root {
-	--lx-shadow-soft: 0 1px 2px 0 rgb(63 51 24 / 0.06), 0 1px 3px 0 rgb(63 51 24 / 0.07);
-	--lx-shadow-card: 0 1px 3px 0 rgb(63 51 24 / 0.07), 0 6px 20px -6px rgb(63 51 24 / 0.1);
-	--lx-shadow-pop: 0 10px 36px -6px rgb(63 51 24 / 0.22);
+	/* Cool slate-tinted shadows (light theme) */
+	--lx-shadow-soft: 0 1px 2px 0 rgb(28 34 46 / 0.05), 0 1px 3px 0 rgb(28 34 46 / 0.06);
+	--lx-shadow-card: 0 1px 3px 0 rgb(28 34 46 / 0.06), 0 6px 20px -6px rgb(28 34 46 / 0.09);
+	--lx-shadow-pop: 0 10px 36px -6px rgb(28 34 46 / 0.2);
 }
 [data-theme="estate-dark"] {
 	--lx-shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.3);
@@ -113,11 +115,18 @@
 	--lx-shadow-pop: 0 16px 48px -8px rgb(0 0 0 / 0.6);
 }
 
-/* Serif display face for headings/large numerals — the luxury signature. */
+/* Display treatment: same grotesque family as body, differentiated by
+   tighter tracking + balanced wrapping (weight comes from the call site). */
 @layer utilities {
 	.font-display {
-		font-family: var(--font-display-face, Georgia), Georgia, "Times New Roman", serif;
-		letter-spacing: 0.005em;
+		font-family: var(--font-latin), sans-serif;
+		letter-spacing: -0.02em;
+		text-wrap: balance;
+	}
+	/* Money/data columns: tabular mono numerals that align vertically. */
+	.font-numeric {
+		font-family: var(--font-mono-face), ui-monospace, monospace;
+		font-variant-numeric: tabular-nums;
 	}
 }
 
@@ -180,7 +189,7 @@
 
 		background-color: #ffffff !important;
 		color: #1e293b !important;
-		font-family: "Inter", "Helvetica Neue", Arial, sans-serif !important;
+		font-family: var(--font-latin), Arial, sans-serif !important;
 	}
 
 	.pdf-safe-mode h3 {

@@ -11,7 +11,7 @@ const TONES: Record<BadgeTone, string> = {
 	emerald: "bg-success/10 text-success border-success/30",
 	blue:    "bg-info/10 text-info border-info/30",
 	red:     "bg-error/10 text-error border-error/40",
-	violet:  "bg-violet-500/10 text-violet-500 border-violet-500/30",
+	violet:  "bg-secondary/10 text-secondary border-secondary/30",
 };
 
 /** Status / type pill. text-xs floor (no more 10px), comfortable padding. */
