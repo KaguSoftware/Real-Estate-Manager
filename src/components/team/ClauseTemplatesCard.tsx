@@ -8,8 +8,8 @@
  * RLS enforces owner-only writes; the card is rendered only for owners.
  */
 
-import { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, ChevronDown, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useAppStore } from "@/src/store";
 import {
 	deleteClauseTemplate,
@@ -41,12 +41,16 @@ export function ClauseTemplatesCard() {
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [confirmReset, setConfirmReset] = useState(false);
+	// Collapsed by default — long owner-only card; clause data loads on first expand.
+	const [expanded, setExpanded] = useState(false);
+	const bodyId = useId();
 
 	// Where to insert a placeholder chip: the last focused clause textarea.
 	const focusedRow = useRef<{ kind: TemplateKind; index: number } | null>(null);
 	const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
 
 	useEffect(() => {
+		if (!expanded || rows.rental !== null) return;
 		let cancelled = false;
 		(async () => {
 			try {
@@ -65,7 +69,7 @@ export function ClauseTemplatesCard() {
 			}
 		})();
 		return () => { cancelled = true; };
-	}, []);
+	}, [expanded]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	if (!team) return null;
 	const locked = !team.is_writable;
@@ -150,7 +154,30 @@ export function ClauseTemplatesCard() {
 
 	return (
 		<Card>
-			<CardLabel>Sözleşme maddeleri</CardLabel>
+			<button
+				type="button"
+				onClick={() => setExpanded((e) => !e)}
+				aria-expanded={expanded}
+				aria-controls={bodyId}
+				className="w-full flex items-center justify-between gap-2 text-left group"
+			>
+				<CardLabel>Sözleşme maddeleri</CardLabel>
+				<ChevronDown
+					className={cn(
+						"w-4 h-4 shrink-0 text-base-content/50 transition-transform group-hover:text-base-content",
+						expanded && "rotate-180",
+					)}
+				/>
+			</button>
+
+			{!expanded && (
+				<p className="text-xs text-base-content/60 mt-1">
+					Sözleşmelerinizin standart maddelerini düzenlemek için genişletin.
+				</p>
+			)}
+
+			{expanded && (
+			<div id={bodyId}>
 			<p className="text-xs text-base-content/60 mt-1">
 				Sözleşmelerinizin standart maddelerini ofisinize göre düzenleyin. Süslü parantezli
 				alanlar (ör. <code className="font-mono text-[11px]">{"{monthly_rent}"}</code>) belge
@@ -284,6 +311,8 @@ export function ClauseTemplatesCard() {
 						</Button>
 					</div>
 				</>
+			)}
+			</div>
 			)}
 
 			<ConfirmDialog
