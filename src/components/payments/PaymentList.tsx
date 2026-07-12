@@ -183,7 +183,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 			{form && (
 				<form onSubmit={handleSubmit} className="mb-4 space-y-4 p-4 bg-base-200 rounded-2xl border border-base-300">
 					{form.mode === "edit" && (
-						<p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">Ödeme düzenleniyor</p>
+						<p className="text-xs font-semibold text-base-content/55">Ödeme düzenleniyor</p>
 					)}
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<FormField label="Dönem başlangıcı">
@@ -229,7 +229,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 					{rows.map((p) => (
 						<li key={p.id} className="py-3 flex items-center justify-between gap-3 text-sm">
 							<div className="min-w-0">
-								<p className="text-base-content font-semibold">{fmt(Number(p.amount_paid), currency)}</p>
+								<p className="font-numeric text-base-content font-semibold">{fmt(Number(p.amount_paid), currency)}</p>
 								<p className="text-xs text-base-content/50 mt-0.5">
 									{p.period_start} → {p.period_end}{p.method ? ` · ${p.method}` : ""}
 								</p>

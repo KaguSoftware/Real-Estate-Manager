@@ -109,7 +109,7 @@ export function HomeDashboard() {
 													</p>
 												</div>
 												{p.list_price != null && (
-													<span className="text-xs font-semibold text-base-content/70 whitespace-nowrap hidden sm:inline">
+													<span className="font-numeric text-xs font-semibold text-base-content/70 whitespace-nowrap hidden sm:inline">
 														{fmtMoney(Number(p.list_price), p.currency)}
 													</span>
 												)}

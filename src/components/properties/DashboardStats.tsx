@@ -110,7 +110,7 @@ function StatCard({
 			className="text-left bg-base-100 rounded-2xl border border-base-300 shadow-card px-4 py-3.5 min-w-0 hover:border-base-content/30 hover:shadow-pop transition-all cursor-pointer">
 			<div className="flex items-center gap-1.5 mb-1">
 				<Icon className="w-3.5 h-3.5 text-base-content/50" />
-				<p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">{label}</p>
+				<p className="text-xs font-semibold text-base-content/55">{label}</p>
 			</div>
 			<p
 				className={cn(

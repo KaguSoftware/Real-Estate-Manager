@@ -180,7 +180,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 		<div className="space-y-8">
 			{/* A — Landlord */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+				<h3 className="text-sm font-semibold text-base-content/60">
 					A — Kiraya Veren
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -212,7 +212,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 
 			{/* B — Tenant */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+				<h3 className="text-sm font-semibold text-base-content/60">
 					B — Kiracı
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -246,7 +246,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 			{/* C — Guarantor (optional) */}
 			<section className="space-y-4">
 				<div className="flex items-center justify-between">
-					<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+					<h3 className="text-sm font-semibold text-base-content/60">
 						C — Kefil
 					</h3>
 					<label className="flex items-center gap-2 text-sm text-base-content/70">
@@ -286,7 +286,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 
 			{/* E — Lease & term */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+				<h3 className="text-sm font-semibold text-base-content/60">
 					Kira ve Süre
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -335,7 +335,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 
 			{/* F — Utilities */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+				<h3 className="text-sm font-semibold text-base-content/60">
 					Abonelikler
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -350,7 +350,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 			{/* G — Inventory */}
 			<section className="space-y-4">
 				<div className="flex items-center justify-between">
-					<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+					<h3 className="text-sm font-semibold text-base-content/60">
 						Demirbaş Listesi
 					</h3>
 					<Button type="button" variant="ghost" onClick={addInventoryRow}>+ Satır ekle</Button>
@@ -394,7 +394,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 
 			{/* Misc clauses */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+				<h3 className="text-sm font-semibold text-base-content/60">
 					Diğer Şartlar
 				</h3>
 				<FormField label="Alt Kiraya Verme">

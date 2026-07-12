@@ -139,8 +139,8 @@ export function PropertyTable() {
 		);
 	}
 
-	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-base-content/50 cursor-pointer select-none hover:text-base-content/80";
-	const staticHeaderCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-base-content/50";
+	const headerCls = "text-left px-4 py-3 text-xs font-semibold text-base-content/50 cursor-pointer select-none hover:text-base-content/80";
+	const staticHeaderCls = "text-left px-4 py-3 text-xs font-semibold text-base-content/50";
 	const sortArrow = (k: SortKey) => sortKey === k ? (sortDir === "asc" ? "↑" : "↓") : "";
 
 	return (
@@ -187,7 +187,7 @@ export function PropertyTable() {
 								<p className="text-base font-bold text-base-content line-clamp-2">{p.address_line}</p>
 								<p className="text-sm text-base-content/60 mt-0.5 truncate">{p.homeowner_name}{p.city ? ` · ${p.city}` : ""}</p>
 							</div>
-							<p className="text-sm font-semibold text-base-content/80 whitespace-nowrap">{fmtPrice(p.list_price, p.currency)}</p>
+							<p className="font-numeric text-sm font-semibold text-base-content/80 whitespace-nowrap">{fmtPrice(p.list_price, p.currency)}</p>
 						</div>
 						<div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
 							<div className="flex items-center gap-1.5">
@@ -232,7 +232,7 @@ export function PropertyTable() {
 									<td className="px-4 py-3 text-sm text-base-content/70 whitespace-nowrap">{p.size_sqm ?? "—"}</td>
 									<td className="px-4 py-3"><TypeBadge t={p.listing_type} /></td>
 									<td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-									<td className="px-4 py-3 text-sm text-base-content/80 whitespace-nowrap">{fmtPrice(p.list_price, p.currency)}</td>
+									<td className="px-4 py-3 font-numeric text-sm text-base-content/80 whitespace-nowrap">{fmtPrice(p.list_price, p.currency)}</td>
 									<td className="px-4 py-3 text-sm text-base-content/50 whitespace-nowrap">
 										{new Date(p.updated_at).toLocaleDateString("tr-TR", { month: "short", day: "numeric" })}
 									</td>

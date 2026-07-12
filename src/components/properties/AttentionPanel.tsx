@@ -113,7 +113,7 @@ export function AttentionPanel() {
 							{data.overduePayments.map((p) => (
 								<Row key={p.paymentId} href={`/properties/${p.propertyId}`}>
 									<span className="flex-1 min-w-0 truncate">{p.propertyLabel}</span>
-									<span className="font-semibold text-error whitespace-nowrap">
+									<span className="font-numeric font-semibold text-error whitespace-nowrap">
 										{fmtMoney(p.outstanding, p.currency)}
 									</span>
 									<span className="text-xs text-base-content/50 whitespace-nowrap">vade {p.periodEnd}</span>
@@ -127,7 +127,7 @@ export function AttentionPanel() {
 							{data.upcomingPayments.map((p) => (
 								<Row key={p.paymentId} href={`/properties/${p.propertyId}`}>
 									<span className="flex-1 min-w-0 truncate">{p.propertyLabel}</span>
-									<span className="font-semibold text-base-content/80 whitespace-nowrap">
+									<span className="font-numeric font-semibold text-base-content/80 whitespace-nowrap">
 										{fmtMoney(p.outstanding, p.currency)}
 									</span>
 									<span className="text-xs text-base-content/50 whitespace-nowrap">vade {p.periodEnd}</span>
@@ -239,7 +239,7 @@ function Section({
 		<div>
 			<div className="flex items-center gap-1.5 mb-1">
 				<Icon className={cn("w-3.5 h-3.5", tone === "red" ? "text-error" : "text-warning")} />
-				<p className="text-xs font-semibold uppercase tracking-wide text-base-content/60">{title}</p>
+				<p className="text-xs font-semibold text-base-content/60">{title}</p>
 			</div>
 			<div className="divide-y divide-base-300 rounded-xl bg-base-100/70 border border-base-300">
 				{children}
