@@ -47,15 +47,25 @@ const SMALL_FEATURES = [
 
 const PLANS = [
 	{
-		name: "Starter",
-		price: "₺499",
-		seats: "3 danışmana kadar",
+		name: "Takip",
+		price: "₺3.000",
+		features: [
+			"Müşteri ve taşınmaz takibi (CRM)",
+			"Kira ve tahsilat takibi",
+			"Akıllı hatırlatmalar",
+			"CSV dışa aktarma",
+		],
 		highlight: false,
 	},
 	{
-		name: "Pro",
-		price: "₺1.499",
-		seats: "Sınırsız danışman",
+		name: "Takip + Belge",
+		price: "₺5.000",
+		features: [
+			"Takip paketindeki her şey",
+			"Belge oluşturucu",
+			"Sözleşme ve makbuz PDF'leri",
+			"Belge şablonları ve arşiv",
+		],
 		highlight: true,
 	},
 ];
@@ -218,18 +228,11 @@ export function LandingPage() {
 								<span className="font-sans text-base font-normal text-base-content/50"> / ay</span>
 							</p>
 							<ul className="mt-5 mb-6 space-y-2.5 text-sm text-base-content/80">
-								<li className="flex items-center gap-2">
-									<CheckCircle2 className="w-4 h-4 text-success shrink-0" /> {p.seats}
-								</li>
-								<li className="flex items-center gap-2">
-									<CheckCircle2 className="w-4 h-4 text-success shrink-0" /> Sınırsız taşınmaz ve müşteri
-								</li>
-								<li className="flex items-center gap-2">
-									<CheckCircle2 className="w-4 h-4 text-success shrink-0" /> Sözleşme ve makbuz PDF&apos;leri
-								</li>
-								<li className="flex items-center gap-2">
-									<CheckCircle2 className="w-4 h-4 text-success shrink-0" /> CSV dışa aktarma
-								</li>
+								{p.features.map((feature) => (
+									<li key={feature} className="flex items-center gap-2">
+										<CheckCircle2 className="w-4 h-4 text-success shrink-0" /> {feature}
+									</li>
+								))}
 							</ul>
 							<Link
 								href="/signup"

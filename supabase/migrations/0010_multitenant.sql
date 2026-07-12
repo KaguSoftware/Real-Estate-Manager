@@ -74,8 +74,8 @@ CREATE TABLE IF NOT EXISTS public.plans (
 );
 
 INSERT INTO public.plans (id, name, price_monthly, currency, max_seats, limits) VALUES
-  ('starter', 'Starter', 499,  'TRY', 3,    '{}'),
-  ('pro',     'Pro',     1499, 'TRY', NULL, '{}')
+  ('starter', 'Takip',         3000, 'TRY', NULL, '{}'),
+  ('pro',     'Takip + Belge', 5000, 'TRY', NULL, '{"documents": true}')
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS public.subscriptions (

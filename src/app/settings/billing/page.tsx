@@ -23,6 +23,22 @@ interface Plan {
 	max_seats: number | null;
 }
 
+// Mirrors public.plans (0021): starter = tracker, pro = tracker + document builder.
+const PLAN_FEATURES: Record<string, string[]> = {
+	starter: [
+		"Müşteri ve taşınmaz takibi (CRM)",
+		"Kira ve tahsilat takibi",
+		"Akıllı hatırlatmalar",
+		"CSV dışa aktarma",
+	],
+	pro: [
+		"Takip paketindeki her şey",
+		"Belge oluşturucu",
+		"Sözleşme ve makbuz PDF'leri",
+		"Belge şablonları ve arşiv",
+	],
+};
+
 const STATUS_LABEL: Record<string, { label: string; tone: "emerald" | "amber" | "red" | "slate" }> = {
 	trialing: { label: "Ücretsiz deneme", tone: "amber" },
 	active:   { label: "Etkin",           tone: "emerald" },
@@ -170,14 +186,15 @@ export default function BillingPage() {
 										<span className="text-sm font-normal text-base-content/50"> / ay</span>
 									</p>
 									<ul className="mt-3 space-y-1.5 text-sm text-base-content/70">
-										<li className="flex items-center gap-2">
-											<CheckCircle2 className="w-4 h-4 text-success" />
-											{p.max_seats ? `En fazla ${p.max_seats} danışman` : "Sınırsız danışman"}
-										</li>
-										<li className="flex items-center gap-2">
-											<CheckCircle2 className="w-4 h-4 text-success" />
-											Portföy, müşteri, sözleşme ve tahsilat yönetimi
-										</li>
+										{(PLAN_FEATURES[p.id] ?? [
+											p.max_seats ? `En fazla ${p.max_seats} danışman` : "Sınırsız danışman",
+											"Portföy, müşteri, sözleşme ve tahsilat yönetimi",
+										]).map((feature) => (
+											<li key={feature} className="flex items-center gap-2">
+												<CheckCircle2 className="w-4 h-4 text-success" />
+												{feature}
+											</li>
+										))}
 									</ul>
 									{isOwner ? (
 										<Button
