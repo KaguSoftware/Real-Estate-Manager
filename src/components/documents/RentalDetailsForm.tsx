@@ -6,7 +6,7 @@ import type {
 	Property,
 	UtilityResponsibility,
 } from "@/src/lib/db/types";
-import { FormField, Input, Textarea, Dropdown, Button, type DropdownOption } from "@/src/components/ui";
+import { FormField, Input, NumberInput, EmailInput, PhoneInput, Textarea, Dropdown, Button, type DropdownOption } from "@/src/components/ui";
 
 /**
  * State container for the rental wizard details step (Turkish kira sözleşmesi).
@@ -169,6 +169,13 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 		(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
 			onChange(k, e.target.value as RentalFormState[K]);
 
+	// RentalFormState keeps numbers as strings (the wizard/PDF layer consumes
+	// them with Number()); these adapt string-state ↔ NumberInput's number|null.
+	const numValue = (k: "monthlyRent" | "deposit" | "paymentDay") =>
+		state[k] === "" ? null : Number(state[k]);
+	const setNum = <K extends "monthlyRent" | "deposit" | "paymentDay">(k: K) =>
+		(n: number | null) => onChange(k, (n === null ? "" : String(n)) as RentalFormState[K]);
+
 	// ── Inventory row helpers ──────────────────────────────────────────────
 	function patchInventory(next: InventoryItem[]) {
 		onChange("inventory", next);
@@ -195,7 +202,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Input required value={state.landlordName} onChange={set("landlordName")} />
 					</FormField>
 					<FormField label="Telefon">
-						<Input type="tel" inputMode="tel" value={state.landlordPhone} onChange={set("landlordPhone")} />
+						<PhoneInput value={state.landlordPhone} onChange={(v) => onChange("landlordPhone", v)} />
 					</FormField>
 				</div>
 				<FormField label="Adresi">
@@ -213,7 +220,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 					</FormField>
 				</div>
 				<FormField label="E-posta">
-					<Input type="email" value={state.landlordEmail} onChange={set("landlordEmail")} />
+					<EmailInput value={state.landlordEmail} onChange={(v) => onChange("landlordEmail", v)} />
 				</FormField>
 			</section>
 
@@ -227,7 +234,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Input required value={state.tenantName} onChange={set("tenantName")} />
 					</FormField>
 					<FormField label="Telefon" id="tenantContact" error={errors.tenantContact}>
-						<Input type="tel" inputMode="tel" value={state.tenantPhone} onChange={set("tenantPhone")} />
+						<PhoneInput value={state.tenantPhone} onChange={(v) => onChange("tenantPhone", v)} />
 					</FormField>
 				</div>
 				<FormField label="Adresi">
@@ -245,7 +252,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 					</FormField>
 				</div>
 				<FormField label="E-posta">
-					<Input type="email" value={state.tenantEmail} onChange={set("tenantEmail")} />
+					<EmailInput value={state.tenantEmail} onChange={(v) => onChange("tenantEmail", v)} />
 				</FormField>
 				<p className="text-xs text-base-content/50">Kiracı için en az bir e-posta veya telefon girin.</p>
 			</section>
@@ -273,7 +280,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 								<Input value={state.guarantorName} onChange={set("guarantorName")} />
 							</FormField>
 							<FormField label="Telefon">
-								<Input type="tel" inputMode="tel" value={state.guarantorPhone} onChange={set("guarantorPhone")} />
+								<PhoneInput value={state.guarantorPhone} onChange={(v) => onChange("guarantorPhone", v)} />
 							</FormField>
 						</div>
 						<FormField label="Adresi">
@@ -284,7 +291,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 								<Input value={state.guarantorNationalId} onChange={set("guarantorNationalId")} />
 							</FormField>
 							<FormField label="E-posta">
-								<Input type="email" value={state.guarantorEmail} onChange={set("guarantorEmail")} />
+								<EmailInput value={state.guarantorEmail} onChange={(v) => onChange("guarantorEmail", v)} />
 							</FormField>
 						</div>
 					</>
@@ -309,10 +316,10 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Aylık Kira" id="monthlyRent" error={errors.monthlyRent}>
-						<Input required type="number" inputMode="decimal" min="0" step="0.01" value={state.monthlyRent} onChange={set("monthlyRent")} />
+						<NumberInput required mode="decimal" format="money" min={0} value={numValue("monthlyRent")} onChange={setNum("monthlyRent")} />
 					</FormField>
 					<FormField label="Depozito">
-						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.deposit} onChange={set("deposit")} />
+						<NumberInput mode="decimal" format="money" min={0} value={numValue("deposit")} onChange={setNum("deposit")} />
 					</FormField>
 				</div>
 				{overCap && (
@@ -323,7 +330,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 				)}
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 					<FormField label="Ödeme Günü (1–28)">
-						<Input type="number" inputMode="numeric" min="1" max="28" step="1" value={state.paymentDay} onChange={set("paymentDay")} />
+						<NumberInput min={1} max={28} value={numValue("paymentDay")} onChange={setNum("paymentDay")} />
 					</FormField>
 					<FormField label="Ödeme Şekli">
 						<Input value={state.paymentMethod} onChange={set("paymentMethod")} />
@@ -369,13 +376,10 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 								</div>
 								<div className="col-span-2">
 									<FormField label={idx === 0 ? "Adet" : ""}>
-										<Input
-											type="number"
-											inputMode="numeric"
-											min="0"
-											step="1"
-											value={row.qty ?? ""}
-											onChange={(e) => updateInventoryRow(idx, { qty: e.target.value === "" ? null : Number(e.target.value) })}
+										<NumberInput
+											min={0}
+											value={row.qty ?? null}
+											onChange={(n) => updateInventoryRow(idx, { qty: n })}
 										/>
 									</FormField>
 								</div>

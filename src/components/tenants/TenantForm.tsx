@@ -12,7 +12,7 @@ import {
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import type { Tenant } from "@/src/lib/db/types";
 import {
-	Sheet, Button, FormField, Input, Textarea, Alert, ConfirmDialog, toast,
+	Sheet, Button, FormField, Input, EmailInput, PhoneInput, Textarea, Alert, ConfirmDialog, toast,
 } from "@/src/components/ui";
 import { required, validEmail, compactErrors } from "@/src/lib/validation";
 import { Trash2 } from "lucide-react";
@@ -141,10 +141,15 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Telefon">
-						<Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+90 5xx xxx xx xx" />
+						<PhoneInput value={phone} onChange={setPhone} placeholder="+90 5xx xxx xx xx" />
 					</FormField>
 					<FormField label="E-posta" error={fieldErrors.email}>
-						<Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="isteğe bağlı" />
+						<EmailInput
+							value={email}
+							onChange={setEmail}
+							placeholder="isteğe bağlı"
+							onValidChange={(err) => setFieldErrors((f) => compactErrors({ ...f, email: err }))}
+						/>
 					</FormField>
 				</div>
 

@@ -4,8 +4,8 @@ import { humanizeError } from "@/src/lib/errors";
 import { useState } from "react";
 import { updateLease, type LeaseUpdate } from "@/src/lib/db/leases";
 import type { Lease } from "@/src/lib/db/types";
-import { Sheet, FormField, Input, Dropdown, Button, Alert, toast } from "@/src/components/ui";
-import { positiveNumber, compactErrors } from "@/src/lib/validation";
+import { Sheet, FormField, Input, NumberInput, Dropdown, Button, Alert, toast } from "@/src/components/ui";
+import { positiveNumberValue, compactErrors } from "@/src/lib/validation";
 
 interface Props {
 	open: boolean;
@@ -17,11 +17,11 @@ interface Props {
 
 /** Edit the financial/payment terms of an existing lease. */
 export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
-	const [monthlyRent, setMonthlyRent] = useState(String(lease.monthly_rent));
-	const [deposit, setDeposit] = useState(String(lease.deposit));
+	const [monthlyRent, setMonthlyRent] = useState<number | null>(Number(lease.monthly_rent));
+	const [deposit, setDeposit] = useState<number | null>(Number(lease.deposit));
 	const currency = "TRY"; // product is TRY-only
 	const [endDate, setEndDate] = useState(lease.end_date ?? "");
-	const [paymentDay, setPaymentDay] = useState(lease.payment_day?.toString() ?? "");
+	const [paymentDay, setPaymentDay] = useState<number | null>(lease.payment_day ?? null);
 	const [paymentMethod, setPaymentMethod] = useState(lease.payment_method ?? "");
 	const [bankAccount, setBankAccount] = useState(lease.bank_account ?? "");
 
@@ -31,8 +31,8 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 
 	function validate(): boolean {
 		const errors = compactErrors({
-			monthlyRent: positiveNumber(monthlyRent, "Aylık kira"),
-			deposit: deposit.trim() && (!Number.isFinite(Number(deposit)) || Number(deposit) < 0)
+			monthlyRent: positiveNumberValue(monthlyRent, "Aylık kira"),
+			deposit: deposit !== null && deposit < 0
 				? "Depozito sıfır veya daha büyük olmalıdır."
 				: undefined,
 			endDate:
@@ -40,7 +40,7 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 					? "Bitiş tarihi sözleşme başlangıcından sonra olmalıdır."
 					: undefined,
 			paymentDay:
-				paymentDay.trim() && (Number(paymentDay) < 1 || Number(paymentDay) > 31)
+				paymentDay !== null && (paymentDay < 1 || paymentDay > 31)
 					? "Ödeme günü 1 ile 31 arasında olmalıdır."
 					: undefined,
 		});
@@ -54,11 +54,11 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 		setBusy(true);
 		try {
 			const patch: LeaseUpdate = {
-				monthly_rent: Number(monthlyRent),
-				deposit: deposit.trim() ? Number(deposit) : 0,
+				monthly_rent: monthlyRent as number,
+				deposit: deposit ?? 0,
 				currency,
 				end_date: endDate || null,
-				payment_day: paymentDay.trim() ? Number(paymentDay) : null,
+				payment_day: paymentDay,
 				payment_method: paymentMethod.trim() || null,
 				bank_account: bankAccount.trim() || null,
 			};
@@ -88,18 +88,10 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 			<div className="space-y-5">
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Aylık kira" error={fieldErrors.monthlyRent}>
-						<Input
-							type="number" inputMode="decimal" min="0"
-							value={monthlyRent}
-							onChange={(e) => setMonthlyRent(e.target.value)}
-						/>
+						<NumberInput mode="decimal" format="money" min={0} value={monthlyRent} onChange={setMonthlyRent} />
 					</FormField>
 					<FormField label="Depozito" error={fieldErrors.deposit}>
-						<Input
-							type="number" inputMode="decimal" min="0"
-							value={deposit}
-							onChange={(e) => setDeposit(e.target.value)}
-						/>
+						<NumberInput mode="decimal" format="money" min={0} value={deposit} onChange={setDeposit} />
 					</FormField>
 				</div>
 
@@ -114,12 +106,7 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Ayın ödeme günü" error={fieldErrors.paymentDay}>
-						<Input
-							type="number" inputMode="numeric" min="1" max="31"
-							value={paymentDay}
-							onChange={(e) => setPaymentDay(e.target.value)}
-							placeholder="örn. 5"
-						/>
+						<NumberInput min={1} max={31} value={paymentDay} onChange={setPaymentDay} placeholder="örn. 5" />
 					</FormField>
 					<FormField label="Ödeme yöntemi">
 						<Input

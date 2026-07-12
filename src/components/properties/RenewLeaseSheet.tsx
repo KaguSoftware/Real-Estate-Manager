@@ -5,8 +5,8 @@ import { useState } from "react";
 import { computeLeaseEndDate, renewLease } from "@/src/lib/db/leases";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import type { Lease, LeaseTerm, Tenant } from "@/src/lib/db/types";
-import { Sheet, FormField, Input, Dropdown, Button, Alert, toast, type DropdownOption } from "@/src/components/ui";
-import { positiveNumber, compactErrors } from "@/src/lib/validation";
+import { Sheet, FormField, Input, NumberInput, Dropdown, Button, Alert, toast, type DropdownOption } from "@/src/components/ui";
+import { positiveNumberValue, compactErrors } from "@/src/lib/validation";
 
 const TERM_OPTIONS: DropdownOption<LeaseTerm>[] = [
 	{ value: "1yr", label: "1 yıl" },
@@ -34,8 +34,8 @@ export function RenewLeaseSheet({ open, lease, onClose, onRenewed }: Props) {
 		lease.end_date ?? new Date().toISOString().slice(0, 10),
 	);
 	const [term, setTerm] = useState<LeaseTerm>(lease.term === "undefined" ? "1yr" : lease.term);
-	const [monthlyRent, setMonthlyRent] = useState(String(lease.monthly_rent));
-	const [deposit, setDeposit] = useState(String(lease.deposit));
+	const [monthlyRent, setMonthlyRent] = useState<number | null>(Number(lease.monthly_rent));
+	const [deposit, setDeposit] = useState<number | null>(Number(lease.deposit));
 
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function RenewLeaseSheet({ open, lease, onClose, onRenewed }: Props) {
 	async function handleRenew() {
 		setError(null);
 		const errors = compactErrors({
-			monthlyRent: positiveNumber(monthlyRent, "Aylık kira"),
+			monthlyRent: positiveNumberValue(monthlyRent, "Aylık kira"),
 			startDate: !startDate ? "Başlangıç tarihi zorunludur." : undefined,
 		});
 		setFieldErrors(errors);
@@ -57,8 +57,8 @@ export function RenewLeaseSheet({ open, lease, onClose, onRenewed }: Props) {
 			await renewLease(lease, {
 				start_date: startDate,
 				term,
-				monthly_rent: Number(monthlyRent),
-				deposit: deposit.trim() ? Number(deposit) : 0,
+				monthly_rent: monthlyRent as number,
+				deposit: deposit ?? 0,
 			});
 			invalidateCache("stats");
 			invalidateCache("attention");
@@ -104,18 +104,10 @@ export function RenewLeaseSheet({ open, lease, onClose, onRenewed }: Props) {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label={`Aylık kira (${lease.currency})`} error={fieldErrors.monthlyRent}>
-						<Input
-							type="number" inputMode="decimal" min="0"
-							value={monthlyRent}
-							onChange={(e) => setMonthlyRent(e.target.value)}
-						/>
+						<NumberInput mode="decimal" format="money" min={0} value={monthlyRent} onChange={setMonthlyRent} />
 					</FormField>
 					<FormField label={`Depozito (${lease.currency})`}>
-						<Input
-							type="number" inputMode="decimal" min="0"
-							value={deposit}
-							onChange={(e) => setDeposit(e.target.value)}
-						/>
+						<NumberInput mode="decimal" format="money" min={0} value={deposit} onChange={setDeposit} />
 					</FormField>
 				</div>
 

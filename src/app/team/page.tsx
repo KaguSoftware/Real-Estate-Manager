@@ -20,9 +20,10 @@ import {
 	type Invite,
 } from "@/src/lib/db/teams";
 import {
-	AppShell, Card, CardLabel, Badge, Button, FormField, Input, Alert,
+	AppShell, Card, CardLabel, Badge, Button, FormField, EmailInput, Alert,
 	ConfirmDialog, toast, SpinnerBlock,
 } from "@/src/components/ui";
+import { validEmail } from "@/src/lib/validation";
 import { humanizeError } from "@/src/lib/errors";
 import { BrandingCard } from "@/src/components/team/BrandingCard";
 import { ClauseTemplatesCard } from "@/src/components/team/ClauseTemplatesCard";
@@ -64,6 +65,8 @@ export default function TeamPage() {
 	async function onInvite(e: React.FormEvent) {
 		e.preventDefault();
 		setError(null);
+		const emailErr = validEmail(inviteEmail);
+		if (emailErr) { setError(emailErr); return; }
 		setBusy("invite");
 		try {
 			const res = await fetch("/api/team/invite", {
@@ -184,10 +187,9 @@ export default function TeamPage() {
 							<form onSubmit={onInvite} className="mt-3 flex flex-col sm:flex-row gap-3">
 								<div className="flex-1">
 									<FormField label="E-posta">
-										<Input
-											type="email"
+										<EmailInput
 											value={inviteEmail}
-											onChange={(e) => setInviteEmail(e.target.value)}
+											onChange={setInviteEmail}
 											placeholder="danisman@ornek.com"
 											required
 										/>

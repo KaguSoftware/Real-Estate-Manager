@@ -11,9 +11,9 @@ import {
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import type { Payment } from "@/src/lib/db/types";
 import {
-	Button, FormField, Input, Alert, Spinner, ConfirmDialog, EmptyState, toast,
+	Button, FormField, Input, NumberInput, Alert, Spinner, ConfirmDialog, EmptyState, toast,
 } from "@/src/components/ui";
-import { positiveNumber, compactErrors } from "@/src/lib/validation";
+import { positiveNumberValue, compactErrors } from "@/src/lib/validation";
 import { downloadCsv } from "@/src/lib/csv";
 import { Pencil, Trash2, Receipt, Download } from "lucide-react";
 
@@ -46,7 +46,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 	const [form, setForm] = useState<FormMode | null>(null);
 	const [periodStart, setPeriodStart] = useState(todayISO());
 	const [periodEnd, setPeriodEnd] = useState(plusOneMonth(todayISO()));
-	const [amount, setAmount] = useState(monthlyRent.toString());
+	const [amount, setAmount] = useState<number | null>(monthlyRent);
 	const [method, setMethod] = useState("");
 	const [submitting, setSubmitting] = useState(false);
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -69,7 +69,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 		setForm({ mode: "create" });
 		setPeriodStart(todayISO());
 		setPeriodEnd(plusOneMonth(todayISO()));
-		setAmount(monthlyRent.toString());
+		setAmount(monthlyRent);
 		setMethod("");
 		setFieldErrors({});
 	}
@@ -78,14 +78,14 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 		setForm({ mode: "edit", payment: p });
 		setPeriodStart(p.period_start);
 		setPeriodEnd(p.period_end);
-		setAmount(String(p.amount_paid));
+		setAmount(Number(p.amount_paid));
 		setMethod(p.method ?? "");
 		setFieldErrors({});
 	}
 
 	function validate(): boolean {
 		const errors = compactErrors({
-			amount: positiveNumber(amount, "Tutar"),
+			amount: positiveNumberValue(amount, "Tutar"),
 			periodEnd:
 				periodStart && periodEnd && Date.parse(periodEnd) <= Date.parse(periodStart)
 					? "Dönem bitişi başlangıçtan sonra olmalıdır."
@@ -106,8 +106,8 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 					lease_id: leaseId,
 					period_start: periodStart,
 					period_end: periodEnd,
-					amount_due: Number(amount),
-					amount_paid: Number(amount),
+					amount_due: amount as number,
+					amount_paid: amount as number,
 					method: method.trim() || null,
 				});
 				toast.success("Ödeme kaydedildi.");
@@ -115,8 +115,8 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 				await updatePayment(form.payment.id, {
 					period_start: periodStart,
 					period_end: periodEnd,
-					amount_due: Number(amount),
-					amount_paid: Number(amount),
+					amount_due: amount as number,
+					amount_paid: amount as number,
 					method: method.trim() || null,
 				});
 				toast.success("Ödeme güncellendi.");
@@ -200,7 +200,7 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<FormField label={`Tutar (${currency})`} error={fieldErrors.amount}>
-							<Input type="number" inputMode="decimal" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+							<NumberInput mode="decimal" format="money" min={0} value={amount} onChange={setAmount} required />
 						</FormField>
 						<FormField label="Yöntem (isteğe bağlı)">
 							<Input value={method} onChange={(e) => setMethod(e.target.value)} placeholder="nakit, havale, …" />

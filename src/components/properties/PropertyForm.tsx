@@ -11,7 +11,7 @@ import {
 	type PropertyInput,
 } from "@/src/lib/db/properties";
 import type { Property, ListingType, PropertyStatus } from "@/src/lib/db/types";
-import { FormField, Input, Textarea, Dropdown, Button, Alert, ConfirmDialog, toast, type DropdownOption } from "@/src/components/ui";
+import { FormField, Input, NumberInput, Textarea, Dropdown, Button, Alert, ConfirmDialog, toast, type DropdownOption } from "@/src/components/ui";
 import type { ReverseAddress } from "@/src/lib/geocode";
 import { splitPlaceName, type ResolveResult } from "@/src/lib/maps-url";
 import { LocationPicker, type LatLon } from "./LocationPicker";
@@ -128,14 +128,16 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const [district,    setDistrict]    = useState("");
 	const [city,        setCity]        = useState(initial?.city ?? "");
 
-	const [size_sqm,     setSizeSqm]     = useState(initial?.size_sqm?.toString() ?? "");
-	const [bedrooms,     setBedrooms]    = useState(initial?.bedrooms?.toString() ?? "");
-	const [bathrooms,    setBathrooms]   = useState(initial?.bathrooms?.toString() ?? "");
+	const [size_sqm,     setSizeSqm]     = useState<number | null>(initial?.size_sqm ?? null);
+	const [bedrooms,     setBedrooms]    = useState<number | null>(initial?.bedrooms ?? null);
+	const [bathrooms,    setBathrooms]   = useState<number | null>(initial?.bathrooms ?? null);
 	// "" = unknown, "yes" = furnished, "no" = unfurnished.
 	const [furnished,    setFurnished]   = useState<"yes" | "no" | "">(initial?.furnished == null ? "" : initial.furnished ? "yes" : "no");
 	const [listing_type, setListingType] = useState<ListingType>(initial?.listing_type ?? "for_rent");
 	const [status,       setStatus]      = useState<PropertyStatus>(initial?.status ?? "vacant");
-	const [list_price,   setListPrice]   = useState(initial?.list_price?.toString() ?? "");
+	const [list_price,   setListPrice]   = useState<number | null>(
+		initial?.list_price != null ? Number(initial.list_price) : null,
+	);
 	const currency = "TRY"; // product is TRY-only
 	const [notes,        setNotes]       = useState(initial?.notes ?? "");
 
@@ -201,13 +203,13 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			homeowner_name: homeowner_name.trim(),
 			address_line: joined,
 			city: city.trim() || null,
-			size_sqm: size_sqm.trim() ? Number(size_sqm) : null,
-			bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
-			bathrooms: bathrooms.trim() ? Number(bathrooms) : null,
+			size_sqm,
+			bedrooms,
+			bathrooms,
 			furnished: furnished === "" ? null : furnished === "yes",
 			listing_type,
 			status,
-			list_price: list_price.trim() ? Number(list_price) : null,
+			list_price,
 			currency,
 			notes: notes.trim() || null,
 			nitelik:   nitelik.trim()      || null,
@@ -350,13 +352,13 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 
 			<div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
 				<FormField label="Büyüklük (m²)">
-					<Input type="number" inputMode="numeric" min="0" value={size_sqm} onChange={(e) => setSizeSqm(e.target.value)} />
+					<NumberInput mode="decimal" min={0} value={size_sqm} onChange={setSizeSqm} />
 				</FormField>
 				<FormField label="Yatak odası">
-					<Input type="number" inputMode="numeric" min="0" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} />
+					<NumberInput min={0} value={bedrooms} onChange={setBedrooms} />
 				</FormField>
 				<FormField label="Banyo">
-					<Input type="number" inputMode="numeric" min="0" value={bathrooms} onChange={(e) => setBathrooms(e.target.value)} />
+					<NumberInput min={0} value={bathrooms} onChange={setBathrooms} />
 				</FormField>
 				<FormField label="Eşya durumu">
 					<Dropdown options={FURNISHED_OPTIONS} value={furnished} onChange={setFurnished} />
@@ -368,7 +370,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					<Dropdown options={STATUS_OPTIONS} value={status} onChange={setStatus} />
 				</FormField>
 				<FormField label={listing_type === "for_rent" ? "Aylık kira" : "Satış fiyatı"}>
-					<Input type="number" inputMode="decimal" min="0" value={list_price} onChange={(e) => setListPrice(e.target.value)} placeholder="0.00" />
+					<NumberInput mode="decimal" format="money" min={0} value={list_price} onChange={setListPrice} placeholder="0,00" />
 				</FormField>
 				<FormField label="Para birimi">
 					<Dropdown options={[{ value: "TRY", label: "TRY (₺)" }]} value="TRY" onChange={() => {}} disabled />

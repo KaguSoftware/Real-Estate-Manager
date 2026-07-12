@@ -13,7 +13,7 @@ import {
 import { humanizeError } from "@/src/lib/errors";
 import { invalidateCache, mutateCache, useCachedResource } from "@/src/lib/useCachedResource";
 import { fmtMoney } from "@/src/lib/format";
-import { Button, cn, toast } from "@/src/components/ui";
+import { Button, NumberInput, cn, toast } from "@/src/components/ui";
 import {
 	AlertTriangle, CalendarClock, PhoneMissed, Wallet, ChevronDown, ChevronRight, Settings2,
 } from "lucide-react";
@@ -200,16 +200,12 @@ function ThresholdEditor({ initial, onClose }: { initial: UserSettings; onClose:
 				{fields.map(({ key, label, max }) => (
 					<label key={key} className="block">
 						<span className="text-xs font-semibold text-base-content/60">{label}</span>
-						<input
-							type="number"
+						<NumberInput
 							min={1}
 							max={max}
 							value={form[key]}
-							onChange={(e) => {
-								const n = Number(e.target.value);
-								setForm((f) => ({ ...f, [key]: Number.isFinite(n) ? n : f[key] }));
-							}}
-							className="mt-1 w-full h-9 rounded-lg border border-base-300 px-2.5 text-sm text-base-content bg-base-100"
+							onChange={(n) => setForm((f) => ({ ...f, [key]: n ?? f[key] }))}
+							className="mt-1 h-9 rounded-lg px-2.5 text-sm"
 						/>
 					</label>
 				))}

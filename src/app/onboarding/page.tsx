@@ -24,7 +24,7 @@ import {
 } from "@/src/lib/db/teams";
 import { updateMyProfile, getMyProfile } from "@/src/lib/db/profiles";
 import { AuthModal } from "@/src/components/auth/AuthModal";
-import { toast, Button, Card, Alert, FormField, Input, Dropdown, cn } from "@/src/components/ui";
+import { toast, Button, Card, Alert, FormField, Input, PhoneInput, Dropdown, cn } from "@/src/components/ui";
 
 // Must match the cookie set by /join/[code]/route.ts
 const PENDING_INVITE_COOKIE = "kagu_pending_invite";
@@ -260,10 +260,9 @@ export default function OnboardingPage() {
 								/>
 							</FormField>
 							<FormField label="Telefon (isteğe bağlı)">
-								<Input
-									type="tel"
+								<PhoneInput
 									value={phone}
-									onChange={(e) => setPhone(e.target.value)}
+									onChange={setPhone}
 									placeholder="+90 5xx xxx xx xx"
 									maxLength={30}
 								/>

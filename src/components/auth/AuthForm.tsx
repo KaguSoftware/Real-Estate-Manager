@@ -15,7 +15,8 @@ import { humanizeError } from "@/src/lib/errors";
 import { createClient } from "@/src/lib/supabase/client";
 import { fetchTeamContext } from "@/src/lib/db/teams";
 import { useAppStore } from "@/src/store";
-import { toast, Button, FormField, Input, Alert } from "@/src/components/ui";
+import { toast, Button, FormField, Input, EmailInput, Alert } from "@/src/components/ui";
+import { validEmail } from "@/src/lib/validation";
 
 export type AuthMode = "login" | "signup";
 type SignInMode = "password" | "magic" | "forgot";
@@ -85,8 +86,16 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 		router.refresh();
 	}
 
+	/** Submit gate shared by all four flows: block on malformed addresses. */
+	function emailGate(): boolean {
+		const err = validEmail(email);
+		if (err) { setStatus("error"); setErrorMsg(err); return false; }
+		return true;
+	}
+
 	async function handleSignIn(e: React.FormEvent) {
 		e.preventDefault();
+		if (!emailGate()) return;
 		setStatus("loading");
 		setErrorMsg("");
 		const supabase = createClient();
@@ -98,6 +107,7 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 
 	async function handleMagicLink(e: React.FormEvent) {
 		e.preventDefault();
+		if (!emailGate()) return;
 		setStatus("loading");
 		setErrorMsg("");
 		const supabase = createClient();
@@ -113,6 +123,7 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 
 	async function handleForgot(e: React.FormEvent) {
 		e.preventDefault();
+		if (!emailGate()) return;
 		setStatus("loading");
 		setErrorMsg("");
 		const supabase = createClient();
@@ -142,6 +153,7 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 			setErrorMsg("Şifreler eşleşmiyor.");
 			return;
 		}
+		if (!emailGate()) return;
 		setStatus("loading");
 		setErrorMsg("");
 		const supabase = createClient();
@@ -181,7 +193,7 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 				signInMode === "password" ? (
 					<form onSubmit={handleSignIn} className="space-y-4">
 						<FormField label="E-posta adresi">
-							<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@eposta.com" />
+							<EmailInput required autoFocus value={email} onChange={setEmail} placeholder="ornek@eposta.com" />
 						</FormField>
 						<FormField label="Şifre">
 							<Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
@@ -205,7 +217,7 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 							E-posta adresinizi girin, size bir giriş bağlantısı gönderelim — şifre gerekmez.
 						</p>
 						<FormField label="E-posta adresi">
-							<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@eposta.com" />
+							<EmailInput required autoFocus value={email} onChange={setEmail} placeholder="ornek@eposta.com" />
 						</FormField>
 						{status === "error" && <Alert>{errorMsg}</Alert>}
 						<Button type="submit" block loading={status === "loading"}>Giriş bağlantısı gönder</Button>
@@ -222,7 +234,7 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 							E-posta adresinizi girin, şifrenizi sıfırlamanız için size bir bağlantı gönderelim.
 						</p>
 						<FormField label="E-posta adresi">
-							<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@eposta.com" />
+							<EmailInput required autoFocus value={email} onChange={setEmail} placeholder="ornek@eposta.com" />
 						</FormField>
 						{status === "error" && <Alert>{errorMsg}</Alert>}
 						<Button type="submit" block loading={status === "loading"}>Sıfırlama bağlantısı gönder</Button>
@@ -237,7 +249,7 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 			) : (
 				<form onSubmit={handleSignUp} className="space-y-4">
 					<FormField label="E-posta adresi">
-						<Input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ornek@eposta.com" />
+						<EmailInput required autoFocus value={email} onChange={setEmail} placeholder="ornek@eposta.com" />
 					</FormField>
 					<FormField label="Şifre">
 						<Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />

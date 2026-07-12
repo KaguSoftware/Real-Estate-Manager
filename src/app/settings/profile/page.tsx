@@ -14,7 +14,7 @@ import { useAppStore } from "@/src/store";
 import { createClient } from "@/src/lib/supabase/client";
 import { getAvatarUrl, getMyProfile, removeMyAvatar, updateMyProfile, uploadMyAvatar } from "@/src/lib/db/profiles";
 import type { ProfileRow } from "@/src/lib/db/types";
-import { AppShell, Card, CardLabel, Badge, Button, FormField, Input, Alert, SpinnerBlock, ConfirmDialog, toast } from "@/src/components/ui";
+import { AppShell, Card, CardLabel, Badge, Button, FormField, Input, PhoneInput, Alert, SpinnerBlock, ConfirmDialog, toast } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
 
 export default function ProfileSettingsPage() {
@@ -200,7 +200,7 @@ export default function ProfileSettingsPage() {
 									<Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Adınız" autoComplete="name" />
 								</FormField>
 								<FormField label="Telefon">
-									<Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+90 5xx xxx xx xx" autoComplete="tel" />
+									<PhoneInput value={phone} onChange={setPhone} placeholder="+90 5xx xxx xx xx" autoComplete="tel" />
 								</FormField>
 							</div>
 							<div className="flex justify-end pt-1">

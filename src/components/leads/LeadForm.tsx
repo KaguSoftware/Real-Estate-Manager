@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { createLead, updateLead, deleteLead, type LeadInput } from "@/src/lib/db/leads";
 import type { Lead, LeadStatus, ListingType } from "@/src/lib/db/types";
-import { Sheet, Button, FormField, Input, Textarea, Dropdown, Alert, ConfirmDialog, toast, type DropdownOption } from "@/src/components/ui";
+import { Sheet, Button, FormField, Input, NumberInput, EmailInput, PhoneInput, Textarea, Dropdown, Alert, ConfirmDialog, toast, type DropdownOption } from "@/src/components/ui";
 import { validEmail, compactErrors } from "@/src/lib/validation";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "./leadStatus";
 import { AssigneeSelect } from "@/src/components/team/AssigneeSelect";
@@ -54,7 +54,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 	// Structured prefs
 	const [pref_listing_type, setPrefListingType] = useState<ListingType | "">(initial?.pref_listing_type ?? "");
 	const [pref_nitelik, setPrefNitelik]   = useState(initial?.pref_nitelik ?? "");
-	const [pref_min_bedrooms, setPrefMinBedrooms] = useState(initial?.pref_min_bedrooms?.toString() ?? "");
+	const [pref_min_bedrooms, setPrefMinBedrooms] = useState<number | null>(initial?.pref_min_bedrooms ?? null);
 	const [pref_location, setPrefLocation] = useState(initial?.pref_location ?? "");
 
 	const [assignedTo, setAssignedTo] = useState<string | null>(initial?.assigned_to ?? null);
@@ -71,7 +71,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 			interested_in: interested_in.trim() || null,
 			pref_listing_type: pref_listing_type || null,
 			pref_nitelik: pref_nitelik.trim() || null,
-			pref_min_bedrooms: pref_min_bedrooms ? Number(pref_min_bedrooms) : null,
+			pref_min_bedrooms,
 			pref_location: pref_location.trim() || null,
 			status,
 			notes: notes.trim() || null,
@@ -134,7 +134,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 	}
 
 	const hasPrefs =
-		!!pref_listing_type || !!pref_nitelik.trim() || !!pref_min_bedrooms || !!pref_location.trim();
+		!!pref_listing_type || !!pref_nitelik.trim() || pref_min_bedrooms !== null || !!pref_location.trim();
 
 	return (
 		<Sheet
@@ -165,10 +165,15 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 				</FormField>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Telefon">
-						<Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+90 5xx xxx xx xx" />
+						<PhoneInput value={phone} onChange={setPhone} placeholder="+90 5xx xxx xx xx" />
 					</FormField>
 					<FormField label="E-posta" error={fieldErrors.email}>
-						<Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="isteğe bağlı" />
+						<EmailInput
+							value={email}
+							onChange={setEmail}
+							placeholder="isteğe bağlı"
+							onValidChange={(err) => setFieldErrors((f) => compactErrors({ ...f, email: err }))}
+						/>
 					</FormField>
 				</div>
 
@@ -188,7 +193,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 							<Input value={pref_nitelik} onChange={(e) => setPrefNitelik(e.target.value)} placeholder="3+1" />
 						</FormField>
 						<FormField label="En az yatak odası">
-							<Input type="number" inputMode="numeric" min={0} value={pref_min_bedrooms} onChange={(e) => setPrefMinBedrooms(e.target.value)} placeholder="3" />
+							<NumberInput min={0} value={pref_min_bedrooms} onChange={setPrefMinBedrooms} placeholder="3" />
 						</FormField>
 						<FormField label="Konum / site">
 							<Input value={pref_location} onChange={(e) => setPrefLocation(e.target.value)} placeholder="Mahalle veya site" />

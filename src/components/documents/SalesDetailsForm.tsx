@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Property, TaxResponsibility } from "@/src/lib/db/types";
-import { FormField, Input, Textarea, Dropdown, type DropdownOption } from "@/src/components/ui";
+import { FormField, Input, NumberInput, EmailInput, PhoneInput, Textarea, Dropdown, type DropdownOption } from "@/src/components/ui";
 
 /**
  * State container for the sales wizard step 3.
@@ -121,6 +121,15 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 		(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
 			onChange(k, e.target.value as SalesFormState[K]);
 
+	// SalesFormState keeps numbers as strings (the wizard/PDF layer consumes
+	// them with Number()); these adapt string-state ↔ NumberInput's number|null.
+	const numValue = (k: keyof SalesFormState) => {
+		const raw = state[k] as string;
+		return raw === "" ? null : Number(raw);
+	};
+	const setNum = <K extends keyof SalesFormState>(k: K) =>
+		(n: number | null) => onChange(k, (n === null ? "" : String(n)) as SalesFormState[K]);
+
 	return (
 		<div className="space-y-8">
 			{/* A — Seller */}
@@ -133,7 +142,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Input required value={state.sellerName} onChange={set("sellerName")} />
 					</FormField>
 					<FormField label="Telefon">
-						<Input type="tel" inputMode="tel" value={state.sellerPhone} onChange={set("sellerPhone")} />
+						<PhoneInput value={state.sellerPhone} onChange={(v) => onChange("sellerPhone", v)} />
 					</FormField>
 				</div>
 				<FormField label="Adresi">
@@ -151,7 +160,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 					</FormField>
 				</div>
 				<FormField label="E-posta">
-					<Input type="email" value={state.sellerEmail} onChange={set("sellerEmail")} />
+					<EmailInput value={state.sellerEmail} onChange={(v) => onChange("sellerEmail", v)} />
 				</FormField>
 			</section>
 
@@ -165,7 +174,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Input required value={state.buyerName} onChange={set("buyerName")} />
 					</FormField>
 					<FormField label="Telefon" id="buyerContact" error={errors.buyerContact}>
-						<Input type="tel" inputMode="tel" value={state.buyerPhone} onChange={set("buyerPhone")} />
+						<PhoneInput value={state.buyerPhone} onChange={(v) => onChange("buyerPhone", v)} />
 					</FormField>
 				</div>
 				<FormField label="Adresi">
@@ -183,7 +192,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 					</FormField>
 				</div>
 				<FormField label="E-posta">
-					<Input type="email" value={state.buyerEmail} onChange={set("buyerEmail")} />
+					<EmailInput value={state.buyerEmail} onChange={(v) => onChange("buyerEmail", v)} />
 				</FormField>
 				<p className="text-xs text-base-content/50">Alıcı için en az bir e-posta veya telefon girin.</p>
 			</section>
@@ -195,7 +204,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 					<FormField label="Satış Bedeli" id="salePrice" error={errors.salePrice}>
-						<Input required type="number" inputMode="decimal" min="0" step="0.01" value={state.salePrice} onChange={set("salePrice")} />
+						<NumberInput required mode="decimal" format="money" min={0} value={numValue("salePrice")} onChange={setNum("salePrice")} />
 					</FormField>
 					<FormField label="Para Birimi">
 						<Dropdown options={[{ value: "TRY", label: "TRY (₺)" }]} value="TRY" onChange={() => {}} disabled />
@@ -206,10 +215,10 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 					<FormField label="Kapora">
-						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.depositAmount} onChange={set("depositAmount")} />
+						<NumberInput mode="decimal" format="money" min={0} value={numValue("depositAmount")} onChange={setNum("depositAmount")} />
 					</FormField>
 					<FormField label="Cezai Şart">
-						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.penaltyAmount} onChange={set("penaltyAmount")} />
+						<NumberInput mode="decimal" format="money" min={0} value={numValue("penaltyAmount")} onChange={setNum("penaltyAmount")} />
 					</FormField>
 					<FormField label="Tapu Devir Tarihi">
 						<Input type="date" value={state.targetCloseDate} onChange={set("targetCloseDate")} />
@@ -217,7 +226,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Protokol Süresi (gün)">
-						<Input type="number" inputMode="numeric" min="0" step="1" value={state.validityDays} onChange={set("validityDays")} />
+						<NumberInput min={0} value={numValue("validityDays")} onChange={setNum("validityDays")} />
 					</FormField>
 					<FormField label="Vergi Sorumluluğu">
 						<Dropdown
@@ -236,10 +245,10 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Alıcı Hizmet Bedeli Oranı %">
-						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.buyerCommissionRate} onChange={set("buyerCommissionRate")} />
+						<NumberInput mode="decimal" min={0} max={100} value={numValue("buyerCommissionRate")} onChange={setNum("buyerCommissionRate")} />
 					</FormField>
 					<FormField label="Satıcı Hizmet Bedeli Oranı %">
-						<Input type="number" inputMode="decimal" min="0" step="0.01" value={state.sellerCommissionRate} onChange={set("sellerCommissionRate")} />
+						<NumberInput mode="decimal" min={0} max={100} value={numValue("sellerCommissionRate")} onChange={setNum("sellerCommissionRate")} />
 					</FormField>
 				</div>
 				{(commissionPreview.buyer || commissionPreview.seller) && (
