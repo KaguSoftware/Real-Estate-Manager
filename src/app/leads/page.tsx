@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/src/lib/supabase/server";
-import { LeadDashboard } from "@/src/components/leads/LeadDashboard";
+import { ContactDashboard } from "@/src/components/contacts/ContactDashboard";
 
 export default async function LeadsPage() {
 	// Server-side guard: unauthenticated visitors land on the home page instead
@@ -10,11 +10,11 @@ export default async function LeadsPage() {
 	const { data: { user } } = await supabase.auth.getUser();
 	if (!user) redirect("/");
 
-	// LeadDashboard reads ?new=1 via useSearchParams, which requires a Suspense
+	// ContactDashboard reads ?new= via useSearchParams, which requires a Suspense
 	// boundary so the route can still be prerendered.
 	return (
 		<Suspense fallback={null}>
-			<LeadDashboard />
+			<ContactDashboard />
 		</Suspense>
 	);
 }

@@ -16,9 +16,9 @@ interface AddItem {
 const ITEMS: AddItem[] = [
 	{ href: "/properties/new", label: "Taşınmaz ekle", icon: Home },
 	// Clients are created via an in-page modal on /leads (no dedicated route);
-	// the ?new=1 flag tells LeadDashboard to open the create form on arrival.
-	{ href: "/leads?new=1", label: "Müşteri ekle", icon: Users },
-	{ href: "/tenants?new=1", label: "Kiracı ekle", icon: UserPlus },
+	// the ?new= flag tells ContactDashboard which create form to open on arrival.
+	{ href: "/leads?new=lead", label: "Müşteri ekle", icon: Users },
+	{ href: "/leads?new=tenant", label: "Kiracı ekle", icon: UserPlus },
 	{ href: "/documents/new", label: "Yeni belge", icon: FilePlus2 },
 ];
 

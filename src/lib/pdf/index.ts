@@ -3,7 +3,7 @@ import type { PdfBranding } from "./branding";
 
 export type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData };
 export type { PdfBranding };
-export { getPdfBrandingFromStore, BRAND_PALETTES } from "./branding";
+export { getPdfBrandingFromStore, DEFAULT_PALETTE, paletteFromColors } from "./branding";
 export { PDFDocument, EditorPDFDocument } from "./document";
 export type { EditorPDFProps } from "./document";
 

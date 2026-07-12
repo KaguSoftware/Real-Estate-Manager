@@ -53,7 +53,7 @@ function GhostInput({
 			className={cn(
 				"w-full bg-transparent outline-none rounded px-1 -mx-1",
 				"focus:bg-primary/5 focus:ring-1 focus:ring-primary/30",
-				"placeholder:text-base-content/30 disabled:cursor-default",
+				"placeholder:text-neutral-400 disabled:cursor-default",
 				className,
 			)}
 		/>
@@ -108,7 +108,7 @@ export function PartyCardView({ node, updateAttributes, editor }: NodeViewProps)
 
 	return (
 		<NodeViewWrapper className="doc-block mb-3" data-drag-handle>
-			<div className="rounded border border-base-300 px-3.5 py-3">
+			<div className="rounded border border-neutral-300 px-3.5 py-3">
 				<div className="flex items-center gap-2 mb-2">
 					<span className="h-5 w-5 shrink-0 rounded-sm bg-[var(--doc-tint)] text-[var(--doc-primary)] text-[11px] font-bold flex items-center justify-center">
 						{initial}
@@ -127,21 +127,21 @@ export function PartyCardView({ node, updateAttributes, editor }: NodeViewProps)
 							onChange={(v) => updateAttributes({ party: { ...party, full_name: v } })}
 							placeholder="Adı Soyadı / Firma"
 							aria-label="Adı soyadı"
-							className="text-sm font-bold text-base-content"
+							className="text-sm font-bold text-neutral-900"
 						/>
 					</div>
 				</div>
 				<div className="space-y-1">
 					{PARTY_FIELDS.map((f) => (
 						<div key={f.key} className="flex items-baseline gap-2">
-							<span className="w-24 shrink-0 text-[11px] font-medium text-base-content/50">{f.label}</span>
+							<span className="w-24 shrink-0 text-[11px] font-medium text-neutral-500">{f.label}</span>
 							<GhostInput
 								value={(party[f.key] as string | null) ?? ""}
 								disabled={!editable}
 								onChange={(v) => patch(f.key, v)}
 								placeholder="—"
 								aria-label={f.label}
-								className="text-[13px] text-base-content/90"
+								className="text-[13px] text-neutral-800"
 							/>
 						</div>
 					))}
@@ -163,7 +163,7 @@ export function KVCardView({ node, updateAttributes, editor }: NodeViewProps) {
 
 	return (
 		<NodeViewWrapper className="doc-block mb-3" data-drag-handle>
-			<div className="rounded border border-base-300 px-3.5 py-3">
+			<div className="rounded border border-neutral-300 px-3.5 py-3">
 				{attrs.title != null && (
 					<GhostInput
 						value={attrs.title}
@@ -171,10 +171,10 @@ export function KVCardView({ node, updateAttributes, editor }: NodeViewProps) {
 						onChange={(v) => updateAttributes({ title: v })}
 						placeholder="Başlık"
 						aria-label="Kart başlığı"
-						className="text-sm font-bold text-base-content mb-1.5"
+						className="text-sm font-bold text-neutral-900 mb-1.5"
 					/>
 				)}
-				<div className="divide-y divide-base-200">
+				<div className="divide-y divide-neutral-200">
 					{items.map((it, i) => (
 						<div key={i} className="group/row flex items-center gap-2 py-1">
 							<GhostInput
@@ -183,7 +183,7 @@ export function KVCardView({ node, updateAttributes, editor }: NodeViewProps) {
 								onChange={(v) => patch(i, "label", v)}
 								placeholder="Etiket"
 								aria-label={`Satır ${i + 1} etiketi`}
-								className="w-36 max-w-36 text-[11px] font-medium text-base-content/50"
+								className="w-36 max-w-36 text-[11px] font-medium text-neutral-500"
 							/>
 							<GhostInput
 								value={it.value}
@@ -191,7 +191,7 @@ export function KVCardView({ node, updateAttributes, editor }: NodeViewProps) {
 								onChange={(v) => patch(i, "value", v)}
 								placeholder="—"
 								aria-label={`Satır ${i + 1} değeri`}
-								className="text-[13px] font-semibold text-base-content text-right"
+								className="text-[13px] font-semibold text-neutral-900 text-right"
 							/>
 							{editable && (
 								<button
@@ -211,7 +211,7 @@ export function KVCardView({ node, updateAttributes, editor }: NodeViewProps) {
 					<button
 						type="button"
 						onClick={() => setItems([...items, { label: "", value: "" }])}
-						className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-base-content/50 hover:text-base-content transition-colors"
+						className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 hover:text-neutral-800 transition-colors"
 					>
 						<Plus className="w-3 h-3" /> Satır ekle
 					</button>
@@ -301,18 +301,18 @@ export function SignatureBlockView({ node, updateAttributes, editor }: NodeViewP
 	return (
 		<NodeViewWrapper className="doc-block mt-6 mb-3" data-drag-handle>
 			<div className="flex items-center gap-2.5 mb-1">
-				<span className="text-sm font-bold text-base-content">İmzalar</span>
-				<span className="h-px flex-1 bg-base-300" aria-hidden />
+				<span className="text-sm font-bold text-neutral-900">İmzalar</span>
+				<span className="h-px flex-1 bg-neutral-300" aria-hidden />
 			</div>
 			{attrs.date != null && (
-				<div className="flex items-baseline gap-1 text-xs text-base-content/50">
+				<div className="flex items-baseline gap-1 text-xs text-neutral-500">
 					<span>Tarih:</span>
 					<GhostInput
 						value={attrs.date}
 						disabled={!editable}
 						onChange={(v) => updateAttributes({ date: v })}
 						aria-label="İmza tarihi"
-						className="text-xs text-base-content/70"
+						className="text-xs text-neutral-600"
 					/>
 				</div>
 			)}
@@ -328,7 +328,7 @@ export function SignatureBlockView({ node, updateAttributes, editor }: NodeViewP
 									onChange={(v) => setSigners(signers.map((x, j) => (j === i ? { ...x, role: v } : x)))}
 									placeholder="Rol"
 									aria-label={`İmzacı ${i + 1} rolü`}
-									className="text-[13px] font-bold text-base-content"
+									className="text-[13px] font-bold text-neutral-900"
 								/>
 								<GhostInput
 									value={s.name ?? ""}
@@ -336,9 +336,9 @@ export function SignatureBlockView({ node, updateAttributes, editor }: NodeViewP
 									onChange={(v) => setSigners(signers.map((x, j) => (j === i ? { ...x, name: v || undefined } : x)))}
 									placeholder="Ad Soyad"
 									aria-label={`İmzacı ${i + 1} adı`}
-									className="text-xs text-base-content/60"
+									className="text-xs text-neutral-500"
 								/>
-								<p className="text-[10px] text-base-content/40 mt-0.5">Ad Soyad / İmza</p>
+								<p className="text-[10px] text-neutral-400 mt-0.5">Ad Soyad / İmza</p>
 							</div>
 							{editable && signers.length > 1 && (
 								<button
@@ -359,7 +359,7 @@ export function SignatureBlockView({ node, updateAttributes, editor }: NodeViewP
 				<button
 					type="button"
 					onClick={() => setSigners([...signers, { role: "" }])}
-					className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-base-content/50 hover:text-base-content transition-colors"
+					className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 hover:text-neutral-800 transition-colors"
 				>
 					<Plus className="w-3 h-3" /> İmzacı ekle
 				</button>

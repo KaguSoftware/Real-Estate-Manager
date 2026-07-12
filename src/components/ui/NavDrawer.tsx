@@ -9,7 +9,7 @@ import { useAppStore } from "@/src/store";
 import { cn } from "./cn";
 import { useFocusTrap } from "./useFocusTrap";
 import { ThemeToggle } from "./ThemeToggle";
-import { LayoutDashboard, Home, Users, ContactRound, FilePlus2, Shield, UsersRound, CreditCard, UserCog, LogOut, X } from "lucide-react";
+import { LayoutDashboard, Home, Users, FilePlus2, Shield, UsersRound, CreditCard, UserCog, LogOut, X } from "lucide-react";
 
 interface NavItem {
 	href: string;
@@ -22,7 +22,6 @@ const NAV: NavItem[] = [
 	{ href: "/", label: "Genel bakış", icon: LayoutDashboard },
 	{ href: "/properties", label: "Portföy", icon: Home },
 	{ href: "/leads", label: "Müşteriler", icon: Users },
-	{ href: "/tenants", label: "Kiracılar", icon: ContactRound },
 	{ href: "/documents/new", label: "Yeni belge", icon: FilePlus2 },
 	{ href: "/team", label: "Ekip", icon: UsersRound },
 	{ href: "/settings/billing", label: "Abonelik", icon: CreditCard },

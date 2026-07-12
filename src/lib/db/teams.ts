@@ -17,8 +17,11 @@ export interface TeamContext {
 	is_writable: boolean;
 	/** Path inside the team-logos bucket, or null when no logo uploaded. */
 	logo_path: string | null;
-	/** Preset id from BRAND_PALETTES (src/lib/pdf/branding.ts). */
-	brand_palette: string;
+	/** User-picked document colors (hex, e.g. "#1e242e") — main brand color
+	 *  plus two accents. The 5 PDF roles are derived in src/lib/pdf/branding.ts. */
+	brand_color_main: string;
+	brand_color_accent1: string;
+	brand_color_accent2: string;
 }
 
 export interface TeamMember {
@@ -73,7 +76,7 @@ export async function fetchTeamContext(): Promise<TeamContext | null> {
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
 		.from("team_members")
-		.select("role, teams(id, name, trial_ends_at, logo_path, brand_palette, subscriptions(status, plan_id, current_period_end))")
+		.select("role, teams(id, name, trial_ends_at, logo_path, brand_color_main, brand_color_accent1, brand_color_accent2, subscriptions(status, plan_id, current_period_end))")
 		.maybeSingle();
 	if (error) throw error;
 	if (!data) return null;
@@ -85,7 +88,9 @@ export async function fetchTeamContext(): Promise<TeamContext | null> {
 		name: string;
 		trial_ends_at: string;
 		logo_path: string | null;
-		brand_palette: string;
+		brand_color_main: string | null;
+		brand_color_accent1: string | null;
+		brand_color_accent2: string | null;
 		subscriptions:
 			| { status: TeamContext["subscription_status"]; plan_id: string | null; current_period_end: string | null }
 			| { status: TeamContext["subscription_status"]; plan_id: string | null; current_period_end: string | null }[]
@@ -104,7 +109,9 @@ export async function fetchTeamContext(): Promise<TeamContext | null> {
 		current_period_end: sub?.current_period_end ?? null,
 		is_writable: computeIsWritable(team.trial_ends_at, sub?.status ?? null, sub?.current_period_end ?? null),
 		logo_path: team.logo_path ?? null,
-		brand_palette: team.brand_palette ?? "slate",
+		brand_color_main: team.brand_color_main ?? "#1e242e",
+		brand_color_accent1: team.brand_color_accent1 ?? "#b74427",
+		brand_color_accent2: team.brand_color_accent2 ?? "#8b929e",
 	};
 }
 
@@ -338,9 +345,23 @@ export async function removeTeamLogo(logoPath: string): Promise<void> {
 	await supabase.storage.from(LOGO_BUCKET).remove([logoPath]).catch(() => {});
 }
 
-export async function updateTeamPalette(paletteId: string): Promise<void> {
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+
+/** Persist the three user-picked document colors (validated client-side;
+ *  a DB CHECK constraint enforces the same hex shape). */
+export async function updateTeamColors(main: string, accent1: string, accent2: string): Promise<void> {
+	if (![main, accent1, accent2].every((c) => HEX_RE.test(c))) {
+		throw new Error("Renkler #rrggbb biçiminde olmalı");
+	}
 	const { supabase } = await requireUser();
 	const teamId = requireTeamId();
-	const { error } = await supabase.from("teams").update({ brand_palette: paletteId }).eq("id", teamId);
+	const { error } = await supabase
+		.from("teams")
+		.update({
+			brand_color_main: main.toLowerCase(),
+			brand_color_accent1: accent1.toLowerCase(),
+			brand_color_accent2: accent2.toLowerCase(),
+		})
+		.eq("id", teamId);
 	if (error) throw error;
 }

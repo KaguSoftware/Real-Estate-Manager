@@ -21,40 +21,49 @@ export interface BrandPalette {
 	tint: string;
 }
 
-// `kagu` matches the app's brand (graphite + kagu red-orange) and is the
-// default; `avera` mirrors the historical hardcoded palette in styles.ts so
-// existing documents can be reproduced.
-export const BRAND_PALETTES: Record<string, BrandPalette> = {
-	kagu: {
-		id: "kagu", label: "Kagu",
-		primary: "#1e242e", primaryDark: "#12161d", accent: "#b74427",
-		muted: "#8b929e", tint: "#f2f4f6",
-	},
-	slate: {
-		id: "slate", label: "Slate",
-		primary: "#0f172a", primaryDark: "#020617", accent: "#6366f1",
-		muted: "#94a3b8", tint: "#f1f5f9",
-	},
-	avera: {
-		id: "avera", label: "Navy & Red",
-		primary: "#051526", primaryDark: "#020a13", accent: "#B11211",
-		muted: "#9D9F9E", tint: "#e8ebef",
-	},
-	emerald: {
-		id: "emerald", label: "Emerald",
-		primary: "#064e3b", primaryDark: "#022c22", accent: "#f59e0b",
-		muted: "#6ee7b7", tint: "#ecfdf5",
-	},
-	indigo: {
-		id: "indigo", label: "Indigo",
-		primary: "#312e81", primaryDark: "#1e1b4b", accent: "#e11d48",
-		muted: "#a5b4fc", tint: "#eef2ff",
-	},
-	burgundy: {
-		id: "burgundy", label: "Burgundy",
-		primary: "#5c0a1e", primaryDark: "#3b0413", accent: "#b45309",
-		muted: "#d4a5b0", tint: "#fdf2f5",
-	},
+// ── Color math: derive the 5 PDF roles from the 3 user-picked colors ────────
+
+function hexToRgb(hex: string): [number, number, number] {
+	const h = hex.replace("#", "");
+	return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+	return `#${[r, g, b].map((c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Channel-wise lerp: t=0 → a, t=1 → b. */
+export function mixHex(a: string, b: string, t: number): string {
+	const [ar, ag, ab] = hexToRgb(a);
+	const [br, bg, bb] = hexToRgb(b);
+	return rgbToHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
+}
+
+/**
+ * Build the full PDF palette from the team's three colors:
+ * main → primary (hero bars, table headers), accent1 → accent (chips,
+ * currency tags), accent2 → muted (secondary labels, card borders).
+ * primaryDark and tint are derived shades of main, matching the ratios of
+ * the old hand-tuned presets.
+ */
+export function paletteFromColors(main: string, accent1: string, accent2: string): BrandPalette {
+	return {
+		id: "custom",
+		label: "Özel",
+		primary: main,
+		primaryDark: mixHex(main, "#000000", 0.4),
+		accent: accent1,
+		muted: accent2,
+		tint: mixHex(main, "#ffffff", 0.94),
+	};
+}
+
+/** The app's own brand (graphite + kagu red-orange) — used before a team
+ *  loads and as the fallback when a team has no stored colors. */
+export const DEFAULT_PALETTE: BrandPalette = {
+	id: "kagu", label: "Kagu",
+	primary: "#1e242e", primaryDark: "#12161d", accent: "#b74427",
+	muted: "#8b929e", tint: "#f2f4f6",
 };
 
 export interface PdfBranding {
@@ -68,7 +77,7 @@ export interface PdfBranding {
 export const DEFAULT_BRANDING: PdfBranding = {
 	teamName: "Kagu Real Estate",
 	logoDataUrl: null,
-	palette: BRAND_PALETTES.kagu,
+	palette: DEFAULT_PALETTE,
 };
 
 export const BrandingContext = createContext<PdfBranding>(DEFAULT_BRANDING);
@@ -102,6 +111,6 @@ export async function getPdfBrandingFromStore(): Promise<PdfBranding> {
 	return {
 		teamName: team.name || DEFAULT_BRANDING.teamName,
 		logoDataUrl: logoUrl ? await fetchAsDataUrl(logoUrl) : null,
-		palette: BRAND_PALETTES[team.brand_palette] ?? BRAND_PALETTES.kagu,
+		palette: paletteFromColors(team.brand_color_main, team.brand_color_accent1, team.brand_color_accent2),
 	};
 }

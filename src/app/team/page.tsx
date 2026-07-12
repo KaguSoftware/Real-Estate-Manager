@@ -134,9 +134,22 @@ export default function TeamPage() {
 		}
 	}
 
+	// Brand the team panel (and only it) with the team's own colors: overriding
+	// the daisyUI variables on this wrapper recolors primary/secondary elements
+	// (buttons, badges, avatars) without touching the rest of the app.
+	const brandStyle = team
+		? ({
+				"--color-primary": team.brand_color_main,
+				"--color-primary-content": "#ffffff",
+				"--color-secondary": team.brand_color_accent1,
+				"--color-secondary-content": "#ffffff",
+				"--color-accent": team.brand_color_accent2,
+			} as React.CSSProperties)
+		: undefined;
+
 	return (
 		<AppShell title={team ? team.name : "Ekip"} subtitle="Ekip ve davetler">
-			<div className="space-y-4 px-0">
+			<div className="space-y-4 px-0" style={brandStyle}>
 				{error && <Alert tone="error">{error}</Alert>}
 
 				<Card>

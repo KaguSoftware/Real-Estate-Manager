@@ -25,7 +25,7 @@ import {
 	generateEditorPdfFile,
 	getPdfBrandingFromStore,
 	EditorPDFDocument,
-	BRAND_PALETTES,
+	DEFAULT_PALETTE,
 	type PdfBranding,
 } from "@/src/lib/pdf";
 import { buildInitialDoc } from "@/src/lib/documents/buildInitialDoc";
@@ -296,7 +296,7 @@ export function DocumentEditorPage({ documentId }: { documentId: string }) {
 					<div className="rounded-2xl bg-base-200 border border-base-300 px-3 sm:px-6 pt-2">
 						<ContractEditor
 							initialDoc={liveContent ?? doc.content}
-							palette={branding?.palette ?? BRAND_PALETTES.kagu}
+							palette={branding?.palette ?? DEFAULT_PALETTE}
 							editable={editable}
 							apiRef={editorApi}
 							onChangeJson={(json) => setLiveContent(json)}

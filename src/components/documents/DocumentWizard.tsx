@@ -14,7 +14,7 @@ import { downloadPdfFile, generateEditorPdfFile, getPdfBrandingFromStore, type P
 import { saveDocumentPdf } from "@/src/lib/db/documents";
 import { getClauseTemplate } from "@/src/lib/db/clauseTemplates";
 import type { DocKind, RentalPDFData, SalesPDFData } from "@/src/lib/pdf";
-import { EditorPDFDocument, BRAND_PALETTES } from "@/src/lib/pdf";
+import { EditorPDFDocument, DEFAULT_PALETTE } from "@/src/lib/pdf";
 import { buildInitialDoc } from "@/src/lib/documents/buildInitialDoc";
 import type { EditorDocJSON } from "@/src/lib/documents/blocks";
 import { createContractDocument, setContractDocumentPdfPath } from "@/src/lib/db/contractDocuments";
@@ -486,6 +486,8 @@ export function DocumentWizard() {
 	useEffect(() => {
 		const resumedIntoPreview = step === "preview" && propertyId != null && !propertiesLoaded;
 		if (step !== "property" && !resumedIntoPreview) return;
+		// Already loaded: picking a card only changes propertyId and must not refetch.
+		if (step === "property" && propertiesLoaded) return;
 		let cancelled = false;
 		setLoadingProperties(true);
 		setError(null);
@@ -946,14 +948,14 @@ export function DocumentWizard() {
 					<h2 className="font-display text-lg font-semibold text-base-content">Belge türünü seçin</h2>
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 						<button
-							onClick={() => { setKind("rental"); setPropertyId(null); setClientId(null); setStep("property"); }}
+							onClick={() => { setKind("rental"); setPropertyId(null); setClientId(null); setPropertiesLoaded(false); setStep("property"); }}
 							className="text-left p-5 rounded-2xl border-2 border-base-300 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
 							<p className="font-display text-base font-semibold text-base-content">Kira Sözleşmesi</p>
 							<p className="text-sm text-base-content/60 mt-1">Boş bir kiralık taşınmazı yeni bir kiracıya kiralayın.</p>
 						</button>
 						<button
-							onClick={() => { setKind("sales"); setPropertyId(null); setClientId(null); setStep("property"); }}
+							onClick={() => { setKind("sales"); setPropertyId(null); setClientId(null); setPropertiesLoaded(false); setStep("property"); }}
 							className="text-left p-5 rounded-2xl border-2 border-base-300 hover:border-primary/60 active:bg-primary/5 transition-colors"
 						>
 							<p className="font-display text-base font-semibold text-base-content">Satış Sözleşmesi</p>
@@ -1104,7 +1106,7 @@ export function DocumentWizard() {
 							<div className="rounded-2xl bg-base-200 border border-base-300 px-3 sm:px-6 pt-2">
 							<ContractEditor
 								initialDoc={docJson}
-								palette={previewBranding?.palette ?? BRAND_PALETTES.kagu}
+								palette={previewBranding?.palette ?? DEFAULT_PALETTE}
 								apiRef={editorApi}
 								onChangeJson={(json) => setDocJson(json)}
 								onDirty={() => setDocDirty(true)}
