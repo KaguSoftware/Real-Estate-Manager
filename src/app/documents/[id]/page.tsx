@@ -15,7 +15,7 @@ export default async function DocumentPage({
 	const { id } = await params;
 
 	return (
-		<AppShell title="Sözleşme" subtitle="Belgeyi düzenleyin veya PDF indirin" width="3xl">
+		<AppShell title="Sözleşme" subtitle="Belgeyi düzenleyin veya PDF indirin" width="5xl">
 			<DocumentEditorPage documentId={id} />
 		</AppShell>
 	);

@@ -1,9 +1,12 @@
 "use client";
 
 /**
- * Contract editor toolbar. Formatting + block insertion + table context
- * controls. Desktop reorders blocks by drag handle; on coarse pointers the
- * toolbar exposes move/delete buttons instead (drag is unreliable on touch).
+ * Contract editor toolbar. Two orientations:
+ *  - "vertical" (desktop): a slim floating panel docked beside the sheet that
+ *    follows the scroll — every tool stays within reach while editing.
+ *  - "horizontal" (narrow viewports): the sticky top bar.
+ * Desktop reorders blocks by drag handle; on coarse pointers the toolbar
+ * exposes move/delete buttons instead (drag is unreliable on touch).
  */
 
 import { useRef } from "react";
@@ -12,7 +15,10 @@ import { useEditorState } from "@tiptap/react";
 import {
 	ArrowDown,
 	ArrowUp,
+	BetweenHorizontalStart,
+	BetweenVerticalStart,
 	Bold,
+	Grid2x2X,
 	ImagePlus,
 	Info,
 	List,
@@ -23,6 +29,8 @@ import {
 	RotateCcw,
 	Scissors,
 	Table as TableIcon,
+	TableColumnsSplit,
+	TableRowsSplit,
 	Tag,
 	Trash2,
 	Underline,
@@ -119,7 +127,7 @@ function ToolButton({
 			aria-label={label}
 			aria-pressed={active}
 			className={cn(
-				"h-8 min-w-8 px-1.5 rounded-lg inline-flex items-center justify-center gap-1 text-xs font-medium",
+				"h-8 min-w-8 px-1.5 rounded-lg inline-flex items-center justify-center gap-1 text-xs font-medium shrink-0",
 				"transition-colors active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none",
 				active ? "bg-primary/10 text-primary" : "text-base-content/70 hover:bg-base-200 hover:text-base-content",
 				className,
@@ -130,18 +138,19 @@ function ToolButton({
 	);
 }
 
-const Divider = () => <span className="mx-0.5 h-5 w-px bg-base-300 shrink-0" aria-hidden />;
-
 export function Toolbar({
 	editor,
 	onReset,
 	locked,
+	orientation = "horizontal",
 }: {
 	editor: Editor;
 	onReset?: () => void;
 	locked?: boolean;
+	orientation?: "horizontal" | "vertical";
 }) {
 	const fileRef = useRef<HTMLInputElement>(null);
+	const vertical = orientation === "vertical";
 	const state = useEditorState({
 		editor,
 		selector: ({ editor: e }) => ({
@@ -205,9 +214,22 @@ export function Toolbar({
 
 	const insert = (content: object) => editor.chain().focus().insertContent(content).run();
 
+	const divider = (
+		<span
+			className={cn("bg-base-300 shrink-0", vertical ? "h-px w-5 my-0.5" : "mx-0.5 h-5 w-px")}
+			aria-hidden
+		/>
+	);
+
 	return (
-		<div className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-base-100/95 backdrop-blur border-b border-base-300">
-			<div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none">
+		<div
+			className={cn(
+				vertical
+					? "flex flex-col items-center gap-0.5 rounded-2xl border border-base-300 bg-base-100/95 backdrop-blur p-1.5 shadow-lg max-h-[calc(100dvh-5rem)] overflow-y-auto overflow-x-visible"
+					: "sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-base-100/95 backdrop-blur border-b border-base-300",
+			)}
+		>
+			<div className={cn("flex gap-0.5", vertical ? "flex-col items-center" : "items-center overflow-x-auto scrollbar-none")}>
 				<ToolButton label="Geri al" disabled={!state.canUndo} onClick={() => editor.chain().focus().undo().run()}>
 					<Undo2 className="w-4 h-4" />
 				</ToolButton>
@@ -215,7 +237,7 @@ export function Toolbar({
 					<Redo2 className="w-4 h-4" />
 				</ToolButton>
 
-				<Divider />
+				{divider}
 
 				<ToolButton label="Başlık" active={state.heading2} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
 					<span className="text-[13px] font-bold">B1</span>
@@ -230,7 +252,7 @@ export function Toolbar({
 					<Underline className="w-4 h-4" />
 				</ToolButton>
 
-				<Divider />
+				{divider}
 
 				<ToolButton label="Madde işaretli liste" active={state.bulletList} onClick={() => editor.chain().focus().toggleBulletList().run()}>
 					<List className="w-4 h-4" />
@@ -259,12 +281,12 @@ export function Toolbar({
 					<Scissors className="w-4 h-4" />
 				</ToolButton>
 
-				<Divider />
+				{divider}
 
 				{/* Structured contract blocks */}
-				<div className="dropdown">
-					<ToolButton label="Blok ekle" onClick={() => { /* dropdown via focus */ }} className="dropdown-toggle">
-						<Plus className="w-4 h-4" /> <span className="hidden sm:inline">Blok</span>
+				<div className={cn("dropdown", vertical ? "dropdown-right" : "")}>
+					<ToolButton label="Blok ekle" onClick={() => { /* dropdown via focus */ }}>
+						<Plus className="w-4 h-4" /> {!vertical && <span className="hidden sm:inline">Blok</span>}
 					</ToolButton>
 					<ul className="dropdown-content menu z-30 mt-1 w-56 rounded-xl border border-base-300 bg-base-100 p-1.5 shadow-lg text-sm">
 						<li>
@@ -313,28 +335,30 @@ export function Toolbar({
 				{/* Table context controls */}
 				{state.inTable && (
 					<>
-						<Divider />
+						{divider}
 						<ToolButton label="Altına satır ekle" onClick={() => editor.chain().focus().addRowAfter().run()}>
-							<span className="whitespace-nowrap">＋ Satır</span>
+							<BetweenHorizontalStart className="w-4 h-4" />
+							{!vertical && <span className="whitespace-nowrap">Satır</span>}
 						</ToolButton>
 						<ToolButton label="Sağına sütun ekle" onClick={() => editor.chain().focus().addColumnAfter().run()}>
-							<span className="whitespace-nowrap">＋ Sütun</span>
+							<BetweenVerticalStart className="w-4 h-4" />
+							{!vertical && <span className="whitespace-nowrap">Sütun</span>}
 						</ToolButton>
 						<ToolButton label="Satırı sil" onClick={() => editor.chain().focus().deleteRow().run()}>
-							<span className="whitespace-nowrap">− Satır</span>
+							<TableRowsSplit className="w-4 h-4" />
 						</ToolButton>
 						<ToolButton label="Sütunu sil" onClick={() => editor.chain().focus().deleteColumn().run()}>
-							<span className="whitespace-nowrap">− Sütun</span>
+							<TableColumnsSplit className="w-4 h-4" />
 						</ToolButton>
 						<ToolButton label="Tabloyu sil" onClick={() => editor.chain().focus().deleteTable().run()}>
-							<Trash2 className="w-4 h-4" />
+							<Grid2x2X className="w-4 h-4" />
 						</ToolButton>
 					</>
 				)}
 
 				{/* Touch fallback for drag-reorder (handles are hidden on coarse pointers) */}
-				<span className="hidden [@media(pointer:coarse)]:contents">
-					<Divider />
+				<span className="hidden pointer-coarse:contents">
+					{divider}
 					<ToolButton label="Bloğu yukarı taşı" onClick={() => moveBlock(editor, -1)}>
 						<ArrowUp className="w-4 h-4" />
 					</ToolButton>
@@ -346,12 +370,16 @@ export function Toolbar({
 					</ToolButton>
 				</span>
 
-				<span className="flex-1" aria-hidden />
+				{!vertical && <span className="flex-1" aria-hidden />}
 
 				{onReset && (
-					<ToolButton label="Şablona sıfırla" disabled={locked} onClick={onReset} className="shrink-0">
-						<RotateCcw className="w-4 h-4" /> <span className="hidden md:inline whitespace-nowrap">Şablona sıfırla</span>
-					</ToolButton>
+					<>
+						{vertical && divider}
+						<ToolButton label="Şablona sıfırla" disabled={locked} onClick={onReset}>
+							<RotateCcw className="w-4 h-4" />
+							{!vertical && <span className="hidden md:inline whitespace-nowrap">Şablona sıfırla</span>}
+						</ToolButton>
+					</>
 				)}
 			</div>
 		</div>

@@ -2,6 +2,7 @@
 
 import { humanizeError } from "@/src/lib/errors";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAppStore } from "@/src/store";
@@ -49,15 +50,18 @@ const ContractEditor = dynamic(
 	{ ssr: false, loading: () => <div className="text-sm text-base-content/50 p-6 text-center">Düzenleyici yükleniyor…</div> },
 );
 
-type Step = "type" | "property" | "client" | "details" | "preview";
+// The old separate "details" step is merged into the final stage: a
+// collapsible essentials panel (parties, amounts, dates — the fields the
+// lease/sale records need) sits above the editor and the document rebuilds
+// live as it is filled. Old drafts saved at "details" resume at "preview".
+type Step = "type" | "property" | "client" | "preview";
 
-const STEPS: Step[] = ["type", "property", "client", "details", "preview"];
+const STEPS: Step[] = ["type", "property", "client", "preview"];
 
 const STEP_LABELS: Record<Step, string> = {
 	type: "Tür",
 	property: "Taşınmaz",
 	client: "Müşteri",
-	details: "Detaylar",
 	preview: "Düzenle",
 };
 
@@ -291,6 +295,12 @@ export function DocumentWizard() {
 	// goes back and changes details, the doc is rebuilt so amounts/parties are
 	// never stale (custom text edits survive only while the data is unchanged).
 	const [docFingerprint, setDocFingerprint] = useState<string | null>(null);
+	// True once the user has edited the document itself — from then on, panel
+	// changes stop live-rebuilding it (a banner offers an explicit rebuild).
+	const [docDirty, setDocDirty] = useState(false);
+	// Data changed while the doc was dirty: doc no longer matches the fields.
+	const [docStale, setDocStale] = useState(false);
+	const [panelOpen, setPanelOpen] = useState(true);
 	const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
 	const [previewJson, setPreviewJson] = useState<EditorDocJSON | null>(null);
 	const [confirmReset, setConfirmReset] = useState(false);
@@ -311,9 +321,13 @@ export function DocumentWizard() {
 		setDocTitle(pendingDraft.docTitle ?? "");
 		setDocSubtitle(pendingDraft.docSubtitle ?? "");
 		setDocFingerprint(pendingDraft.docFingerprint ?? null);
-		// Re-enter at the property step so the pickers reload their data; the
-		// details entered in later steps are already restored above.
-		setStep(pendingDraft.propertyId ? pendingDraft.step : "type");
+		// A saved document may hold custom edits we can't distinguish from the
+		// generated template — treat it as dirty so live rebuild never clobbers it.
+		setDocDirty(Boolean(pendingDraft.docJson));
+		// Drafts saved on the retired "details" step resume at the merged stage.
+		const restoredStep: Step =
+			(pendingDraft.step as string) === "details" ? "preview" : pendingDraft.step;
+		setStep(pendingDraft.propertyId ? restoredStep : "type");
 		setPendingDraft(null);
 	}
 	function discardDraft() {
@@ -321,10 +335,10 @@ export function DocumentWizard() {
 		setPendingDraft(null);
 	}
 
-	// Persist progress once the user has invested real effort (details onwards).
+	// Persist progress once the user has invested real effort (final stage).
 	useEffect(() => {
 		if (pendingDraft) return; // don't overwrite an unresumed draft
-		if (step !== "details" && step !== "preview") return;
+		if (step !== "preview") return;
 		const draft: WizardDraft = {
 			step, kind, propertyId, clientId, rentalState, salesState,
 			docJson, docTitle, docSubtitle, docFingerprint,
@@ -333,25 +347,13 @@ export function DocumentWizard() {
 		try { window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* ignore */ }
 	}, [pendingDraft, step, kind, propertyId, clientId, rentalState, salesState, docJson, docTitle, docSubtitle, docFingerprint]);
 
-	// Details entered in steps 4–5 are lost on a refresh/close — warn first.
+	// Work done in the final stage is lost on a refresh/close — warn first.
 	useEffect(() => {
-		if (step !== "details" && step !== "preview") return;
+		if (step !== "preview") return;
 		const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
 		window.addEventListener("beforeunload", warn);
 		return () => window.removeEventListener("beforeunload", warn);
 	}, [step]);
-
-	/** Validate the details step; on failure show inline errors and scroll to the first one. */
-	function goToPreview() {
-		const errors = kind === "rental" ? validateRental(rentalState) : validateSales(salesState);
-		setFieldErrors(errors);
-		const first = Object.keys(errors)[0];
-		if (first) {
-			document.getElementById(first)?.scrollIntoView({ behavior: "smooth", block: "center" });
-			return;
-		}
-		setStep("preview");
-	}
 
 	// The PDF embeds web fonts fetched over HTTP. BlobProvider renders eagerly,
 	// so without this gate its first pass can run before the fonts arrive and
@@ -494,18 +496,30 @@ export function DocumentWizard() {
 		if (step !== "preview" || !fontsLoaded || !clausesReady || !wizardData) return;
 		if (kind !== "rental" && kind !== "sales") return;
 		const fingerprint = JSON.stringify({ ...wizardData, generatedAt: null });
-		if (docJson && fingerprint === docFingerprint) return;
-		const rebuilt = docJson != null && docFingerprint != null;
-		const built = buildInitialDoc(kind, wizardData, previewBranding?.teamName ?? "Kagu Real Estate");
-		setDocJson(built);
-		setDocFingerprint(fingerprint);
-		editorApi.current?.setContent(built);
-		setPreviewJson(null);
-		setViewMode("edit");
-		if (!docTitle) setDocTitle(kind === "rental" ? "Konut Kira Sözleşmesi" : "Satılık Alım, Satış Sözleşmesi");
-		if (!docSubtitle) setDocSubtitle(wizardData.property.address ?? "");
-		if (rebuilt) toast.info("Sözleşme bilgileri değiştiği için belge yeniden oluşturuldu.");
-	}, [step, kind, fontsLoaded, clausesReady, wizardData, previewBranding, docJson, docFingerprint, docTitle, docSubtitle]);
+		if (docJson && fingerprint === docFingerprint) {
+			if (docStale) setDocStale(false); // data reverted to match the doc
+			return;
+		}
+		// The user customized the document — never clobber it silently; the
+		// stale banner offers an explicit rebuild instead.
+		if (docJson && docDirty) {
+			if (!docStale) setDocStale(true);
+			return;
+		}
+		// Debounced: wizardData changes identity on every panel keystroke, and
+		// each run clears the previous timer — the doc rebuilds 500 ms after
+		// the user stops typing (immediately on first build).
+		const t = setTimeout(() => {
+			const built = buildInitialDoc(kind, wizardData, previewBranding?.teamName ?? "Kagu Real Estate");
+			setDocJson(built);
+			setDocFingerprint(fingerprint);
+			editorApi.current?.setContent(built);
+			setPreviewJson((p) => (p ? built : p)); // keep an open PDF preview live
+			if (!docTitle) setDocTitle(kind === "rental" ? "Konut Kira Sözleşmesi" : "Satılık Alım, Satış Sözleşmesi");
+			if (!docSubtitle) setDocSubtitle(wizardData.property.address ?? "");
+		}, docJson ? 500 : 0);
+		return () => clearTimeout(t);
+	}, [step, kind, fontsLoaded, clausesReady, wizardData, previewBranding, docJson, docFingerprint, docDirty, docStale, docTitle, docSubtitle]);
 
 	/** Latest editor JSON — the live editor when mounted, else wizard state. */
 	function currentDocJson(): EditorDocJSON | null {
@@ -523,17 +537,46 @@ export function DocumentWizard() {
 		setViewMode(mode);
 	}
 
-	function onResetConfirmed() {
-		setConfirmReset(false);
+	/** Rebuild the document from the current panel data (discards custom edits). */
+	function rebuildFromData() {
 		if (!wizardData || (kind !== "rental" && kind !== "sales")) return;
 		const built = buildInitialDoc(kind, wizardData, previewBranding?.teamName ?? "Kagu Real Estate");
 		setDocJson(built);
+		setDocFingerprint(JSON.stringify({ ...wizardData, generatedAt: null }));
 		editorApi.current?.setContent(built);
+		setPreviewJson((p) => (p ? built : p));
+		setDocDirty(false);
+		setDocStale(false);
+	}
+
+	function onResetConfirmed() {
+		setConfirmReset(false);
+		rebuildFromData();
 		toast.success("Belge şablondan yeniden oluşturuldu.");
 	}
 
 	async function handleConfirm() {
 		if (!property) return;
+		// The essentials panel replaced the old Detaylar step — required-field
+		// validation now happens here, at confirm time.
+		const errors = kind === "rental" ? validateRental(rentalState) : validateSales(salesState);
+		setFieldErrors(errors);
+		const firstError = Object.keys(errors)[0];
+		if (firstError) {
+			setViewMode("edit");
+			setPanelOpen(true);
+			// Let the panel expand before scrolling to the first missing field.
+			setTimeout(() => {
+				document.getElementById(firstError)?.scrollIntoView({ behavior: "smooth", block: "center" });
+			}, 80);
+			return;
+		}
+		// A stale doc would create records with the new data but a PDF with the
+		// old — never let those diverge.
+		if (docStale) {
+			toast.error("Bilgiler değişti ancak belgeye uygulanmadı — önce belgeyi yeniden oluşturun.");
+			return;
+		}
 		const finalJson = currentDocJson();
 		if (!finalJson) return;
 		setSubmitting(true);
@@ -704,6 +747,26 @@ export function DocumentWizard() {
 
 	const previewLabel = kind === "rental" ? "Kira sözleşmesi önizleme" : "Satış sözleşmesi önizleme";
 
+	const errorCount = Object.keys(fieldErrors).length;
+
+	// Collapsed-panel summary: who + how much, once known.
+	const panelSummary = useMemo(() => {
+		if (kind === "rental") {
+			const rent = Number(rentalState.monthlyRent || 0);
+			const parts = [
+				rentalState.tenantName.trim() || null,
+				rent > 0 ? `${rent.toLocaleString("tr-TR")} ${rentalState.currency}/ay` : null,
+			].filter(Boolean);
+			return parts.length ? parts.join(" · ") : "Taraflar, tutarlar ve tarihler";
+		}
+		const price = Number(salesState.salePrice || 0);
+		const parts = [
+			salesState.buyerName.trim() || null,
+			price > 0 ? `${price.toLocaleString("tr-TR")} ${salesState.currency}` : null,
+		].filter(Boolean);
+		return parts.length ? parts.join(" · ") : "Taraflar, tutarlar ve tarihler";
+	}, [kind, rentalState.tenantName, rentalState.monthlyRent, rentalState.currency, salesState.buyerName, salesState.salePrice, salesState.currency]);
+
 	const stepIndex = STEPS.indexOf(step);
 
 	return (
@@ -823,62 +886,21 @@ export function DocumentWizard() {
 					<div className="flex justify-between gap-2 pt-4">
 						<Button variant="ghost" onClick={() => setStep("property")}>← Geri</Button>
 						<div className="flex gap-2">
-							<Button variant="ghost" onClick={() => { applyClient(null); setStep("details"); }}>Atla</Button>
-							<Button onClick={() => setStep("details")}>Devam →</Button>
+							<Button variant="ghost" onClick={() => { applyClient(null); setStep("preview"); }}>Atla</Button>
+							<Button onClick={() => setStep("preview")}>Devam →</Button>
 						</div>
 					</div>
 				</div>
 			)}
 
-			{/* Step 4: details */}
-			{step === "details" && property && kind === "rental" && (
-				<div className="space-y-5">
-					<div>
-						<h2 className="font-display text-lg font-semibold text-base-content">Kira sözleşmesi detayları</h2>
-						<p className="text-sm text-base-content/60 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
-					</div>
-
-					<RentalDetailsForm state={rentalState} onChange={patchRental} errors={fieldErrors} />
-
-					{Object.keys(fieldErrors).length > 0 && (
-						<Alert>Bazı zorunlu alanlar eksik — yukarıda işaretlenen alanları kontrol edin.</Alert>
-					)}
-
-					<div className="flex justify-between gap-2 pt-4">
-						<Button variant="ghost" onClick={() => setStep("client")}>← Geri</Button>
-						<Button onClick={goToPreview}>Önizleme →</Button>
-					</div>
-				</div>
-			)}
-
-			{step === "details" && property && kind === "sales" && (
-				<div className="space-y-5">
-					<div>
-						<h2 className="font-display text-lg font-semibold text-base-content">Satış sözleşmesi detayları</h2>
-						<p className="text-sm text-base-content/60 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
-					</div>
-
-					<SalesDetailsForm state={salesState} onChange={patchSales} errors={fieldErrors} />
-
-					{Object.keys(fieldErrors).length > 0 && (
-						<Alert>Bazı zorunlu alanlar eksik — yukarıda işaretlenen alanları kontrol edin.</Alert>
-					)}
-
-					<div className="flex justify-between gap-2 pt-4">
-						<Button variant="ghost" onClick={() => setStep("client")}>← Geri</Button>
-						<Button onClick={goToPreview}>Önizleme →</Button>
-					</div>
-				</div>
-			)}
-
-			{/* Step 5: edit + preview */}
+			{/* Step 4: essentials panel + editor (merged stage) */}
 			{step === "preview" && wizardData && (kind === "rental" || kind === "sales") && (
 				<div className="space-y-4">
 					<div className="flex items-center justify-between gap-3 flex-wrap">
 						<div>
-							<h2 className="font-display text-lg font-semibold text-base-content">Belgeyi düzenleyin</h2>
+							<h2 className="font-display text-lg font-semibold text-base-content">Sözleşmeyi hazırlayın</h2>
 							<p className="text-sm text-base-content/60 mt-0.5">
-								Metinlere tıklayarak düzenleyin, blokları sürükleyerek taşıyın.
+								Bilgileri doldurun — belge yazdıkça güncellenir. Metinlere tıklayarak düzenleyin, blokları sürükleyin.
 							</p>
 						</div>
 						{/* Edit / PDF preview toggle */}
@@ -903,30 +925,81 @@ export function DocumentWizard() {
 						</div>
 					</div>
 
+					{/* Essentials panel — the fields the tenant/buyer + lease/sale
+					    records need; the document rebuilds live from them. */}
+					<div className="rounded-2xl border border-base-300 bg-base-100">
+						<button
+							type="button"
+							onClick={() => setPanelOpen((o) => !o)}
+							aria-expanded={panelOpen}
+							className="w-full flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 text-left"
+						>
+							<span className="min-w-0">
+								<span className="block font-display text-sm font-semibold text-base-content">Sözleşme bilgileri</span>
+								<span className="block text-xs text-base-content/55 truncate mt-0.5">{panelSummary}</span>
+							</span>
+							<span className="flex items-center gap-3 shrink-0">
+								{errorCount > 0 && (
+									<span className="text-xs font-semibold text-error">{errorCount} eksik alan</span>
+								)}
+								<ChevronDown
+									className={cn(
+										"w-4 h-4 text-base-content/50 transition-transform duration-200",
+										panelOpen && "rotate-180",
+									)}
+								/>
+							</span>
+						</button>
+						{panelOpen && (
+							<div className="px-4 sm:px-5 pb-5 pt-4 border-t border-base-300 space-y-5">
+								<p className="text-xs text-base-content/55">
+									Bu bilgiler {kind === "rental" ? "kiracı ve kira kaydını" : "alıcı ve satış kaydını"} oluşturur;
+									belgeyi özelleştirene kadar değişiklikler belgeye anında yansır.
+								</p>
+								{/* Cover fields — the cover page itself is generated, not block-edited. */}
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<FormField label="Belge başlığı">
+										<Input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
+									</FormField>
+									<FormField label="Kapak alt başlığı">
+										<Input value={docSubtitle} onChange={(e) => setDocSubtitle(e.target.value)} />
+									</FormField>
+								</div>
+								{kind === "rental" ? (
+									<RentalDetailsForm state={rentalState} onChange={patchRental} errors={fieldErrors} />
+								) : (
+									<SalesDetailsForm state={salesState} onChange={patchSales} errors={fieldErrors} />
+								)}
+								{errorCount > 0 && (
+									<Alert>Bazı zorunlu alanlar eksik — yukarıda işaretlenen alanları kontrol edin.</Alert>
+								)}
+							</div>
+						)}
+					</div>
+
+					{docStale && (
+						<Alert
+							tone="warning"
+							action={<Button size="sm" onClick={rebuildFromData}>Belgeyi yeniden oluştur</Button>}
+						>
+							Bilgiler değişti ancak belgedeki özel düzenlemeleriniz korunduğu için uygulanmadı.
+							Yeniden oluşturmak belgeyi yeni bilgilerle şablondan kurar ve düzenlemelerinizi siler.
+						</Alert>
+					)}
+
 					{!fontsLoaded || !clausesReady || !docJson ? (
 						<div className="h-[50vh] flex items-center justify-center"><Spinner /></div>
 					) : viewMode === "edit" ? (
-						<>
-							{/* Cover fields — the cover page itself is generated, not block-edited. */}
-							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-								<FormField label="Belge başlığı">
-									<Input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
-								</FormField>
-								<FormField label="Kapak alt başlığı">
-									<Input value={docSubtitle} onChange={(e) => setDocSubtitle(e.target.value)} />
-								</FormField>
-							</div>
-
-							<div className="rounded-2xl bg-base-200 border border-base-300 px-3 sm:px-6 pt-2">
-								<ContractEditor
-									initialDoc={docJson}
-									palette={previewBranding?.palette ?? BRAND_PALETTES.kagu}
-									apiRef={editorApi}
-									onChangeJson={(json) => setDocJson(json)}
-									onReset={() => setConfirmReset(true)}
-								/>
-							</div>
-						</>
+						<div className="rounded-2xl bg-base-200 border border-base-300 px-3 sm:px-6 pt-2">
+							<ContractEditor
+								initialDoc={docJson}
+								palette={previewBranding?.palette ?? BRAND_PALETTES.kagu}
+								apiRef={editorApi}
+								onChangeJson={(json) => setDocJson(json)}
+								onDirty={() => setDocDirty(true)}
+								onReset={() => setConfirmReset(true)}
+							/>
+						</div>
 					) : (
 						<div className="h-[60vh] sm:h-[72vh] bg-base-200 rounded-2xl overflow-hidden border border-base-300">
 							{previewJson ? (
@@ -977,7 +1050,7 @@ export function DocumentWizard() {
 							onClick={() => {
 								const json = currentDocJson();
 								if (json) setDocJson(json);
-								setStep("details");
+								setStep("client");
 							}}
 						>
 							← Geri

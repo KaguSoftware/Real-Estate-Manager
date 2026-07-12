@@ -49,6 +49,10 @@ export interface ContractEditorProps {
 	editable?: boolean;
 	/** Debounced (800 ms) document changes — used for draft autosave. */
 	onChangeJson?: (json: EditorDocJSON) => void;
+	/** Fires synchronously on the first keystroke of a user edit (not on
+	 *  programmatic setContent) — lets the wizard stop live-rebuilding the
+	 *  document once the user has customized it. */
+	onDirty?: () => void;
 	/** Shown in the toolbar when provided ("Şablona sıfırla"). */
 	onReset?: () => void;
 	/** Ref-object alternative to the forwarded ref — next/dynamic does not
@@ -59,14 +63,16 @@ export interface ContractEditorProps {
 
 export const ContractEditor = forwardRef<ContractEditorHandle, ContractEditorProps>(
 	function ContractEditor(
-		{ initialDoc, palette, editable = true, onChangeJson, onReset, apiRef, className },
+		{ initialDoc, palette, editable = true, onChangeJson, onDirty, onReset, apiRef, className },
 		ref,
 	) {
 		const changeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 		const onChangeRef = useRef(onChangeJson);
+		const onDirtyRef = useRef(onDirty);
 		useEffect(() => {
 			onChangeRef.current = onChangeJson;
-		}, [onChangeJson]);
+			onDirtyRef.current = onDirty;
+		}, [onChangeJson, onDirty]);
 
 		const editor = useEditor({
 			extensions: buildExtensions(),
@@ -74,6 +80,7 @@ export const ContractEditor = forwardRef<ContractEditorHandle, ContractEditorPro
 			editable,
 			immediatelyRender: false,
 			onUpdate({ editor: e }) {
+				onDirtyRef.current?.();
 				if (!onChangeRef.current) return;
 				if (changeTimer.current) clearTimeout(changeTimer.current);
 				changeTimer.current = setTimeout(() => {
@@ -87,22 +94,37 @@ export const ContractEditor = forwardRef<ContractEditorHandle, ContractEditorPro
 		}, []);
 
 		useEffect(() => {
-			editor?.setEditable(editable);
+			// second arg false: setEditable also emits `update` by default.
+			editor?.setEditable(editable, false);
 		}, [editor, editable]);
 
+		// Programmatic content swaps (rebuilds, template resets) must not emit
+		// `update` — Tiptap v3 defaults emitUpdate to TRUE, which would make a
+		// rebuild look like a user edit (dirty flag + autosave loop).
 		useImperativeHandle(ref, () => ({
 			getJSON: () => (editor?.getJSON() ?? initialDoc) as EditorDocJSON,
-			setContent: (doc) => editor?.commands.setContent(doc),
+			setContent: (doc) => editor?.commands.setContent(doc, { emitUpdate: false }),
 		}), [editor, initialDoc]);
 
 		useEffect(() => {
 			if (!apiRef) return;
 			apiRef.current = {
 				getJSON: () => (editor?.getJSON() ?? initialDoc) as EditorDocJSON,
-				setContent: (doc) => editor?.commands.setContent(doc),
+				setContent: (doc) => editor?.commands.setContent(doc, { emitUpdate: false }),
 			};
 			return () => { apiRef.current = null; };
 		}, [apiRef, editor, initialDoc]);
+
+		// Wide viewports dock the toolbar beside the sheet (it follows the
+		// scroll); narrow ones fall back to the sticky top bar.
+		const [wide, setWide] = useState(false);
+		useEffect(() => {
+			const mq = window.matchMedia("(min-width: 1024px)");
+			const update = () => setWide(mq.matches);
+			update();
+			mq.addEventListener("change", update);
+			return () => mq.removeEventListener("change", update);
+		}, []);
 
 		// ── Approximate page guides ────────────────────────────────────────
 		// Recomputed from the sheet's rendered height; labeled approximate —
@@ -153,9 +175,17 @@ export const ContractEditor = forwardRef<ContractEditorHandle, ContractEditorPro
 
 		return (
 			<div className={cn("contract-editor", className)} style={paletteVars}>
-				<Toolbar editor={editor} onReset={onReset} locked={!editable} />
+				{editable && !wide && <Toolbar editor={editor} onReset={onReset} locked={!editable} />}
 
-				<div className="mt-4 pb-8 overflow-x-auto">
+				<div className="flex items-start justify-center gap-3">
+					{/* Docked side toolbar: sticky below the app header, follows scroll. */}
+					{editable && wide && (
+						<div className="sticky top-20 z-20 shrink-0">
+							<Toolbar editor={editor} onReset={onReset} locked={!editable} orientation="vertical" />
+						</div>
+					)}
+
+					<div className="flex-1 min-w-0 mt-4 pb-8 overflow-x-auto">
 					<div
 						ref={sheetRef}
 						className="relative mx-auto bg-white text-neutral-900 rounded-sm shadow-[0_1px_3px_rgba(15,23,42,0.12),0_8px_28px_rgba(15,23,42,0.10)]"
@@ -183,11 +213,12 @@ export const ContractEditor = forwardRef<ContractEditorHandle, ContractEditorPro
 
 						<EditorContent editor={editor} />
 					</div>
-				</div>
 
-				<p className="text-center text-xs text-base-content/40 -mt-4 pb-2">
-					Sayfa çizgileri yaklaşıktır — kesin sayfa düzeni için PDF önizlemeye bakın.
-				</p>
+						<p className="text-center text-xs text-base-content/40 mt-4 pb-2">
+							Sayfa çizgileri yaklaşıktır — kesin sayfa düzeni için PDF önizlemeye bakın.
+						</p>
+					</div>
+				</div>
 			</div>
 		);
 	},
