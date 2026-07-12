@@ -1,6 +1,7 @@
-// Standard sales-agreement clauses (Turkish, matches the Avera reference).
+// Standard sales-agreement clauses (Turkish).
 // {placeholders}: sale_price, currency, penalty_amount, deposit_amount,
-//                 target_close_date, validity_days, tax_responsibility_clause.
+//                 target_close_date, validity_days, tax_responsibility_clause,
+//                 agency_name, jurisdiction_city.
 
 export { interpolate } from "./interpolate";
 
@@ -12,7 +13,7 @@ export const SALES_STANDARD_CLAUSES = [
 	// 3
 	"ALICI, yukarıda yazılı Gayrimenkulü {sale_price} {currency}'ye satın almayı kabul etmiştir.",
 	// 4 — penalty + agency-fee due regardless
-	"ALICI veya SATICI iş bu sözleşmeden vazgeçtiği takdirde, haksız olarak sözleşmeyi fesheden taraf diğer tarafa {penalty_amount} {currency} tutarında cezai şart ödemeyi kabul, taahhüt ve beyan eder. Sözleşmenin herhangi bir sebeple feshedilmesi halinde bile AVERA'ya ait hizmet bedelinin eksiksiz olarak ödeneceğini ALICI ve SATICI peşinen kabul, taahhüt ve beyan eder.",
+	"ALICI veya SATICI iş bu sözleşmeden vazgeçtiği takdirde, haksız olarak sözleşmeyi fesheden taraf diğer tarafa {penalty_amount} {currency} tutarında cezai şart ödemeyi kabul, taahhüt ve beyan eder. Sözleşmenin herhangi bir sebeple feshedilmesi halinde bile {agency_name}'a ait hizmet bedelinin eksiksiz olarak ödeneceğini ALICI ve SATICI peşinen kabul, taahhüt ve beyan eder.",
 	// 5 — tax responsibility, resolved at build time
 	"İşbu gayrimenkulün satışı aşamasında her türlü harç, vergi ve diğer gider kalemleri {tax_responsibility_clause}",
 	// 6
@@ -26,7 +27,7 @@ export const SALES_STANDARD_CLAUSES = [
 	// 10
 	"Satış işlemi en geç {target_close_date} tarihine kadar gerçekleşecektir.",
 	// 11
-	"SATICI satış bedeline mahsuben ALICI'dan kaparo (Pişmanlık Akçesi / Cayma Tazminatı) olarak {deposit_amount} {currency} tutarında teminat bedeli alacaktır. Bu meblağ SATICI'nın veya AVERA Gayrimenkul'e ait banka hesabına yatırılacak ya da elden makbuz karşılığı verilecektir.",
+	"SATICI satış bedeline mahsuben ALICI'dan kaparo (Pişmanlık Akçesi / Cayma Tazminatı) olarak {deposit_amount} {currency} tutarında teminat bedeli alacaktır. Bu meblağ SATICI'nın veya {agency_name}'a ait banka hesabına yatırılacak ya da elden makbuz karşılığı verilecektir.",
 	// 12
 	"SATICI, kalan bakiyenin ödenmesi halinde tapu işlemlerinin gerçekleştirilmesini sağlayacaktır. Satış bedelinin ödenmemesi halinde SATICI sözleşmeyi tek taraflı olarak feshedebilir.",
 	// 13
@@ -36,7 +37,7 @@ export const SALES_STANDARD_CLAUSES = [
 	// 15
 	"Anlaşmazlık halinde, haksız olan taraf, bu sözleşmede yazılı pişmanlık akçesi ile birlikte; diğer tarafın maruz kalacağı her nevi zarar, ziyan, mahkeme ve icra masrafları, vekâlet ücretleri ve danışmanlık firmasının hizmet bedelini de ödeyecektir.",
 	// 16
-	"Protokol süresinin geçerliliği imzalandığı tarihten itibaren {validity_days} gündür. Bu süre sonunda gayrimenkulün tapu devir işlemi sonuçlandırılamazsa iş bu protokol şartları geçerlidir. Bu sözleşmenin uygulamasından doğabilecek her türlü uyuşmazlığın giderilmesinde İSTANBUL mahkemeleri ve icra daireleri yetkilidir.",
+	"Protokol süresinin geçerliliği imzalandığı tarihten itibaren {validity_days} gündür. Bu süre sonunda gayrimenkulün tapu devir işlemi sonuçlandırılamazsa iş bu protokol şartları geçerlidir. Bu sözleşmenin uygulamasından doğabilecek her türlü uyuşmazlığın giderilmesinde {jurisdiction_city} mahkemeleri ve icra daireleri yetkilidir.",
 ];
 
 /** Resolves clause 5's {tax_responsibility_clause} placeholder. */

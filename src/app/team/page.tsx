@@ -25,6 +25,7 @@ import {
 } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
 import { BrandingCard } from "@/src/components/team/BrandingCard";
+import { ClauseTemplatesCard } from "@/src/components/team/ClauseTemplatesCard";
 import { TeamDangerZone } from "@/src/components/team/TeamDangerZone";
 
 export default function TeamPage() {
@@ -175,6 +176,8 @@ export default function TeamPage() {
 				{isOwner && (
 					<>
 						<BrandingCard />
+
+						<ClauseTemplatesCard />
 
 						<Card>
 							<CardLabel>E-posta ile davet et</CardLabel>

@@ -1,7 +1,7 @@
 "use client";
 
 import { humanizeError } from "@/src/lib/errors";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAppStore } from "@/src/store";
@@ -10,14 +10,19 @@ import { listLeads } from "@/src/lib/db/leads";
 import { createTenant } from "@/src/lib/db/tenants";
 import { createLease, computeLeaseEndDate } from "@/src/lib/db/leases";
 import { createSale } from "@/src/lib/db/sales";
-import { downloadPdfFile, generatePdfFile, getPdfBrandingFromStore, type PdfBranding } from "@/src/lib/pdf";
+import { downloadPdfFile, generateEditorPdfFile, getPdfBrandingFromStore, type PdfBranding } from "@/src/lib/pdf";
 import { saveDocumentPdf } from "@/src/lib/db/documents";
+import { getClauseTemplate } from "@/src/lib/db/clauseTemplates";
 import type { DocKind, RentalPDFData, SalesPDFData } from "@/src/lib/pdf";
-import { PDFDocument } from "@/src/lib/pdf";
+import { EditorPDFDocument, BRAND_PALETTES } from "@/src/lib/pdf";
+import { buildInitialDoc } from "@/src/lib/documents/buildInitialDoc";
+import type { EditorDocJSON } from "@/src/lib/documents/blocks";
+import { createContractDocument, setContractDocumentPdfPath } from "@/src/lib/db/contractDocuments";
+import type { ContractEditorHandle } from "./editor/ContractEditor";
 import type { Property, Lead } from "@/src/lib/db/types";
 import { PropertyPickerCardList } from "./PropertyPickerCardList";
 import { ClientPickerCardList } from "./ClientPickerCardList";
-import { Button, cn, Alert, Spinner, toast } from "@/src/components/ui";
+import { Button, cn, Alert, Spinner, toast, Input, FormField, ConfirmDialog } from "@/src/components/ui";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import {
 	SalesDetailsForm,
@@ -38,6 +43,12 @@ const PDFBlobProvider = dynamic(
 	{ ssr: false, loading: () => <div className="text-sm text-base-content/50 p-6">Önizleme yükleniyor…</div> },
 );
 
+// Tiptap ships only with the editor step — same SSR/bundle policy as react-pdf.
+const ContractEditor = dynamic(
+	() => import("./editor/ContractEditor").then((m) => m.ContractEditor),
+	{ ssr: false, loading: () => <div className="text-sm text-base-content/50 p-6 text-center">Düzenleyici yükleniyor…</div> },
+);
+
 type Step = "type" | "property" | "client" | "details" | "preview";
 
 const STEPS: Step[] = ["type", "property", "client", "details", "preview"];
@@ -47,11 +58,15 @@ const STEP_LABELS: Record<Step, string> = {
 	property: "Taşınmaz",
 	client: "Müşteri",
 	details: "Detaylar",
-	preview: "Önizleme",
+	preview: "Düzenle",
 };
 
 // Wizard progress survives a refresh/accidental close via localStorage.
-const DRAFT_KEY = "docwizard:draft:v1";
+// v2 adds the editable document (docJson/docTitle/docSubtitle/docFingerprint);
+// v1 drafts (pre-editor) are still readable — the editor step simply rebuilds
+// the document from the restored form state.
+const DRAFT_KEY = "docwizard:draft:v2";
+const DRAFT_KEY_V1 = "docwizard:draft:v1";
 
 interface WizardDraft {
 	step: Step;
@@ -61,12 +76,17 @@ interface WizardDraft {
 	rentalState: RentalFormState;
 	salesState: SalesFormState;
 	savedAt: string;
+	// v2 fields (absent on v1 drafts)
+	docJson?: EditorDocJSON | null;
+	docTitle?: string;
+	docSubtitle?: string;
+	docFingerprint?: string | null;
 }
 
 function readDraft(): WizardDraft | null {
 	if (typeof window === "undefined") return null;
 	try {
-		const raw = window.localStorage.getItem(DRAFT_KEY);
+		const raw = window.localStorage.getItem(DRAFT_KEY) ?? window.localStorage.getItem(DRAFT_KEY_V1);
 		if (!raw) return null;
 		const d = JSON.parse(raw) as WizardDraft;
 		return d && d.step && d.kind ? d : null;
@@ -76,14 +96,21 @@ function readDraft(): WizardDraft | null {
 }
 
 function clearDraft() {
-	try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+	try {
+		window.localStorage.removeItem(DRAFT_KEY);
+		window.localStorage.removeItem(DRAFT_KEY_V1);
+	} catch { /* ignore */ }
 }
 
 function safeFilename(s: string) {
 	return s.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "document";
 }
 
-function buildRentalPDFData(property: Property, s: RentalFormState): RentalPDFData {
+function buildRentalPDFData(
+	property: Property,
+	s: RentalFormState,
+	teamClauses?: string[] | null,
+): RentalPDFData {
 	const paymentDay = s.paymentDay ? Number(s.paymentDay) : null;
 	return {
 		landlord: {
@@ -147,11 +174,16 @@ function buildRentalPDFData(property: Property, s: RentalFormState): RentalPDFDa
 		inventory: s.inventory.filter((r) => r.item.trim()),
 		condition_notes: s.conditionNotes.trim() || null,
 		special_conditions: s.specialConditions.trim() || null,
+		clauses: teamClauses ?? undefined,
 		generatedAt: new Date().toISOString(),
 	};
 }
 
-function buildSalesPDFData(property: Property, s: SalesFormState): SalesPDFData {
+function buildSalesPDFData(
+	property: Property,
+	s: SalesFormState,
+	teamClauses?: string[] | null,
+): SalesPDFData {
 	const salePrice = Number(s.salePrice || 0);
 	return {
 		seller: {
@@ -181,6 +213,7 @@ function buildSalesPDFData(property: Property, s: SalesFormState): SalesPDFData 
 			parsel_no: property.parsel_no,
 			mahalle: property.mahalle,
 			mevkii: property.mevkii,
+			city: property.city,
 		},
 		sale: {
 			sale_price: salePrice,
@@ -197,6 +230,7 @@ function buildSalesPDFData(property: Property, s: SalesFormState): SalesPDFData 
 			seller: computeCommission(salePrice, s.sellerCommissionRate ? Number(s.sellerCommissionRate) : null),
 		},
 		special_conditions: s.specialConditions.trim() || null,
+		clauses: teamClauses ?? undefined,
 		generatedAt: new Date().toISOString(),
 	};
 }
@@ -249,6 +283,19 @@ export function DocumentWizard() {
 	const [error, setError] = useState<string | null>(null);
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+	// ── Editable document state (final step) ────────────────────────────
+	const [docJson, setDocJson] = useState<EditorDocJSON | null>(null);
+	const [docTitle, setDocTitle] = useState("");
+	const [docSubtitle, setDocSubtitle] = useState("");
+	// Snapshot of the wizard data the document was built from — when the user
+	// goes back and changes details, the doc is rebuilt so amounts/parties are
+	// never stale (custom text edits survive only while the data is unchanged).
+	const [docFingerprint, setDocFingerprint] = useState<string | null>(null);
+	const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
+	const [previewJson, setPreviewJson] = useState<EditorDocJSON | null>(null);
+	const [confirmReset, setConfirmReset] = useState(false);
+	const editorApi = useRef<ContractEditorHandle | null>(null);
+
 	// Offer to resume a saved draft from a previous (interrupted) session.
 	const [pendingDraft, setPendingDraft] = useState<WizardDraft | null>(() => readDraft());
 	function resumeDraft() {
@@ -258,6 +305,12 @@ export function DocumentWizard() {
 		setClientId(pendingDraft.clientId);
 		setRentalState(pendingDraft.rentalState);
 		setSalesState(pendingDraft.salesState);
+		// v2 drafts carry the edited document; v1 drafts rebuild it from the
+		// restored form state when the editor step is entered.
+		setDocJson(pendingDraft.docJson ?? null);
+		setDocTitle(pendingDraft.docTitle ?? "");
+		setDocSubtitle(pendingDraft.docSubtitle ?? "");
+		setDocFingerprint(pendingDraft.docFingerprint ?? null);
 		// Re-enter at the property step so the pickers reload their data; the
 		// details entered in later steps are already restored above.
 		setStep(pendingDraft.propertyId ? pendingDraft.step : "type");
@@ -274,10 +327,11 @@ export function DocumentWizard() {
 		if (step !== "details" && step !== "preview") return;
 		const draft: WizardDraft = {
 			step, kind, propertyId, clientId, rentalState, salesState,
+			docJson, docTitle, docSubtitle, docFingerprint,
 			savedAt: new Date().toISOString(),
 		};
 		try { window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* ignore */ }
-	}, [pendingDraft, step, kind, propertyId, clientId, rentalState, salesState]);
+	}, [pendingDraft, step, kind, propertyId, clientId, rentalState, salesState, docJson, docTitle, docSubtitle, docFingerprint]);
 
 	// Details entered in steps 4–5 are lost on a refresh/close — warn first.
 	useEffect(() => {
@@ -315,6 +369,22 @@ export function DocumentWizard() {
 		]).then(() => { if (!cancelled) setFontsLoaded(true); });
 		return () => { cancelled = true; };
 	}, [step, fontsLoaded]);
+
+	// The team's clause template (if any) overrides the built-in T&C set.
+	// Fetched on entering the preview so the rendered contract matches what
+	// will be generated; a fetch failure falls back to the defaults.
+	const [teamClauses, setTeamClauses] = useState<string[] | null>(null);
+	const [clausesReady, setClausesReady] = useState(false);
+	useEffect(() => {
+		if (step !== "preview" || (kind !== "rental" && kind !== "sales")) return;
+		let cancelled = false;
+		setClausesReady(false);
+		getClauseTemplate(kind)
+			.then((c) => { if (!cancelled) setTeamClauses(c); })
+			.catch(() => { if (!cancelled) setTeamClauses(null); })
+			.finally(() => { if (!cancelled) setClausesReady(true); });
+		return () => { cancelled = true; };
+	}, [step, kind]);
 
 	// Load eligible properties whenever we enter step 2.
 	useEffect(() => {
@@ -409,16 +479,63 @@ export function DocumentWizard() {
 
 	const rentalData = useMemo<RentalPDFData | null>(() => {
 		if (kind !== "rental" || step !== "preview" || !property) return null;
-		return buildRentalPDFData(property, rentalState);
-	}, [kind, step, property, rentalState]);
+		return buildRentalPDFData(property, rentalState, teamClauses);
+	}, [kind, step, property, rentalState, teamClauses]);
 
 	const salesData = useMemo<SalesPDFData | null>(() => {
 		if (kind !== "sales" || step !== "preview" || !property) return null;
-		return buildSalesPDFData(property, salesState);
-	}, [kind, step, property, salesState]);
+		return buildSalesPDFData(property, salesState, teamClauses);
+	}, [kind, step, property, salesState, teamClauses]);
+
+	const wizardData: RentalPDFData | SalesPDFData | null =
+		kind === "rental" ? rentalData : salesData;
+
+	useEffect(() => {
+		if (step !== "preview" || !fontsLoaded || !clausesReady || !wizardData) return;
+		if (kind !== "rental" && kind !== "sales") return;
+		const fingerprint = JSON.stringify({ ...wizardData, generatedAt: null });
+		if (docJson && fingerprint === docFingerprint) return;
+		const rebuilt = docJson != null && docFingerprint != null;
+		const built = buildInitialDoc(kind, wizardData, previewBranding?.teamName ?? "Kagu Real Estate");
+		setDocJson(built);
+		setDocFingerprint(fingerprint);
+		editorApi.current?.setContent(built);
+		setPreviewJson(null);
+		setViewMode("edit");
+		if (!docTitle) setDocTitle(kind === "rental" ? "Konut Kira Sözleşmesi" : "Satılık Alım, Satış Sözleşmesi");
+		if (!docSubtitle) setDocSubtitle(wizardData.property.address ?? "");
+		if (rebuilt) toast.info("Sözleşme bilgileri değiştiği için belge yeniden oluşturuldu.");
+	}, [step, kind, fontsLoaded, clausesReady, wizardData, previewBranding, docJson, docFingerprint, docTitle, docSubtitle]);
+
+	/** Latest editor JSON — the live editor when mounted, else wizard state. */
+	function currentDocJson(): EditorDocJSON | null {
+		return (viewMode === "edit" ? editorApi.current?.getJSON() : null) ?? docJson;
+	}
+
+	function switchMode(mode: "edit" | "preview") {
+		if (mode === viewMode) return;
+		if (mode === "preview") {
+			const json = currentDocJson();
+			if (!json) return;
+			setDocJson(json);
+			setPreviewJson(json);
+		}
+		setViewMode(mode);
+	}
+
+	function onResetConfirmed() {
+		setConfirmReset(false);
+		if (!wizardData || (kind !== "rental" && kind !== "sales")) return;
+		const built = buildInitialDoc(kind, wizardData, previewBranding?.teamName ?? "Kagu Real Estate");
+		setDocJson(built);
+		editorApi.current?.setContent(built);
+		toast.success("Belge şablondan yeniden oluşturuldu.");
+	}
 
 	async function handleConfirm() {
 		if (!property) return;
+		const finalJson = currentDocJson();
+		if (!finalJson) return;
 		setSubmitting(true);
 		setError(null);
 		try {
@@ -469,13 +586,41 @@ export function DocumentWizard() {
 				const updated = await updateProperty(property.id, { status: "occupied" });
 				upsertProperty(updated);
 				invalidateCache("tenants");
+				// Persist the editable document first (re-editable later from the
+				// property page). Best-effort: a failure must not lose the PDF.
+				const title = docTitle.trim() || "Konut Kira Sözleşmesi";
+				let contractDocId: string | null = null;
+				try {
+					const cd = await createContractDocument({
+						kind: "rental",
+						lease_id: lease.id,
+						title,
+						subtitle: docSubtitle.trim() || null,
+						content: finalJson,
+						source_data: rentalData,
+					});
+					contractDocId = cd.id;
+				} catch {
+					toast.error("Belgenin düzenlenebilir kopyası kaydedilemedi.");
+				}
 				const filename = `kira-${safeFilename(tenant.full_name)}-${safeFilename(property.address_line)}.pdf`;
-				const pdfFile = await generatePdfFile("rental", rentalData, filename, await getPdfBrandingFromStore());
+				const pdfFile = await generateEditorPdfFile(
+					{
+						kind: "rental",
+						title,
+						subtitle: docSubtitle.trim() || null,
+						doc: finalJson,
+						sourceData: rentalData,
+						branding: await getPdfBrandingFromStore(),
+					},
+					filename,
+				);
 				await downloadPdfFile(pdfFile);
 				// Keep a copy in storage for later reference. Best-effort: the
 				// user already has the download, so a failed upload only warns.
 				try {
-					await saveDocumentPdf({ table: "leases", id: lease.id }, pdfFile);
+					const path = await saveDocumentPdf({ table: "leases", id: lease.id }, pdfFile);
+					if (contractDocId) await setContractDocumentPdfPath(contractDocId, path);
 				} catch {
 					toast.error("Sözleşme indirildi ancak çevrimiçi kopya kaydedilemedi.");
 				}
@@ -511,11 +656,37 @@ export function DocumentWizard() {
 				const updated = await updateProperty(property.id, { status: "sold" });
 				upsertProperty(updated);
 				invalidateCache("tenants");
+				const title = docTitle.trim() || "Satılık Alım, Satış Sözleşmesi";
+				let contractDocId: string | null = null;
+				try {
+					const cd = await createContractDocument({
+						kind: "sales",
+						sale_id: sale.id,
+						title,
+						subtitle: docSubtitle.trim() || null,
+						content: finalJson,
+						source_data: salesData,
+					});
+					contractDocId = cd.id;
+				} catch {
+					toast.error("Belgenin düzenlenebilir kopyası kaydedilemedi.");
+				}
 				const filename = `satis-${safeFilename(buyer.full_name)}-${safeFilename(property.address_line)}.pdf`;
-				const pdfFile = await generatePdfFile("sales", salesData, filename, await getPdfBrandingFromStore());
+				const pdfFile = await generateEditorPdfFile(
+					{
+						kind: "sales",
+						title,
+						subtitle: docSubtitle.trim() || null,
+						doc: finalJson,
+						sourceData: salesData,
+						branding: await getPdfBrandingFromStore(),
+					},
+					filename,
+				);
 				await downloadPdfFile(pdfFile);
 				try {
-					await saveDocumentPdf({ table: "sales", id: sale.id }, pdfFile);
+					const path = await saveDocumentPdf({ table: "sales", id: sale.id }, pdfFile);
+					if (contractDocId) await setContractDocumentPdfPath(contractDocId, path);
 				} catch {
 					toast.error("Sözleşme indirildi ancak çevrimiçi kopya kaydedilemedi.");
 				}
@@ -531,8 +702,6 @@ export function DocumentWizard() {
 		}
 	}
 
-	const previewData: RentalPDFData | SalesPDFData | null =
-		kind === "rental" ? rentalData : salesData;
 	const previewLabel = kind === "rental" ? "Kira sözleşmesi önizleme" : "Satış sözleşmesi önizleme";
 
 	const stepIndex = STEPS.indexOf(step);
@@ -702,49 +871,136 @@ export function DocumentWizard() {
 				</div>
 			)}
 
-			{/* Step 4: preview */}
-			{step === "preview" && previewData && (
+			{/* Step 5: edit + preview */}
+			{step === "preview" && wizardData && (kind === "rental" || kind === "sales") && (
 				<div className="space-y-4">
-					<h2 className="font-display text-lg font-semibold text-base-content">İncele ve oluştur</h2>
-					<div className="h-[60vh] sm:h-[72vh] bg-base-200 rounded-2xl overflow-hidden border border-base-300">
-						{!fontsLoaded ? (
-							<div className="h-full flex items-center justify-center"><Spinner /></div>
-						) : (
-						<PDFBlobProvider document={<PDFDocument kind={kind} data={previewData} branding={previewBranding} />}>
-							{({ url, loading, error: blobError }) => {
-								if (loading || !url) {
-									return (
-										<div className="h-full flex items-center justify-center"><Spinner /></div>
-									);
-								}
-								if (blobError) {
-									return (
-										<div className="h-full flex items-center justify-center text-sm text-error p-6">
-											Önizleme oluşturulamadı: {String(blobError)}
-										</div>
-									);
-								}
-								return (
-									<iframe
-										src={`${url}#toolbar=0&navpanes=0`}
-										className="w-full h-full border-0"
-										title={previewLabel}
-									/>
-								);
-							}}
-						</PDFBlobProvider>
-						)}
+					<div className="flex items-center justify-between gap-3 flex-wrap">
+						<div>
+							<h2 className="font-display text-lg font-semibold text-base-content">Belgeyi düzenleyin</h2>
+							<p className="text-sm text-base-content/60 mt-0.5">
+								Metinlere tıklayarak düzenleyin, blokları sürükleyerek taşıyın.
+							</p>
+						</div>
+						{/* Edit / PDF preview toggle */}
+						<div className="flex gap-1 rounded-xl bg-base-200 p-1" role="tablist" aria-label="Görünüm">
+							{(["edit", "preview"] as const).map((m) => (
+								<button
+									key={m}
+									type="button"
+									role="tab"
+									aria-selected={viewMode === m}
+									onClick={() => switchMode(m)}
+									className={cn(
+										"px-3 h-9 rounded-lg text-sm font-medium transition-colors",
+										viewMode === m
+											? "bg-base-100 text-base-content shadow-sm"
+											: "text-base-content/60 hover:text-base-content",
+									)}
+								>
+									{m === "edit" ? "Düzenle" : "PDF Önizleme"}
+								</button>
+							))}
+						</div>
 					</div>
+
+					{!fontsLoaded || !clausesReady || !docJson ? (
+						<div className="h-[50vh] flex items-center justify-center"><Spinner /></div>
+					) : viewMode === "edit" ? (
+						<>
+							{/* Cover fields — the cover page itself is generated, not block-edited. */}
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								<FormField label="Belge başlığı">
+									<Input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
+								</FormField>
+								<FormField label="Kapak alt başlığı">
+									<Input value={docSubtitle} onChange={(e) => setDocSubtitle(e.target.value)} />
+								</FormField>
+							</div>
+
+							<div className="rounded-2xl bg-base-200 border border-base-300 px-3 sm:px-6 pt-2">
+								<ContractEditor
+									initialDoc={docJson}
+									palette={previewBranding?.palette ?? BRAND_PALETTES.kagu}
+									apiRef={editorApi}
+									onChangeJson={(json) => setDocJson(json)}
+									onReset={() => setConfirmReset(true)}
+								/>
+							</div>
+						</>
+					) : (
+						<div className="h-[60vh] sm:h-[72vh] bg-base-200 rounded-2xl overflow-hidden border border-base-300">
+							{previewJson ? (
+								<PDFBlobProvider
+									document={
+										<EditorPDFDocument
+											kind={kind}
+											title={docTitle.trim() || (kind === "rental" ? "Konut Kira Sözleşmesi" : "Satılık Alım, Satış Sözleşmesi")}
+											subtitle={docSubtitle.trim() || null}
+											doc={previewJson}
+											sourceData={wizardData}
+											branding={previewBranding}
+										/>
+									}
+								>
+									{({ url, loading, error: blobError }) => {
+										if (loading || !url) {
+											return (
+												<div className="h-full flex items-center justify-center"><Spinner /></div>
+											);
+										}
+										if (blobError) {
+											return (
+												<div className="h-full flex items-center justify-center text-sm text-error p-6">
+													Önizleme oluşturulamadı: {String(blobError)}
+												</div>
+											);
+										}
+										return (
+											<iframe
+												src={`${url}#toolbar=0&navpanes=0`}
+												className="w-full h-full border-0"
+												title={previewLabel}
+											/>
+										);
+									}}
+								</PDFBlobProvider>
+							) : (
+								<div className="h-full flex items-center justify-center"><Spinner /></div>
+							)}
+						</div>
+					)}
+
 					<div className="flex justify-between gap-2 pt-2">
-						<Button variant="ghost" onClick={() => setStep("details")} disabled={submitting}>← Geri</Button>
+						<Button
+							variant="ghost"
+							disabled={submitting}
+							onClick={() => {
+								const json = currentDocJson();
+								if (json) setDocJson(json);
+								setStep("details");
+							}}
+						>
+							← Geri
+						</Button>
 						<Button
 							onClick={handleConfirm}
 							loading={submitting}
+							disabled={!docJson}
 							className="bg-success text-success-content hover:brightness-110 shadow-soft"
 						>
 							{submitting ? "Oluşturuluyor…" : "Onayla ve PDF oluştur"}
 						</Button>
 					</div>
+
+					<ConfirmDialog
+						open={confirmReset}
+						title="Belge şablona sıfırlansın mı?"
+						message="Bu adımda yaptığınız tüm metin ve blok değişiklikleri silinir; belge, girdiğiniz bilgiler ve ekip maddelerinizle yeniden oluşturulur."
+						confirmLabel="Sıfırla"
+						cancelLabel="Vazgeç"
+						onConfirm={onResetConfirmed}
+						onCancel={() => setConfirmReset(false)}
+					/>
 				</div>
 			)}
 		</div>

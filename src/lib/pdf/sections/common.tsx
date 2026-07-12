@@ -1,17 +1,28 @@
 // Small primitive components shared across PDF templates.
+//
+// These are the single design system for generated documents: the static
+// templates (receipt, listing) and the editor-document mapper both render
+// through the same primitives, so the editor and the classic pipeline stay
+// visually identical.
 
 import { View, Text, Image } from "@react-pdf/renderer";
 import { styles, colors } from "../styles";
 import { useBranding } from "../branding";
+import type { PartyInfo } from "../types";
 
+/** Turkish long-form date, e.g. "12 Temmuz 2026". */
 export const formatDate = (iso?: string) => {
 	const d = iso ? new Date(iso) : new Date();
-	return d.toLocaleDateString("en-US", {
+	return d.toLocaleDateString("tr-TR", {
 		year: "numeric",
 		month: "long",
 		day: "numeric",
 	});
 };
+
+/** Turkish money formatting: 1.250.000,50 */
+export const fmtMoney = (n: number | null | undefined) =>
+	(n == null ? 0 : n).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
 
 export const DocHeader = ({
 	title,
@@ -30,6 +41,7 @@ export const DocHeader = ({
 				</View>
 				<View style={{ alignItems: "flex-end" }}>
 					{logoDataUrl ? (
+						// eslint-disable-next-line jsx-a11y/alt-text
 						<Image src={logoDataUrl} style={{ maxHeight: 28, maxWidth: 110, objectFit: "contain", marginBottom: 4 }} />
 					) : null}
 					<Text style={styles.refLine}>{formatDate()}</Text>
@@ -40,12 +52,13 @@ export const DocHeader = ({
 	);
 };
 
-/** Brand-colored section label chip (A, B, C… blocks in agreements). */
+/** Section label: small accent square + tracked title (A, B, C… blocks). */
 export const SectionChip = ({ letter, title }: { letter?: string; title: string }) => {
 	const { palette } = useBranding();
 	return (
-		<View style={[styles.salesSectionChip, { backgroundColor: palette.primary }]}>
-			<Text style={styles.salesSectionChipText}>
+		<View style={styles.chipRow} minPresenceAhead={40}>
+			<View style={[styles.chipSquare, { backgroundColor: palette.accent }]} />
+			<Text style={[styles.chipText, { color: palette.primary }]}>
 				{letter ? `${letter}  ·  ${title}` : title}
 			</Text>
 		</View>
@@ -62,8 +75,8 @@ export const HeroAddress = ({
 }) => {
 	const { palette } = useBranding();
 	return (
-		<View style={[styles.hero, { borderLeftColor: palette.primary }]}>
-			<Text style={styles.heroLabel}>Property</Text>
+		<View style={[styles.hero, { backgroundColor: palette.tint }]}>
+			<Text style={[styles.heroLabel, { color: palette.accent }]}>Taşınmaz</Text>
 			<Text style={[styles.heroAddress, { color: palette.primary }]}>{address}</Text>
 			{meta ? <Text style={styles.heroMeta}>{meta}</Text> : null}
 		</View>
@@ -85,7 +98,7 @@ export const SectionTitle = ({ title }: { title: string }) => (
 
 export const TextSection = ({ label, text }: { label: string; text: string }) => (
 	<View style={styles.section}>
-		<SectionTitle title={label} />
+		{label ? <SectionTitle title={label} /> : null}
 		<Text style={styles.bodyText}>{text}</Text>
 	</View>
 );
@@ -134,7 +147,7 @@ export const KVList = ({
 	</View>
 );
 
-/** Two side-by-side highlight boxes — used for monthly rent + deposit. */
+/** Two side-by-side highlight boxes — listing price + size. */
 export const HighlightPair = ({
 	left,
 	right,
@@ -166,7 +179,130 @@ export const HighlightPair = ({
 	);
 };
 
-/** Banded clauses list with proper page-break behavior. */
+/**
+ * Filled + outlined money pair — rent/deposit on rentals, price/kapora on
+ * sales. The filled box carries the primary brand color; the outlined box
+ * carries the accent.
+ */
+export const MoneyPair = ({
+	left,
+	right,
+}: {
+	left: { label: string; value: string; currency: string };
+	right: { label: string; value: string; currency: string };
+}) => {
+	const { palette } = useBranding();
+	return (
+		<View style={{ flexDirection: "row", gap: 12 }} wrap={false}>
+			<View style={[styles.moneyBoxFilled, { backgroundColor: palette.primary }]}>
+				<Text style={[styles.moneyLabel, { color: palette.muted }]}>{left.label}</Text>
+				<View style={{ flexDirection: "row", alignItems: "baseline" }}>
+					<Text style={[styles.moneyValue, { color: colors.white }]}>{left.value}</Text>
+					<Text style={[styles.moneyCurrency, { color: palette.muted }]}>{left.currency}</Text>
+				</View>
+			</View>
+			<View style={[styles.moneyBoxOutlined, { borderColor: palette.accent }]}>
+				<Text style={[styles.moneyLabel, { color: palette.accent }]}>{right.label}</Text>
+				<View style={{ flexDirection: "row", alignItems: "baseline" }}>
+					<Text style={[styles.moneyValue, { color: palette.primary }]}>{right.value}</Text>
+					<Text style={[styles.moneyCurrency, { color: palette.accent }]}>{right.currency}</Text>
+				</View>
+			</View>
+		</View>
+	);
+};
+
+/** Tinted note / warning box. Warnings use a fixed semantic red family so
+ *  they read as warnings under every brand palette. */
+export const Callout = ({
+	tone = "note",
+	children,
+}: {
+	tone?: "note" | "warning";
+	children: string;
+}) => {
+	const { palette } = useBranding();
+	const bg = tone === "warning" ? "#fdf2f2" : palette.tint;
+	const fg = tone === "warning" ? "#b91c1c" : palette.primary;
+	return (
+		<View style={[styles.callout, { backgroundColor: bg }]} wrap={false}>
+			<Text style={[styles.calloutText, { color: fg }]}>{children}</Text>
+		</View>
+	);
+};
+
+/**
+ * Party details card. Full hairline border — role identity is carried by a
+ * tinted initial square and the small role label, not by a colored border.
+ * `wrap={false}` keeps the bordered card from splitting across a page break.
+ */
+export const PartyCard = ({ party, roleLabel }: { party: PartyInfo; roleLabel: string }) => {
+	const { palette } = useBranding();
+	const initial = (party.full_name || roleLabel).trim().charAt(0).toLocaleUpperCase("tr");
+	const fields: { label: string; value: string }[] = [
+		{ label: "Adres", value: party.address || "—" },
+	];
+	if (party.national_id) fields.push({ label: "T.C. Kimlik", value: party.national_id });
+	if (party.tax_no) fields.push({ label: "Vergi No", value: party.tax_no });
+	if (party.tax_office) fields.push({ label: "Vergi Dairesi", value: party.tax_office });
+	if (party.phone) fields.push({ label: "Telefon", value: party.phone });
+	if (party.email) fields.push({ label: "E-posta", value: party.email });
+
+	return (
+		<View style={styles.partyCard} wrap={false}>
+			<View style={styles.partyCardHeader}>
+				<View style={[styles.partyInitial, { backgroundColor: palette.tint }]}>
+					<Text style={[styles.partyInitialText, { color: palette.primary }]}>{initial}</Text>
+				</View>
+				<View style={{ flex: 1 }}>
+					<Text style={[styles.partyRole, { color: palette.accent }]}>{roleLabel}</Text>
+					<Text style={styles.partyName}>{party.full_name || "—"}</Text>
+				</View>
+			</View>
+			{fields.map((f, i) => (
+				<View key={i} style={styles.partyFieldRow}>
+					<Text style={styles.partyFieldLabel}>{f.label}</Text>
+					<Text style={styles.partyFieldValue}>{f.value}</Text>
+				</View>
+			))}
+		</View>
+	);
+};
+
+/**
+ * Bordered key/value card with an optional title line — the editor-document
+ * counterpart of the property block. `wrap={false}` keeps it intact across
+ * page breaks.
+ */
+export const KVCard = ({
+	title,
+	items,
+}: {
+	title?: string | null;
+	items: { label: string; value: string }[];
+}) => {
+	const { palette } = useBranding();
+	return (
+		<View style={styles.propBlock} wrap={false}>
+			{title ? (
+				<>
+					<Text style={[styles.propAddressLabel, { color: palette.accent }]}>Adres</Text>
+					<Text style={styles.propAddressValue}>{title}</Text>
+				</>
+			) : null}
+			<View>
+				{items.map((it, i) => (
+					<View key={i} style={i === items.length - 1 ? styles.kvRowLast : styles.kvRow}>
+						<Text style={styles.kvLabel}>{it.label}</Text>
+						<Text style={styles.kvValue}>{it.value}</Text>
+					</View>
+				))}
+			</View>
+		</View>
+	);
+};
+
+/** Hairline-separated numbered clause list; numbers carry the accent color. */
 export const ClausesList = ({
 	label,
 	clauses,
@@ -174,19 +310,22 @@ export const ClausesList = ({
 	label: string;
 	clauses: string[];
 }) => {
+	const { palette } = useBranding();
 	const filtered = clauses.filter((c) => c && c.trim());
 	if (filtered.length === 0) return <View />;
 	return (
 		<View style={styles.section}>
-			<SectionTitle title={label} />
+			{label ? <SectionTitle title={label} /> : null}
 			<View>
 				{filtered.map((clause, idx) => (
 					<View
 						key={idx}
-						style={idx % 2 === 1 ? styles.clauseRowAlt : styles.clauseRow}
+						style={idx === filtered.length - 1 ? styles.clauseRowLast : styles.clauseRow}
 						wrap={false}
 					>
-						<Text style={styles.clauseNumber}>{String(idx + 1).padStart(2, "0")}</Text>
+						<Text style={[styles.clauseNumber, { color: palette.accent }]}>
+							{String(idx + 1).padStart(2, "0")}
+						</Text>
 						<Text style={styles.clauseText}>{clause}</Text>
 					</View>
 				))}
@@ -196,12 +335,12 @@ export const ClausesList = ({
 };
 
 /**
- * Generic bordered table reusing the navy commission-table styling.
- * The container wraps across pages while each row stays intact (`wrap={false}`),
- * so a single row never splits over a page break — mirrors the ClausesList model.
+ * Generic bordered table. The container wraps across pages while each row
+ * stays intact (`wrap={false}`), so a single row never splits over a page
+ * break — mirrors the ClausesList model.
  *
- * `columns[].flex` controls width; `align` controls cell text alignment. Pass the
- * same column shape to the header and every row so they line up.
+ * `columns[].flex` controls width; `align` controls cell text alignment. Pass
+ * the same column shape to the header and every row so they line up.
  */
 export interface TableColumn {
 	header: string;
@@ -219,95 +358,84 @@ export const Table = ({
 }) => {
 	const { palette } = useBranding();
 	return (
-	<View style={[styles.commissionTable, { borderColor: palette.muted }]}>
-		<View style={[styles.commissionHeaderRow, { backgroundColor: palette.primary }]} wrap={false}>
-			{columns.map((c, i) => (
-				<Text
-					key={i}
-					style={[
-						styles.commissionHeaderCell,
-						{ flex: c.flex ?? 1, textAlign: c.align ?? "left", borderRightColor: palette.primaryDark },
-						i === columns.length - 1 ? { borderRightWidth: 0 } : {},
-					]}
+		<View style={styles.table}>
+			<View style={[styles.tableHeaderRow, { backgroundColor: palette.primary }]} wrap={false}>
+				{columns.map((c, i) => (
+					<Text
+						key={i}
+						style={[styles.tableHeaderCell, { flex: c.flex ?? 1, textAlign: c.align ?? "left" }]}
+					>
+						{c.header}
+					</Text>
+				))}
+			</View>
+			{rows.map((cells, r) => (
+				<View
+					key={r}
+					style={[styles.tableRow, r % 2 === 1 ? { backgroundColor: palette.tint } : {}]}
+					wrap={false}
 				>
-					{c.header}
-				</Text>
+					{cells.map((cell, i) => {
+						const col = columns[i];
+						const isLabel = i === 0;
+						return (
+							<Text
+								key={i}
+								style={[
+									isLabel ? styles.tableLabelCell : styles.tableDataCell,
+									isLabel ? { color: palette.primary } : {},
+									{ flex: col?.flex ?? 1, textAlign: col?.align ?? (isLabel ? "left" : "right") },
+								]}
+							>
+								{cell}
+							</Text>
+						);
+					})}
+				</View>
 			))}
 		</View>
-		{rows.map((cells, r) => (
-			<View
-				key={r}
-				style={[
-					r % 2 === 1 ? styles.commissionRowAlt : styles.commissionRow,
-					{ borderTopColor: palette.muted },
-					r % 2 === 1 ? { backgroundColor: palette.tint } : {},
-				]}
-				wrap={false}
-			>
-				{cells.map((cell, i) => {
-					const col = columns[i];
-					const isLabel = i === 0;
-					return (
-						<Text
-							key={i}
-							style={[
-								isLabel ? styles.commissionLabelCell : styles.commissionDataCell,
-								isLabel ? { color: palette.primary } : {},
-								{ flex: col?.flex ?? 1, textAlign: col?.align ?? (isLabel ? "left" : "right"), borderRightColor: palette.muted },
-								i === cells.length - 1 ? { borderRightWidth: 0 } : {},
-							]}
-						>
-							{cell}
-						</Text>
-					);
-				})}
-			</View>
-		))}
-	</View>
 	);
 };
 
 export const SignatureBlock = ({
-	label = "Signatures",
+	label = "İmzalar",
 	signers,
-	accentColor,
+	date,
 }: {
 	label?: string;
 	signers: { role: string; name?: string }[];
-	/** When set, a thin bar of this color is rendered below each signature label
-	 *  (matches the Avera reference's navy bars). */
-	accentColor?: string;
-}) => (
-	<View style={styles.section} wrap={false}>
-		<SectionTitle title={label} />
-		<View style={styles.signatureRow}>
-			{signers.map((s, i) => (
-				<View key={i} style={styles.signatureBox}>
-					<View style={styles.signatureLine} />
-					<Text style={styles.signatureLabel}>{s.role}</Text>
-					{s.name ? <Text style={styles.signatureSubLabel}>{s.name}</Text> : null}
-					{accentColor ? (
-						<View style={[styles.signatureAccentBar, { backgroundColor: accentColor }]} />
-					) : null}
-				</View>
-			))}
+	/** Optional signing-date line rendered under the section title. */
+	date?: string;
+}) => {
+	const { palette } = useBranding();
+	return (
+		<View style={styles.section} wrap={false}>
+			<SectionTitle title={label} />
+			{date ? <Text style={styles.signatureSubLabel}>Tarih: {date}</Text> : null}
+			<View style={styles.signatureRow}>
+				{signers.map((s, i) => (
+					<View key={i} style={styles.signatureBox}>
+						<View style={[styles.signatureLine, { borderBottomColor: palette.primary }]} />
+						<Text style={styles.signatureLabel}>{s.role}</Text>
+						{s.name ? <Text style={styles.signatureSubLabel}>{s.name}</Text> : null}
+						<Text style={styles.signatureHint}>Ad Soyad / İmza</Text>
+					</View>
+				))}
+			</View>
 		</View>
-	</View>
-);
+	);
+};
 
 export const PageFooter = () => {
 	const { teamName } = useBranding();
 	return (
-	<View style={styles.footer} fixed>
-		<Text style={styles.footerText}>{teamName}</Text>
-		<Text
-			style={styles.pageNumber}
-			render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
-		/>
-		<Text style={styles.footerText}>
-			Confidential {"•"} {new Date().getFullYear()}
-		</Text>
-	</View>
+		<View style={styles.footer} fixed>
+			<Text style={styles.footerText}>{teamName}</Text>
+			<Text
+				style={styles.pageNumber}
+				render={({ pageNumber, totalPages }) => `Sayfa ${pageNumber} / ${totalPages}`}
+			/>
+		</View>
 	);
 };
 

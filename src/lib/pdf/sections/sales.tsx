@@ -6,111 +6,31 @@ import {
 	TextSection,
 	ClausesList,
 	SignatureBlock,
+	PartyCard,
+	MoneyPair,
+	Table,
 	formatDate,
+	fmtMoney,
 } from "./common";
-import { SALES_STANDARD_CLAUSES, TAX_RESPONSIBILITY_CLAUSES } from "../salesClauses";
+import { resolveClauseTemplates } from "@/src/lib/documents/clauses";
+import { buildSalesClauseVars } from "@/src/lib/documents/clauseVars";
 import { interpolate } from "../interpolate";
-import type { SalesPDFData, PartyInfo, CommissionLine } from "../types";
-
-const fmtMoney = (n: number | null | undefined) =>
-	(n == null ? 0 : n).toLocaleString("en-US", { maximumFractionDigits: 2 });
-
-const fmtDateOrBlank = (s: string | null | undefined) =>
-	s ? formatDate(s) : "...";
+import type { SalesPDFData, CommissionLine } from "../types";
 
 const fmtOrBlank = (s: string | null | undefined) => (s && String(s).trim() ? String(s) : "—");
 
-/**
- * One field row inside a PartyCard. Each field is wrapped in a `<View>` with a
- * `minHeight` floor (mirroring propGridCell) rather than being a bare `<Text>`.
- * The real cause of the old "card collapses, fields overlap" bug was a react-pdf
- * lineHeight-compounding issue, now fixed by removing all `lineHeight` from
- * styles.ts (see the note on `styles.page`). These View floors are kept as
- * defense-in-depth: View `minHeight` is unaffected by text relayout, so a row
- * can never collapse to zero height even if react-pdf regresses.
- */
-function CardLabelValue({ label, value }: { label: string; value: string }) {
-	const { palette } = useBranding();
+const commissionCells = (line: CommissionLine): string[] => [
+	line.rate == null ? "—" : `%${line.rate.toFixed(2)}`,
+	line.matrah == null ? "—" : fmtMoney(line.matrah),
+	line.kdv == null ? "—" : fmtMoney(line.kdv),
+	line.total == null ? "—" : fmtMoney(line.total),
+];
+
+function PropCell({ label, value }: { label: string; value: string }) {
 	return (
-		<>
-			<View style={styles.salesCardFieldLabel}>
-				<Text style={[styles.salesCardLabel, { color: palette.primary }]}>{label}</Text>
-			</View>
-			<View style={styles.salesCardFieldValue}>
-				<Text style={styles.salesCardValue}>{value}</Text>
-			</View>
-		</>
-	);
-}
-
-function CardLine({ children }: { children: string }) {
-	return (
-		<View style={styles.salesCardFieldLine}>
-			<Text style={styles.salesCardLine}>{children}</Text>
-		</View>
-	);
-}
-
-function PartyCard({ party }: { party: PartyInfo }) {
-	const { palette } = useBranding();
-	return (
-		// wrap={false} keeps the bordered card from splitting across a page break.
-		<View style={[styles.salesCard, { borderColor: palette.muted, borderLeftColor: palette.primary }]} wrap={false}>
-			<CardLabelValue label="Adı Soyadı / Firma" value={party.full_name || "—"} />
-
-			<View style={styles.salesCardFieldLabel}>
-				<Text style={[styles.salesCardLabel, { color: palette.primary }]}>Adresi</Text>
-			</View>
-			<CardLine>{party.address || "—"}</CardLine>
-
-			{(party.national_id || party.tax_no || party.tax_office) ? (
-				<>
-					<View style={styles.salesCardGroupGap} />
-					{party.national_id ? <CardLine>{`T.C. Kimlik: ${party.national_id}`}</CardLine> : null}
-					{party.tax_no ? <CardLine>{`Vergi No: ${party.tax_no}`}</CardLine> : null}
-					{party.tax_office ? <CardLine>{`V. Dairesi: ${party.tax_office}`}</CardLine> : null}
-				</>
-			) : null}
-
-			{(party.phone || party.email) ? (
-				<>
-					<View style={styles.salesCardGroupGap} />
-					{party.phone ? <CardLine>{`Tel: ${party.phone}`}</CardLine> : null}
-					{party.email ? <CardLine>{`E-posta: ${party.email}`}</CardLine> : null}
-				</>
-			) : null}
-		</View>
-	);
-}
-
-function CommissionRow({
-	label,
-	line,
-	alt,
-}: {
-	label: string;
-	line: CommissionLine;
-	alt?: boolean;
-}) {
-	const { palette } = useBranding();
-	return (
-		<View
-			style={[alt ? styles.commissionRowAlt : styles.commissionRow, alt ? { backgroundColor: palette.tint } : {}]}
-			wrap={false}
-		>
-			<Text style={[styles.commissionLabelCell, { color: palette.primary }]}>{label}</Text>
-			<Text style={styles.commissionDataCell}>
-				{line.rate == null ? "—" : `${line.rate.toFixed(2)} %`}
-			</Text>
-			<Text style={styles.commissionDataCell}>
-				{line.matrah == null ? "—" : fmtMoney(line.matrah)}
-			</Text>
-			<Text style={styles.commissionDataCell}>
-				{line.kdv == null ? "—" : fmtMoney(line.kdv)}
-			</Text>
-			<Text style={[styles.commissionDataCell, { borderRightWidth: 0, fontWeight: "bold" }]}>
-				{line.total == null ? "—" : fmtMoney(line.total)}
-			</Text>
+		<View style={styles.propGridCell}>
+			<Text style={styles.propGridLabel}>{label}</Text>
+			<Text style={styles.propGridValue}>{value}</Text>
 		</View>
 	);
 }
@@ -119,47 +39,41 @@ export function SalesAgreement({ data }: { data: SalesPDFData }) {
 	const { seller, buyer, property, sale, commission, special_conditions, generatedAt } = data;
 	const { palette, teamName, logoDataUrl } = useBranding();
 
-	const clauseVars = {
-		sale_price: fmtMoney(sale.sale_price),
-		currency: sale.currency,
-		penalty_amount: sale.penalty_amount != null ? fmtMoney(sale.penalty_amount) : "...",
-		deposit_amount: sale.deposit_amount != null ? fmtMoney(sale.deposit_amount) : "...",
-		target_close_date: fmtDateOrBlank(sale.target_close_date),
-		validity_days: sale.validity_days ?? "...",
-		tax_responsibility_clause: TAX_RESPONSIBILITY_CLAUSES[sale.tax_responsibility],
-	};
-	const resolvedClauses = SALES_STANDARD_CLAUSES.map((c) => interpolate(c, clauseVars));
+	const clauseVars = buildSalesClauseVars(data, teamName);
+	const resolvedClauses = resolveClauseTemplates("sales", data.clauses)
+		.map((c) => interpolate(c, clauseVars));
 
 	return (
 		<View>
 			{/* Title bar (bleeds beyond page padding via negative margins) */}
-			<View style={[styles.salesHero, { backgroundColor: palette.primary }]} fixed={false}>
-				<Text style={styles.salesHeroTitle}>Satılık Alım, Satış Sözleşmesi</Text>
+			<View style={[styles.docHero, { backgroundColor: palette.primary }]}>
+				<Text style={styles.docHeroTitle}>Satılık Alım, Satış Sözleşmesi</Text>
 				<View style={{ alignItems: "flex-end" }}>
 					{logoDataUrl ? (
+						// eslint-disable-next-line jsx-a11y/alt-text
 						<Image src={logoDataUrl} style={{ maxHeight: 24, maxWidth: 100, objectFit: "contain", marginBottom: 3 }} />
 					) : null}
-					<Text style={[styles.salesHeroDate, { color: palette.muted }]}>Düzenleme: {formatDate(generatedAt)}</Text>
+					<Text style={[styles.docHeroDate, { color: palette.muted }]}>Düzenleme: {formatDate(generatedAt)}</Text>
 				</View>
 			</View>
 
 			{/* A — Mal sahibi */}
 			<View style={styles.section}>
 				<SectionChip letter="A" title="Mal Sahibi Bilgileri" />
-				<PartyCard party={seller} />
+				<PartyCard party={seller} roleLabel="Mal Sahibi" />
 			</View>
 
 			{/* B — Alıcı */}
 			<View style={styles.section}>
 				<SectionChip letter="B" title="Alıcı Bilgileri" />
-				<PartyCard party={buyer} />
+				<PartyCard party={buyer} roleLabel="Alıcı" />
 			</View>
 
 			{/* C — Gayrimenkul */}
 			<View style={styles.section}>
 				<SectionChip letter="C" title="Gayrimenkule Ait Bilgiler" />
-				<View style={[styles.propBlock, { borderColor: palette.muted, borderLeftColor: palette.primary }]} wrap={false}>
-					<Text style={[styles.propAddressLabel, { color: palette.primary }]}>Adresi</Text>
+				<View style={styles.propBlock} wrap={false}>
+					<Text style={[styles.propAddressLabel, { color: palette.accent }]}>Adres</Text>
 					<Text style={styles.propAddressValue}>{property.address || "—"}</Text>
 
 					<View style={styles.propGrid}>
@@ -185,70 +99,53 @@ export function SalesAgreement({ data }: { data: SalesPDFData }) {
 			{/* E — Hizmet bedeli (commission) */}
 			<View style={styles.section}>
 				<SectionChip letter="E" title="Yapılacak İşleme Ait Bilgiler" />
-				<View style={[styles.commissionTable, { borderColor: palette.muted }]}>
-					<View style={[styles.commissionHeaderRow, { backgroundColor: palette.primary }]} wrap={false}>
-						<Text style={[styles.commissionHeaderCellLeft, { borderRightColor: palette.primaryDark }]}>Hizmet Bedeli</Text>
-						<Text style={[styles.commissionHeaderCell, { borderRightColor: palette.primaryDark }]}>Oran %</Text>
-						<Text style={[styles.commissionHeaderCell, { borderRightColor: palette.primaryDark }]}>Matrah</Text>
-						<Text style={[styles.commissionHeaderCell, { borderRightColor: palette.primaryDark }]}>KDV (%18)</Text>
-						<Text style={[styles.commissionHeaderCell, { borderRightWidth: 0 }]}>Toplam Tutar</Text>
-					</View>
-					<CommissionRow label="Alıcı" line={commission.buyer} />
-					<CommissionRow label="Satıcı" line={commission.seller} alt />
-				</View>
+				<Table
+					columns={[
+						{ header: "Hizmet Bedeli", flex: 1.2, align: "left" },
+						{ header: "Oran", flex: 1, align: "right" },
+						{ header: "Matrah", flex: 1, align: "right" },
+						{ header: "KDV", flex: 1, align: "right" },
+						{ header: "Toplam", flex: 1, align: "right" },
+					]}
+					rows={[
+						["Alıcı", ...commissionCells(commission.buyer)],
+						["Satıcı", ...commissionCells(commission.seller)],
+					]}
+				/>
 			</View>
 
 			{/* Sale price + kapora highlight pair */}
 			<View style={styles.section} wrap={false}>
-				<View style={{ flexDirection: "row", gap: 12 }}>
-					<View style={[styles.salesPriceBox, { backgroundColor: palette.primary }]}>
-						<Text style={[styles.salesPriceLabel, { color: palette.muted }]}>Satış Bedeli</Text>
-						<View style={{ flexDirection: "row", alignItems: "baseline" }}>
-							<Text style={styles.salesPriceValue}>{fmtMoney(sale.sale_price)}</Text>
-							<Text style={[styles.salesCurrencyTag, { color: palette.muted }]}>{sale.currency}</Text>
-						</View>
-					</View>
-					<View style={[styles.salesDepositBox, { borderColor: palette.accent }]}>
-						<Text style={[styles.salesDepositLabel, { color: palette.accent }]}>Kapora</Text>
-						<View style={{ flexDirection: "row", alignItems: "baseline" }}>
-							<Text style={[styles.salesDepositValue, { color: palette.primary }]}>
-								{sale.deposit_amount != null ? fmtMoney(sale.deposit_amount) : "—"}
-							</Text>
-							<Text style={[styles.salesCurrencyTag, { color: palette.accent }]}>{sale.currency}</Text>
-						</View>
-					</View>
-				</View>
+				<MoneyPair
+					left={{ label: "Satış Bedeli", value: fmtMoney(sale.sale_price), currency: sale.currency }}
+					right={{
+						label: "Kapora",
+						value: sale.deposit_amount != null ? fmtMoney(sale.deposit_amount) : "—",
+						currency: sale.currency,
+					}}
+				/>
 
-				<Text style={styles.avaraLine}>
+				<Text style={styles.connectiveLine}>
 					Bundan böyle, {teamName.toLocaleUpperCase("tr")} yetkilendiren MAL SAHİBİ olarak anılacaktır.
 				</Text>
 			</View>
 
 			{/* Numbered clauses */}
 			<View>
-				<SectionChip letter="" title="İlgili Hükümler" />
+				<SectionChip title="İlgili Hükümler" />
 				<ClausesList label="" clauses={resolvedClauses} />
 			</View>
 
-			{/* Signatures with brand accent bars matching the reference */}
+			{/* Signatures */}
 			<SignatureBlock
 				label="İmzalar"
-				accentColor={palette.primary}
+				date={formatDate(generatedAt)}
 				signers={[
 					{ role: "Mal Sahibi", name: seller.full_name },
 					{ role: "Alıcı",      name: buyer.full_name },
 					{ role: teamName },
 				]}
 			/>
-		</View>
-	);
-}
-
-function PropCell({ label, value }: { label: string; value: string }) {
-	return (
-		<View style={styles.propGridCell}>
-			<Text style={styles.propGridLabel}>{label}</Text>
-			<Text style={styles.propGridValue}>{value}</Text>
 		</View>
 	);
 }

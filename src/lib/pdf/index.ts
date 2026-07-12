@@ -4,7 +4,8 @@ import type { PdfBranding } from "./branding";
 export type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData };
 export type { PdfBranding };
 export { getPdfBrandingFromStore, BRAND_PALETTES } from "./branding";
-export { PDFDocument } from "./document";
+export { PDFDocument, EditorPDFDocument } from "./document";
+export type { EditorPDFProps } from "./document";
 
 /** Render a document to a PDF File without downloading it — callers can
  *  download and/or upload the same bytes (see exportToPDF / uploadDocumentPdf). */
@@ -22,6 +23,20 @@ export async function generatePdfFile(
 	await loadPdfFonts();
 	const blob = await generatePDFBlob(kind, data, branding);
 
+	const safeFilename = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
+	return new File([blob], safeFilename, { type: "application/pdf" });
+}
+
+/** Render an editor document (rental/sales contract from the block editor)
+ *  to a PDF File. Same dynamic-import + font-gating policy as generatePdfFile. */
+export async function generateEditorPdfFile(
+	props: import("./document").EditorPDFProps,
+	filename: string,
+): Promise<File> {
+	const { generateEditorPDFBlob } = await import("./document");
+	const { loadPdfFonts } = await import("./styles");
+	await loadPdfFonts();
+	const blob = await generateEditorPDFBlob(props);
 	const safeFilename = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
 	return new File([blob], safeFilename, { type: "application/pdf" });
 }
