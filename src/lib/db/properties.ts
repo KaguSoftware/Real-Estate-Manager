@@ -167,7 +167,7 @@ export async function listEligiblePropertiesForDocType(
 
 	if (kind === "rental") {
 		const { data, error } = await supabase.from("properties").select("*")
-			.eq("listing_type", "for_rent").eq("status", "vacant")
+			.eq("listing_type", "for_rent").eq("status", "vacant" satisfies PropertyStatus)
 			.order("updated_at", { ascending: false });
 		if (error) throw error;
 		return (data ?? []) as Property[];
@@ -175,7 +175,7 @@ export async function listEligiblePropertiesForDocType(
 
 	if (kind === "sales") {
 		const { data, error } = await supabase.from("properties").select("*")
-			.eq("listing_type", "for_sale").neq("status", "sold")
+			.eq("listing_type", "for_sale").neq("status", "sold" satisfies PropertyStatus)
 			.order("updated_at", { ascending: false });
 		if (error) throw error;
 		return (data ?? []) as Property[];

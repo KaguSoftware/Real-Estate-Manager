@@ -5,11 +5,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAppStore } from "@/src/store";
-import { listEligiblePropertiesForDocType, updateProperty } from "@/src/lib/db/properties";
+import { listEligiblePropertiesForDocType } from "@/src/lib/db/properties";
 import { listLeads } from "@/src/lib/db/leads";
-import { createTenant } from "@/src/lib/db/tenants";
-import { createLease, computeLeaseEndDate } from "@/src/lib/db/leases";
-import { createSale } from "@/src/lib/db/sales";
+import { computeLeaseEndDate } from "@/src/lib/db/leases";
+import { createRentalRecords, createSalesRecords } from "@/src/lib/db/documentRecords";
 import { downloadPdfFile, generateEditorPdfFile, getPdfBrandingFromStore, type PdfBranding } from "@/src/lib/pdf";
 import { saveDocumentPdf } from "@/src/lib/db/documents";
 import { getClauseTemplate } from "@/src/lib/db/clauseTemplates";
@@ -98,8 +97,25 @@ function readDraft(): WizardDraft | null {
 	try {
 		const raw = window.localStorage.getItem(DRAFT_KEY) ?? window.localStorage.getItem(DRAFT_KEY_V1);
 		if (!raw) return null;
-		const d = JSON.parse(raw) as WizardDraft;
-		return d && d.step && d.kind ? d : null;
+		const d = JSON.parse(raw) as Partial<WizardDraft> | null;
+		// Shape-check before trusting: a stale or hand-edited draft with the
+		// wrong nested types would crash the wizard mid-resume, which is worse
+		// than silently starting fresh.
+		if (
+			!d ||
+			typeof d !== "object" ||
+			!STEPS.includes(d.step as Step) ||
+			!["rental", "sales", "receipt", "listing"].includes(d.kind as string) ||
+			typeof d.rentalState !== "object" || d.rentalState === null ||
+			typeof d.salesState !== "object" || d.salesState === null ||
+			typeof d.savedAt !== "string" || Number.isNaN(Date.parse(d.savedAt)) ||
+			(d.docJson != null && typeof d.docJson !== "object") ||
+			(d.docTitle != null && typeof d.docTitle !== "string") ||
+			(d.teamClauses != null && !Array.isArray(d.teamClauses))
+		) {
+			return null;
+		}
+		return d as WizardDraft;
 	} catch {
 		return null;
 	}
@@ -714,59 +730,56 @@ export function DocumentWizard() {
 				// the archived PDF and the re-edit page will show.
 				const rentalDataFinal = buildRentalPDFData(property, s, teamClauses);
 				const c = createdRef.current;
-				if (!c.tenantId) {
-					const tenant = await createTenant({
-						full_name: s.tenantName.trim(),
-						email: s.tenantEmail.trim() || null,
-						phone: s.tenantPhone.trim() || null,
-						national_id: s.tenantNationalId.trim() || null,
-					});
-					c.tenantId = tenant.id;
-				}
-				// Optional guarantor (kefil) is stored as its own tenants row.
-				if (!c.guarantorId && s.guarantorEnabled && s.guarantorName.trim()) {
-					const guarantor = await createTenant({
-						full_name: s.guarantorName.trim(),
-						email: s.guarantorEmail.trim() || null,
-						phone: s.guarantorPhone.trim() || null,
-						national_id: s.guarantorNationalId.trim() || null,
-						notes: "Kefil (guarantor)",
-					});
-					c.guarantorId = guarantor.id;
-				}
 				if (!c.leaseId) {
-					const lease = await createLease({
+					// Single transactional RPC: tenant, optional guarantor (kefil),
+					// lease and property status commit together or not at all.
+					const created = await createRentalRecords({
 						property_id: property.id,
-						tenant_id: c.tenantId,
-						term: s.term,
-						start_date: s.startDate,
-						end_date: computeLeaseEndDate(s.startDate, s.term),
-						monthly_rent: Number(s.monthlyRent || 0),
-						deposit: Number(s.deposit || 0),
-						currency: s.currency,
-						guarantor_id: c.guarantorId ?? null,
-						payment_day: s.paymentDay ? Number(s.paymentDay) : null,
-						payment_method: s.paymentMethod.trim() || null,
-						bank_account: s.bankAccount.trim() || null,
-						util_electricity: s.utilElectricity,
-						util_water: s.utilWater,
-						util_gas: s.utilGas,
-						util_internet: s.utilInternet,
-						util_aidat: s.utilAidat,
-						subletting_allowed: s.sublettingAllowed,
-						rent_increase_note: s.rentIncreaseNote.trim() || null,
-						inventory: s.inventory.filter((r) => r.item.trim()),
-						condition_notes: s.conditionNotes.trim() || null,
-						special_conditions: s.specialConditions.trim() || null,
+						tenant: {
+							full_name: s.tenantName.trim(),
+							email: s.tenantEmail.trim() || null,
+							phone: s.tenantPhone.trim() || null,
+							national_id: s.tenantNationalId.trim() || null,
+						},
+						guarantor:
+							s.guarantorEnabled && s.guarantorName.trim()
+								? {
+										full_name: s.guarantorName.trim(),
+										email: s.guarantorEmail.trim() || null,
+										phone: s.guarantorPhone.trim() || null,
+										national_id: s.guarantorNationalId.trim() || null,
+									}
+								: null,
+						lease: {
+							term: s.term,
+							start_date: s.startDate,
+							end_date: computeLeaseEndDate(s.startDate, s.term),
+							monthly_rent: Number(s.monthlyRent || 0),
+							deposit: Number(s.deposit || 0),
+							currency: s.currency,
+							payment_day: s.paymentDay ? Number(s.paymentDay) : null,
+							payment_method: s.paymentMethod.trim() || null,
+							bank_account: s.bankAccount.trim() || null,
+							util_electricity: s.utilElectricity,
+							util_water: s.utilWater,
+							util_gas: s.utilGas,
+							util_internet: s.utilInternet,
+							util_aidat: s.utilAidat,
+							subletting_allowed: s.sublettingAllowed,
+							rent_increase_note: s.rentIncreaseNote.trim() || null,
+							inventory: s.inventory.filter((r) => r.item.trim()),
+							condition_notes: s.conditionNotes.trim() || null,
+							special_conditions: s.specialConditions.trim() || null,
+						},
 					});
-					c.leaseId = lease.id;
-				}
-				if (!c.propertyDone) {
-					const updated = await updateProperty(property.id, { status: "occupied" });
-					upsertProperty(updated);
+					c.tenantId = created.tenant_id;
+					c.guarantorId = created.guarantor_id ?? undefined;
+					c.leaseId = created.lease_id;
 					c.propertyDone = true;
+					upsertProperty({ ...property, status: "occupied" });
 				}
 				invalidateCache("tenants");
+				invalidateCache("properties");
 				// Persist the editable document first (re-editable later from the
 				// property page). Best-effort: a failure must not lose the PDF.
 				const title = docTitle.trim() || "Konut Kira Sözleşmesi";
@@ -817,40 +830,38 @@ export function DocumentWizard() {
 				const s = mergedSales;
 				const salesDataFinal = buildSalesPDFData(property, s, teamClauses);
 				const c = createdRef.current;
-				// Buyer is stored in the tenants table (schema fits).
-				if (!c.buyerId) {
-					const buyer = await createTenant({
-						full_name: s.buyerName.trim(),
-						email: s.buyerEmail.trim() || null,
-						phone: s.buyerPhone.trim() || null,
-						national_id: s.buyerNationalId.trim() || null,
-					});
-					c.buyerId = buyer.id;
-				}
 				if (!c.saleId) {
-					const sale = await createSale({
+					// Single transactional RPC: buyer (stored in tenants — schema
+					// fits), sale and property status commit together or not at all.
+					const created = await createSalesRecords({
 						property_id: property.id,
-						buyer_id: c.buyerId,
-						sale_price: Number(s.salePrice || 0),
-						currency: s.currency,
-						sale_date: s.saleDate,
-						target_close_date: s.targetCloseDate || null,
-						deposit_amount: s.depositAmount ? Number(s.depositAmount) : null,
-						penalty_amount: s.penaltyAmount ? Number(s.penaltyAmount) : null,
-						validity_days: s.validityDays ? Number(s.validityDays) : null,
-						tax_responsibility: s.taxResponsibility,
-						buyer_commission_rate:  s.buyerCommissionRate  ? Number(s.buyerCommissionRate)  : null,
-						seller_commission_rate: s.sellerCommissionRate ? Number(s.sellerCommissionRate) : null,
-						special_conditions: s.specialConditions.trim() || null,
+						buyer: {
+							full_name: s.buyerName.trim(),
+							email: s.buyerEmail.trim() || null,
+							phone: s.buyerPhone.trim() || null,
+							national_id: s.buyerNationalId.trim() || null,
+						},
+						sale: {
+							sale_price: Number(s.salePrice || 0),
+							currency: s.currency,
+							sale_date: s.saleDate,
+							target_close_date: s.targetCloseDate || null,
+							deposit_amount: s.depositAmount ? Number(s.depositAmount) : null,
+							penalty_amount: s.penaltyAmount ? Number(s.penaltyAmount) : null,
+							validity_days: s.validityDays ? Number(s.validityDays) : null,
+							tax_responsibility: s.taxResponsibility,
+							buyer_commission_rate:  s.buyerCommissionRate  ? Number(s.buyerCommissionRate)  : null,
+							seller_commission_rate: s.sellerCommissionRate ? Number(s.sellerCommissionRate) : null,
+							special_conditions: s.specialConditions.trim() || null,
+						},
 					});
-					c.saleId = sale.id;
-				}
-				if (!c.propertyDone) {
-					const updated = await updateProperty(property.id, { status: "sold" });
-					upsertProperty(updated);
+					c.buyerId = created.buyer_id;
+					c.saleId = created.sale_id;
 					c.propertyDone = true;
+					upsertProperty({ ...property, status: "sold" });
 				}
 				invalidateCache("tenants");
+				invalidateCache("properties");
 				const title = docTitle.trim() || "Satılık Alım, Satış Sözleşmesi";
 				if (!c.contractDocId) {
 					try {

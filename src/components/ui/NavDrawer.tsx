@@ -9,7 +9,7 @@ import { useAppStore } from "@/src/store";
 import { cn } from "./cn";
 import { useFocusTrap } from "./useFocusTrap";
 import { ThemeToggle } from "./ThemeToggle";
-import { LayoutDashboard, Home, Users, FilePlus2, Shield, UsersRound, CreditCard, UserCog, LogOut, X } from "lucide-react";
+import { LayoutDashboard, Home, Users, Files, FilePlus2, Shield, UsersRound, CreditCard, UserCog, LogOut, X } from "lucide-react";
 
 interface NavItem {
 	href: string;
@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
 	{ href: "/", label: "Genel bakış", icon: LayoutDashboard },
 	{ href: "/properties", label: "Portföy", icon: Home },
 	{ href: "/leads", label: "Müşteriler", icon: Users },
+	{ href: "/documents", label: "Belgeler", icon: Files },
 	{ href: "/documents/new", label: "Yeni belge", icon: FilePlus2 },
 	{ href: "/team", label: "Ekip", icon: UsersRound },
 	{ href: "/settings/billing", label: "Abonelik", icon: CreditCard },
@@ -118,7 +119,11 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
 				<nav className="flex-1 overflow-y-auto p-3">
 					{items.map(({ href, label, icon: Icon }) => {
-						const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+						// Longest matching href wins so nested routes ("/documents/new")
+						// don't also light up their parent ("/documents").
+						const matches = (h: string) => (h === "/" ? pathname === "/" : pathname.startsWith(h));
+						const best = items.filter((i) => matches(i.href)).sort((a, b) => b.href.length - a.href.length)[0];
+						const active = best?.href === href;
 						return (
 							<Link
 								key={href}

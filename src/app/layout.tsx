@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { AuthProvider } from "@/src/components/auth/AuthProvider";
 import { ToastHost } from "@/src/components/ui/Toast";
 import { OfflineBanner } from "@/src/components/ui/OfflineBanner";
+import { BrandTheme } from "@/src/components/ui/BrandTheme";
 import { TrialBanner } from "@/src/components/billing/TrialBanner";
 
 // One grotesque family, weight-driven hierarchy: body and display share
@@ -62,6 +63,7 @@ export default function RootLayout({
 				style={{ fontFamily: "var(--font-latin), var(--font-arabic), sans-serif" }}
 			>
 				<AuthProvider>
+					<BrandTheme />
 					<TrialBanner />
 					{children}
 				</AuthProvider>

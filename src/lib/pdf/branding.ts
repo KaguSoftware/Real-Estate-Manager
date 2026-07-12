@@ -32,6 +32,18 @@ function rgbToHex(r: number, g: number, b: number): string {
 	return `#${[r, g, b].map((c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("")}`;
 }
 
+/** White or near-black — whichever reads better on the given background. */
+export function readableOn(hex: string): string {
+	const [r, g, b] = hexToRgb(hex);
+	// WCAG relative luminance (linearized sRGB).
+	const lin = (c: number) => {
+		const s = c / 255;
+		return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+	};
+	const l = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+	return l > 0.35 ? "#1a1f27" : "#ffffff";
+}
+
 /** Channel-wise lerp: t=0 → a, t=1 → b. */
 export function mixHex(a: string, b: string, t: number): string {
 	const [ar, ag, ab] = hexToRgb(a);

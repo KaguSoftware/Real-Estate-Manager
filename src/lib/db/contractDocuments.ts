@@ -91,6 +91,38 @@ export async function createContractDocument(input: ContractDocumentInput): Prom
 	return data as ContractDocument;
 }
 
+export interface ContractDocumentFilter {
+	q?: string;
+	kind?: ContractDocKind;
+	status?: ContractDocStatus;
+}
+
+/** Team's documents for the /documents index — column-light (no content/
+ *  source_data blobs; the editor page fetches the full row by id). */
+export type ContractDocumentListItem = Pick<
+	ContractDocument,
+	"id" | "kind" | "title" | "subtitle" | "status" | "finalized_at" | "pdf_path" | "created_at" | "updated_at"
+>;
+
+export async function listContractDocuments(
+	filter: ContractDocumentFilter = {},
+): Promise<ContractDocumentListItem[]> {
+	const { supabase } = await requireUser();
+	let query = supabase
+		.from("contract_documents")
+		.select("id, kind, title, subtitle, status, finalized_at, pdf_path, created_at, updated_at")
+		.order("updated_at", { ascending: false });
+	if (filter.kind) query = query.eq("kind", filter.kind);
+	if (filter.status) query = query.eq("status", filter.status);
+	if (filter.q?.trim()) {
+		const q = filter.q.trim().replace(/[%_,]/g, " ");
+		query = query.or(`title.ilike.%${q}%,subtitle.ilike.%${q}%`);
+	}
+	const { data, error } = await query;
+	if (error) throw error;
+	return (data ?? []) as ContractDocumentListItem[];
+}
+
 export async function getContractDocument(id: string): Promise<ContractDocument | null> {
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
