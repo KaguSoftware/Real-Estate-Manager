@@ -16,6 +16,8 @@ export interface Profile {
 	display_name: string | null;
 	full_name: string | null;
 	phone: string | null;
+	/** Path inside the avatars bucket, or null when no picture uploaded. */
+	avatar_path: string | null;
 	app_role: GlobalRole;
 	created_at: string;
 	updated_at: string;
