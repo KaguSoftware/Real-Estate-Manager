@@ -29,10 +29,13 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const TARGET_EMAILS = [
 	"saitaydin.kagu@gmail.com",
-	"parsaamansourii@gmail.com",
+	"parsaa.mansourii@gmail.com",
 ] as const;
 
 const FORCE = process.argv.includes("--force");
+// --only=<email> restricts the run to one target account.
+const ONLY = process.argv.find((a) => a.startsWith("--only="))?.slice("--only=".length)?.toLowerCase() ?? null;
+const EMAILS = TARGET_EMAILS.filter((e) => !ONLY || e.toLowerCase() === ONLY);
 
 // ── env ──────────────────────────────────────────────────────────────────────
 
@@ -395,11 +398,11 @@ async function main(): Promise<void> {
 	}
 
 	const supabase = createClient(url, key, { auth: { persistSession: false } });
-	console.log(`Seeding sample data${FORCE ? " (--force)" : ""} for ${TARGET_EMAILS.length} account(s)…`);
+	console.log(`Seeding sample data${FORCE ? " (--force)" : ""} for ${EMAILS.length} account(s)…`);
 
 	const totals: Summary = {};
 	let seededTeams = 0;
-	for (const email of TARGET_EMAILS) {
+	for (const email of EMAILS) {
 		const summary = await seedTeam(supabase, email);
 		if (!summary) continue;
 		seededTeams++;
