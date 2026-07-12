@@ -14,7 +14,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Building2, UserPlus } from "lucide-react";
+import { ArrowLeft, Building2, UserPlus, LogOut, RefreshCw, HelpCircle } from "lucide-react";
+import { createClient } from "@/src/lib/supabase/client";
 import { useAppStore } from "@/src/store";
 import {
 	createTeam,
@@ -119,6 +120,19 @@ export default function OnboardingPage() {
 			});
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [user?.id]);
+
+	async function handleSignOut() {
+		await createClient().auth.signOut();
+		setStep("choose");
+		router.replace("/");
+	}
+
+	async function handleSwitchAccount() {
+		await createClient().auth.signOut();
+		setStep("choose");
+		setError(null);
+		setShowAuth(true);
+	}
 
 	async function saveProfile() {
 		await updateMyProfile({ fullName, phone });
@@ -345,6 +359,36 @@ export default function OnboardingPage() {
 						</form>
 					</Card>
 				)}
+
+				{/* Footer actions: available on every step for signed-in users */}
+				<div className="flex items-center justify-center gap-4 text-xs text-base-content/50">
+					{user && busy !== "auto" && (
+						<>
+							<button
+								type="button"
+								onClick={handleSignOut}
+								className="inline-flex items-center gap-1 hover:text-base-content/80 transition-colors"
+							>
+								<LogOut className="w-3.5 h-3.5" /> Çıkış yap
+							</button>
+							<span aria-hidden className="text-base-content/20">·</span>
+							<button
+								type="button"
+								onClick={handleSwitchAccount}
+								className="inline-flex items-center gap-1 hover:text-base-content/80 transition-colors"
+							>
+								<RefreshCw className="w-3.5 h-3.5" /> Hesap değiştir
+							</button>
+							<span aria-hidden className="text-base-content/20">·</span>
+						</>
+					)}
+					<a
+						href="mailto:destek@kagu.app"
+						className="inline-flex items-center gap-1 hover:text-base-content/80 transition-colors"
+					>
+						<HelpCircle className="w-3.5 h-3.5" /> Yardım
+					</a>
+				</div>
 
 				{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
 			</div>
