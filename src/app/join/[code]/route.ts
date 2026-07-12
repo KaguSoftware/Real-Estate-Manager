@@ -14,7 +14,8 @@ export async function GET(
 	request: NextRequest,
 	{ params }: { params: Promise<{ code: string }> },
 ) {
-	const { code } = await params;
+	const { code: rawCode } = await params;
+	const code = rawCode.trim();
 
 	const supabase = await createClient();
 	const { data: { user } } = await supabase.auth.getUser();

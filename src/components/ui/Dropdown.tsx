@@ -213,7 +213,7 @@ export function Dropdown<T extends string = string>({
 					ref={listRef}
 					id={listboxId}
 					role="listbox"
-					className="absolute z-40 mt-1.5 w-full min-w-44 max-h-64 overflow-y-auto rounded-xl border border-base-300 bg-base-100 shadow-pop p-1"
+					className="absolute z-40 mt-1.5 w-full min-w-44 max-h-64 overflow-y-auto rounded-xl border border-base-300 bg-base-100 shadow-pop p-1 animate-dropdown-in"
 				>
 					{options.length === 0 ? (
 						<p className="px-3 py-2 text-xs text-base-content/50">Henüz seçenek yok</p>

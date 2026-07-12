@@ -10,6 +10,7 @@ import {
 	type ContractDocStatus,
 } from "@/src/lib/db/contractDocuments";
 import { getDocumentUrl } from "@/src/lib/db/documents";
+import { downloadUrl } from "@/src/lib/pdf";
 import { useCachedResource } from "@/src/lib/useCachedResource";
 import {
 	AppShell, Card, Alert, Button, Input, Dropdown, Badge,
@@ -93,17 +94,7 @@ export function DocumentsDashboard() {
 				// Same source as the per-row download, but fetched to a blob and
 				// saved via an anchor so multiple files don't trip popup blockers.
 				const url = await getDocumentUrl(d.pdf_path!);
-				const res = await fetch(url);
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				const blob = await res.blob();
-				const objectUrl = URL.createObjectURL(blob);
-				const a = document.createElement("a");
-				a.href = objectUrl;
-				a.download = `${d.title}.pdf`;
-				document.body.appendChild(a);
-				a.click();
-				a.remove();
-				URL.revokeObjectURL(objectUrl);
+				await downloadUrl(url, `${d.title}.pdf`);
 			} catch {
 				failed++;
 			}
@@ -119,7 +110,7 @@ export function DocumentsDashboard() {
 		setDownloadingId(doc.id);
 		try {
 			const url = await getDocumentUrl(doc.pdf_path);
-			window.open(url, "_blank", "noopener");
+			await downloadUrl(url, `${doc.title}.pdf`);
 		} catch (e) {
 			toast.error(humanizeError(e));
 		} finally {

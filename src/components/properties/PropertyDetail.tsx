@@ -12,7 +12,7 @@ import { getContractDocumentByRecord, type ContractDocument } from "@/src/lib/db
 import { cancelSale, closeSale, getActiveSaleForProperty, listSalesForProperty } from "@/src/lib/db/sales";
 import { listPropertyImages } from "@/src/lib/db/propertyImages";
 import { invalidateCache } from "@/src/lib/useCachedResource";
-import { exportToPDF, getPdfBrandingFromStore, type ListingPDFData } from "@/src/lib/pdf";
+import { exportToPDF, downloadUrl, getPdfBrandingFromStore, type ListingPDFData } from "@/src/lib/pdf";
 import { buildReceiptPDFData, receiptFilename } from "@/src/lib/pdf/receiptData";
 import { fmtMoney } from "@/src/lib/format";
 import type { Lease, Payment, PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
@@ -693,7 +693,8 @@ function ContractPdfLink({ path }: { path: string }) {
 		setBusy(true);
 		try {
 			const url = await getDocumentUrl(path);
-			window.open(url, "_blank", "noopener,noreferrer");
+			const name = path.split("/").pop() || "sozlesme.pdf";
+			await downloadUrl(url, name);
 		} catch (e) {
 			toast.error(humanizeError(e));
 		} finally {
@@ -708,7 +709,7 @@ function ContractPdfLink({ path }: { path: string }) {
 			className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-2 disabled:opacity-50"
 		>
 			<ExternalLink className="w-3.5 h-3.5" />
-			{busy ? "Açılıyor…" : "Sözleşme PDF"}
+			{busy ? "İndiriliyor…" : "Sözleşme PDF"}
 		</button>
 	);
 }

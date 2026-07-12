@@ -104,8 +104,8 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 				onChange={(e) => handleFiles(e.target.files)}
 			/>
 
-			{/* Hero */}
-			<div className="relative w-full aspect-[4/3] sm:aspect-[16/9] rounded-2xl overflow-hidden bg-base-200 border border-base-300">
+			{/* Hero — capped so the image doesn't dominate the detail view */}
+			<div className="relative w-full max-w-2xl mx-auto h-48 sm:h-64 rounded-2xl overflow-hidden bg-base-200 border border-base-300">
 				{loading ? (
 					<div className="absolute inset-0 flex items-center justify-center">
 						<Spinner />
@@ -145,7 +145,7 @@ export function PropertyGallery({ propertyId, canEdit = true }: Props) {
 
 			{/* Thumbnail strip + uploader */}
 			{(hasImages || canEdit) && (
-				<div className="mt-3 flex items-center gap-2 overflow-x-auto sm:flex-wrap snap-x snap-mandatory pb-1">
+				<div className="mt-3 max-w-2xl mx-auto flex items-center gap-2 overflow-x-auto sm:flex-wrap snap-x snap-mandatory pb-1">
 					{images.map((img, i) => (
 						<div
 							key={img.id}

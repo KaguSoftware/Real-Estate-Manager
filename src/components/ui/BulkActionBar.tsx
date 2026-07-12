@@ -30,7 +30,8 @@ export function BulkActionBar({ count, label, onClear, children, className }: Bu
 				"fixed left-1/2 -translate-x-1/2 bottom-4 safe-bottom z-40",
 				"w-[calc(100%-2rem)] max-w-xl",
 				"bg-base-100 border border-base-300 shadow-pop rounded-2xl",
-				"px-3 py-2.5 flex items-center gap-2",
+				// Even vertical rhythm; the h-9 controls line up on one baseline.
+				"pl-2 pr-3 py-2 flex items-center gap-3",
 				"animate-[bulkBarIn_.18s_ease-out]",
 				className,
 			)}
@@ -40,7 +41,7 @@ export function BulkActionBar({ count, label, onClear, children, className }: Bu
 				onClick={onClear}
 				aria-label="Seçimi temizle"
 				title="Seçimi temizle"
-				className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-lg text-base-content/50 hover:text-base-content/80 hover:bg-base-200 transition-colors"
+				className="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-lg text-base-content/50 hover:text-base-content/80 hover:bg-base-200 transition-colors"
 			>
 				<X className="w-4 h-4" />
 			</button>

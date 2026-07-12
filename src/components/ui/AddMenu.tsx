@@ -83,7 +83,7 @@ export function AddMenu() {
 			)}
 			{open && writable && (
 				<div
-					className="absolute right-0 z-40 mt-1.5 w-48 rounded-xl border border-base-300 bg-base-100 shadow-pop p-1"
+					className="absolute right-0 z-40 mt-1.5 w-48 rounded-xl border border-base-300 bg-base-100 shadow-pop p-1 animate-dropdown-in"
 					role="menu"
 				>
 					{ITEMS.map(({ href, label, icon: Icon }) => (

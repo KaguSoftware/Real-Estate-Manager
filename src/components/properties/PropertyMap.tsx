@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, useState, type ReactNode } from "react";
+import { Component, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useAppStore } from "@/src/store";
 import { MapPin, MapPinOff, Maximize2, Minimize2 } from "lucide-react";
@@ -50,12 +50,19 @@ function isValidCoord(n: unknown): boolean {
 export function PropertyMap() {
 	const properties = useAppStore((s) => s.properties);
 	const [expanded, setExpanded] = useState(false);
-	const mappable = properties.filter(
-		(p) =>
-			isValidCoord(p.latitude) &&
-			isValidCoord(p.longitude) &&
-			Math.abs(Number(p.latitude)) <= 90 &&
-			Math.abs(Number(p.longitude)) <= 180,
+	// Memoized so toggling `expanded` (or any parent re-render) reuses the same
+	// array reference — otherwise PropertyMapInner rebuilds all Leaflet markers
+	// on every render, which is what made the expand feel sluggish.
+	const mappable = useMemo(
+		() =>
+			properties.filter(
+				(p) =>
+					isValidCoord(p.latitude) &&
+					isValidCoord(p.longitude) &&
+					Math.abs(Number(p.latitude)) <= 90 &&
+					Math.abs(Number(p.longitude)) <= 180,
+			),
+		[properties],
 	);
 
 	return (

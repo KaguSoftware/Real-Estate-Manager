@@ -111,13 +111,49 @@ export function ContactDashboard() {
 
 	const rows = useMemo<ContactRow[]>(() => {
 		const merged: ContactRow[] = [];
-		if (typeFilter !== "tenant") {
-			for (const l of leads) merged.push({ type: "lead", id: l.id, lead: l });
+		const showLeads = typeFilter !== "tenant";
+		const showTenants =
+			typeFilter === "tenant" || (typeFilter === "all" && leadFilters.status === "all");
+
+		// Identity key for cross-table dedup: the two entities live in separate
+		// tables with no shared id. Leads carry no national_id, so the only common
+		// handle is a normalized name+phone. Digits-only phone tolerates spacing/
+		// country-code formatting differences between the two records.
+		const identity = (name: string | null, phone: string | null): string | null => {
+			const n = (name ?? "").trim().toLocaleLowerCase("tr");
+			const p = (phone ?? "").replace(/\D/g, "");
+			if (!n && !p) return null;
+			return `${n}|${p}`;
+		};
+
+		// When both tabs are shown, a person who is both a lead and a tenant should
+		// appear once. Keep the lead row (it carries status/matches/call tracking)
+		// and tag it alsoRole:"tenant"; suppress the matching tenant row.
+		const leadKeys = new Set<string>();
+		if (showLeads && showTenants) {
+			for (const l of leads) {
+				const k = identity(l.full_name, l.phone);
+				if (k) leadKeys.add(k);
+			}
+		}
+
+		if (showLeads) {
+			for (const l of leads) {
+				const k = identity(l.full_name, l.phone);
+				const alsoTenant =
+					showTenants && k !== null && tenants.some((t) => identity(t.full_name, t.phone) === k);
+				merged.push({ type: "lead", id: l.id, lead: l, ...(alsoTenant ? { alsoRole: "tenant" as const } : {}) });
+			}
 		}
 		// Lead status doesn't apply to tenants: hide them from "Tümü" while a
 		// status filter is active, but always show them on the Kiracılar tab.
-		if (typeFilter === "tenant" || (typeFilter === "all" && leadFilters.status === "all")) {
-			for (const t of tenants) merged.push({ type: "tenant", id: t.id, tenant: t });
+		if (showTenants) {
+			for (const t of tenants) {
+				const k = identity(t.full_name, t.phone);
+				// Skip tenants already surfaced as a merged lead row above.
+				if (showLeads && k !== null && leadKeys.has(k)) continue;
+				merged.push({ type: "tenant", id: t.id, tenant: t });
+			}
 		}
 		merged.sort((a, b) => {
 			const au = a.type === "lead" ? a.lead.updated_at : a.tenant.updated_at;

@@ -154,7 +154,7 @@ export async function createTeam(input: CreateTeamInput): Promise<string> {
 
 export async function acceptInvite(code: string): Promise<string> {
 	const { supabase } = await requireUser();
-	const { data, error } = await supabase.rpc("accept_invite", { invite_code: code });
+	const { data, error } = await supabase.rpc("accept_invite", { invite_code: code.trim() });
 	if (error) throw error;
 	return data as string;
 }

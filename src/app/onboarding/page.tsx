@@ -100,7 +100,7 @@ export default function OnboardingPage() {
 	// Auto-accept a pending invite (set by /join/[code]) once signed in.
 	useEffect(() => {
 		if (!user) return;
-		const pending = readPendingInvite();
+		const pending = readPendingInvite()?.trim();
 		if (!pending) return;
 		setBusy("auto");
 		acceptInvite(pending)

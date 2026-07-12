@@ -17,10 +17,13 @@ import { useMultiSelect } from "@/src/hooks/useMultiSelect";
 import { downloadCsv } from "@/src/lib/csv";
 import { Home, PhoneCall, Users, Pencil, Download, Trash2 } from "lucide-react";
 
-/** A merged row: a CRM lead ("Müşteri") or a contract party ("Kiracı"). */
+/** A merged row: a CRM lead ("Müşteri") or a contract party ("Kiracı").
+ *  `alsoRole` marks a person who exists in BOTH tables — the dashboard keeps a
+ *  single row (the lead, which carries status/matches/calls) and sets
+ *  alsoRole:"tenant" so the row shows both role badges. */
 export type ContactRow =
-	| { type: "lead"; id: string; lead: Lead }
-	| { type: "tenant"; id: string; tenant: Tenant };
+	| { type: "lead"; id: string; lead: Lead; alsoRole?: "tenant" }
+	| { type: "tenant"; id: string; tenant: Tenant; alsoRole?: "lead" };
 
 function isToday(dateStr: string | null): boolean {
 	if (!dateStr) return false;
@@ -42,8 +45,18 @@ function StatusBadge({ status }: { status: Lead["status"] }) {
 	return <Badge tone={meta.tone}>{meta.label}</Badge>;
 }
 
-function TypeBadge({ type }: { type: ContactRow["type"] }) {
-	return type === "lead" ? <Badge tone="indigo">Müşteri</Badge> : <Badge tone="violet">Kiracı</Badge>;
+function RoleBadge({ role }: { role: "lead" | "tenant" }) {
+	return role === "lead" ? <Badge tone="indigo">Müşteri</Badge> : <Badge tone="violet">Kiracı</Badge>;
+}
+
+/** One badge per role the person holds — two when the row merges a lead + tenant. */
+function TypeBadge({ row }: { row: ContactRow }) {
+	const roles: ("lead" | "tenant")[] = row.alsoRole ? [row.type, row.alsoRole] : [row.type];
+	return (
+		<span className="inline-flex flex-wrap items-center gap-1">
+			{roles.map((role) => <RoleBadge key={role} role={role} />)}
+		</span>
+	);
 }
 
 /** Small "called today" flag so agents don't double-call the same lead. */
@@ -224,7 +237,7 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 									)}
 								</div>
 								<div className="flex flex-col items-end gap-1.5">
-									<TypeBadge type={r.type} />
+									<TypeBadge row={r} />
 									{r.type === "lead" && <StatusBadge status={r.lead.status} />}
 								</div>
 							</div>
@@ -300,7 +313,7 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 											/>
 										</td>
 										<td className="px-4 py-3 text-sm font-medium text-base-content">{p.full_name}</td>
-										<td className="px-4 py-3"><TypeBadge type={r.type} /></td>
+										<td className="px-4 py-3"><TypeBadge row={r} /></td>
 										<td className="px-4 py-3 text-sm text-base-content/70 whitespace-nowrap">
 											{p.phone ?? "—"}
 											{p.phone && <span className="ml-1"><WhatsAppButton phone={p.phone} name={p.full_name} /></span>}

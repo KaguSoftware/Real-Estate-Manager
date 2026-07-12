@@ -187,6 +187,26 @@
 	.enter { animation: lx-fade-up 0.7s var(--ease-fluid) both; }
 	.enter-2 { animation-delay: 0.08s; }
 	.enter-3 { animation-delay: 0.16s; }
+	/* Dropdown/menu panel open: snappy fade + scale from the top edge. */
+	@keyframes dropdownIn {
+		from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+		to { opacity: 1; transform: none; }
+	}
+	.animate-dropdown-in {
+		transform-origin: top;
+		animation: dropdownIn 0.15s ease-out both;
+	}
+
+	/* Bell hover: a short back-and-forth jiggle. */
+	@keyframes wiggle {
+		0%, 100% { transform: rotate(0deg); }
+		20% { transform: rotate(-12deg); }
+		40% { transform: rotate(10deg); }
+		60% { transform: rotate(-6deg); }
+		80% { transform: rotate(3deg); }
+	}
+	.animate-wiggle { animation: wiggle 0.4s ease-in-out; }
+
 	/* Scroll reveal: progressive enhancement only — content is fully visible
 	   wherever scroll-driven animations are unsupported (SEO/headless safe). */
 	@supports (animation-timeline: view()) {

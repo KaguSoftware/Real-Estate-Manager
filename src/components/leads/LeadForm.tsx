@@ -142,16 +142,18 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 			onClose={onClose}
 			title={mode === "create" ? "Müşteri ekle" : "Müşteriyi düzenle"}
 			footer={
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-3">
 					{mode === "edit" && (
 						<Button variant="danger" size="md" onClick={() => setConfirmingDelete(true)} disabled={busy} aria-label="Müşteriyi sil">
 							<Trash2 className="w-4 h-4" />
 						</Button>
 					)}
-					<Button variant="ghost" block onClick={onClose}>Vazgeç</Button>
-					<Button block onClick={() => handleSubmit()} loading={busy}>
-						{mode === "create" ? "Müşteri ekle" : "Kaydet"}
-					</Button>
+					<div className="flex-1 flex items-center gap-3">
+						<Button variant="ghost" block onClick={onClose}>Vazgeç</Button>
+						<Button block onClick={() => handleSubmit()} loading={busy}>
+							{mode === "create" ? "Müşteri ekle" : "Kaydet"}
+						</Button>
+					</div>
 				</div>
 			}
 		>

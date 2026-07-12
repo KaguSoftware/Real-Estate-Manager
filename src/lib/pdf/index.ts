@@ -79,3 +79,21 @@ export async function downloadPdfFile(file: File) {
 	document.body.removeChild(link);
 	setTimeout(() => URL.revokeObjectURL(url), 5_000);
 }
+
+/** Download a file that already lives at a URL (e.g. a Supabase signed URL for a
+ *  stored PDF) without navigating the user. Fetching to a blob and clicking a
+ *  synthetic anchor avoids the window.open(_blank) flash where the browser paints
+ *  the signed-URL tab (a brief error/interstitial) before the PDF resolves. */
+export async function downloadUrl(url: string, filename: string) {
+	const res = await fetch(url);
+	if (!res.ok) throw new Error(`Dosya indirilemedi (${res.status})`);
+	const blob = await res.blob();
+	const objectUrl = URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = objectUrl;
+	link.download = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	setTimeout(() => URL.revokeObjectURL(objectUrl), 5_000);
+}

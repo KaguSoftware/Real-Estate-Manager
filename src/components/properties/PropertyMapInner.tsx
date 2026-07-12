@@ -75,8 +75,16 @@ function FitBounds({ cells }: { cells: Cell[] }) {
 function InvalidateOnResize({ signal }: { signal: unknown }) {
 	const map = useMap();
 	useEffect(() => {
-		const t = setTimeout(() => map.invalidateSize(), 220); // after the CSS transition
-		return () => clearTimeout(t);
+		// Reflow tiles *during* the height transition (not just after) so the map
+		// grows smoothly instead of snapping once the transition ends.
+		let raf = 0;
+		const start = performance.now();
+		const tick = (now: number) => {
+			map.invalidateSize();
+			if (now - start < 240) raf = requestAnimationFrame(tick);
+		};
+		raf = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(raf);
 	}, [signal, map]);
 	return null;
 }
