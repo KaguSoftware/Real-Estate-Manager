@@ -18,6 +18,13 @@ export function positiveNumber(value: string, label: string): string | undefined
 	return undefined;
 }
 
+/** Number-valued twin of positiveNumber(), for NumberInput's `number | null`. */
+export function positiveNumberValue(value: number | null, label: string): string | undefined {
+	if (value === null) return `${label} zorunludur.`;
+	if (value <= 0) return `${label} sıfırdan büyük olmalıdır.`;
+	return undefined;
+}
+
 export function validEmail(value: string): string | undefined {
 	if (!value.trim()) return undefined; // optional field — pair with required() when mandatory
 	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? undefined : "Geçerli bir e-posta adresi girin.";
