@@ -2,7 +2,6 @@
 
 import { humanizeError } from "@/src/lib/errors";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAppStore } from "@/src/store";
@@ -26,18 +25,22 @@ import { ClientPickerCardList } from "./ClientPickerCardList";
 import { Button, cn, Alert, Spinner, toast, Input, FormField, ConfirmDialog } from "@/src/components/ui";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import {
-	SalesDetailsForm,
 	initialSalesFormState,
 	computeCommission,
 	validateSales,
 	type SalesFormState,
 } from "./SalesDetailsForm";
 import {
-	RentalDetailsForm,
 	initialRentalFormState,
 	validateRental,
 	type RentalFormState,
 } from "./RentalDetailsForm";
+import {
+	extractRentalFromDoc,
+	extractSalesFromDoc,
+	type RentalDocExtract,
+	type SalesDocExtract,
+} from "@/src/lib/documents/extractFromDoc";
 
 const PDFBlobProvider = dynamic(
 	() => import("@react-pdf/renderer").then((m) => m.BlobProvider),
@@ -111,6 +114,68 @@ function clearDraft() {
 
 function safeFilename(s: string) {
 	return s.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "document";
+}
+
+// The final stage has no form — the document IS the form. At confirm time
+// the structured cards are read back (extractFromDoc) and merged over the
+// wizard state so validation and record creation reuse the same shapes.
+function mergeRentalExtract(s: RentalFormState, ex: RentalDocExtract): RentalFormState {
+	return {
+		...s,
+		landlordName: ex.landlord?.full_name ?? "",
+		landlordAddress: ex.landlord?.address ?? "",
+		landlordNationalId: ex.landlord?.national_id ?? "",
+		landlordTaxNo: ex.landlord?.tax_no ?? "",
+		landlordTaxOffice: ex.landlord?.tax_office ?? "",
+		landlordPhone: ex.landlord?.phone ?? "",
+		landlordEmail: ex.landlord?.email ?? "",
+		tenantName: ex.tenant?.full_name ?? "",
+		tenantAddress: ex.tenant?.address ?? "",
+		tenantNationalId: ex.tenant?.national_id ?? "",
+		tenantTaxNo: ex.tenant?.tax_no ?? "",
+		tenantTaxOffice: ex.tenant?.tax_office ?? "",
+		tenantPhone: ex.tenant?.phone ?? "",
+		tenantEmail: ex.tenant?.email ?? "",
+		guarantorEnabled: Boolean(ex.guarantor?.full_name?.trim()),
+		guarantorName: ex.guarantor?.full_name ?? "",
+		guarantorAddress: ex.guarantor?.address ?? "",
+		guarantorNationalId: ex.guarantor?.national_id ?? "",
+		guarantorPhone: ex.guarantor?.phone ?? "",
+		guarantorEmail: ex.guarantor?.email ?? "",
+		monthlyRent: ex.monthlyRent != null ? String(ex.monthlyRent) : "",
+		deposit: ex.deposit != null ? String(ex.deposit) : "0",
+		currency: ex.currency ?? s.currency,
+		term: ex.term ?? s.term,
+		// Unreadable (but present) date text must fail validation, not fall
+		// back silently to the default — the PDF would disagree with the DB.
+		startDate: ex.startDate ?? (ex.startDateRaw ? "" : s.startDate),
+		paymentDay: ex.paymentDay != null ? String(ex.paymentDay) : s.paymentDay,
+		paymentMethod: ex.paymentMethod ?? "",
+		bankAccount: ex.bankAccount ?? "",
+	};
+}
+
+function mergeSalesExtract(s: SalesFormState, ex: SalesDocExtract): SalesFormState {
+	return {
+		...s,
+		sellerName: ex.seller?.full_name ?? "",
+		sellerAddress: ex.seller?.address ?? "",
+		sellerNationalId: ex.seller?.national_id ?? "",
+		sellerTaxNo: ex.seller?.tax_no ?? "",
+		sellerTaxOffice: ex.seller?.tax_office ?? "",
+		sellerPhone: ex.seller?.phone ?? "",
+		sellerEmail: ex.seller?.email ?? "",
+		buyerName: ex.buyer?.full_name ?? "",
+		buyerAddress: ex.buyer?.address ?? "",
+		buyerNationalId: ex.buyer?.national_id ?? "",
+		buyerTaxNo: ex.buyer?.tax_no ?? "",
+		buyerTaxOffice: ex.buyer?.tax_office ?? "",
+		buyerPhone: ex.buyer?.phone ?? "",
+		buyerEmail: ex.buyer?.email ?? "",
+		salePrice: ex.salePrice != null ? String(ex.salePrice) : "",
+		depositAmount: ex.depositAmount != null ? String(ex.depositAmount) : "",
+		currency: ex.currency ?? s.currency,
+	};
 }
 
 function buildRentalPDFData(
@@ -263,32 +328,14 @@ export function DocumentWizard() {
 	const [loadingClients, setLoadingClients] = useState(false);
 	const [clientId, setClientId] = useState<string | null>(null);
 
-	// Step 3 — rental state (init via RentalDetailsForm helper once a property is picked)
+	// Wizard form state seeds the INITIAL document (property/client prefills
+	// plus sensible defaults). After that the document itself is the source
+	// of truth — confirm reads the final values back out of its cards.
 	const [rentalState, setRentalState] = useState<RentalFormState>(() => initialRentalFormState(null));
-	function patchRental<K extends keyof RentalFormState>(key: K, value: RentalFormState[K]) {
-		setRentalState((s) => ({ ...s, [key]: value }));
-		clearFieldError(key === "tenantPhone" || key === "tenantEmail" ? "tenantContact" : key);
-	}
-
-	// Step 3 — sales state (init via SalesDetailsForm helper once a property is picked)
 	const [salesState, setSalesState] = useState<SalesFormState>(() => initialSalesFormState(null));
-	function patchSales<K extends keyof SalesFormState>(key: K, value: SalesFormState[K]) {
-		setSalesState((s) => ({ ...s, [key]: value }));
-		clearFieldError(key === "buyerPhone" || key === "buyerEmail" ? "buyerContact" : key);
-	}
-
-	function clearFieldError(key: string) {
-		setFieldErrors((e) => {
-			if (!(key in e)) return e;
-			const next = { ...e };
-			delete next[key];
-			return next;
-		});
-	}
 
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
 	// Records already created by a partially-failed confirm — a retry must
 	// reuse them, not create duplicates (tenant/lease/sale are not atomic).
@@ -315,7 +362,6 @@ export function DocumentWizard() {
 	const [docDirty, setDocDirty] = useState(false);
 	// Data changed while the doc was dirty: doc no longer matches the fields.
 	const [docStale, setDocStale] = useState(false);
-	const [panelOpen, setPanelOpen] = useState(true);
 	const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
 	// Team clause template state — declared here (before the draft persist
 	// effect that references it) to avoid a temporal-dead-zone crash.
@@ -624,20 +670,6 @@ export function DocumentWizard() {
 
 	async function handleConfirm() {
 		if (!property) return;
-		// The essentials panel replaced the old Detaylar step — required-field
-		// validation now happens here, at confirm time.
-		const errors = kind === "rental" ? validateRental(rentalState) : validateSales(salesState);
-		setFieldErrors(errors);
-		const firstError = Object.keys(errors)[0];
-		if (firstError) {
-			setViewMode("edit");
-			setPanelOpen(true);
-			// Let the panel expand before scrolling to the first missing field.
-			setTimeout(() => {
-				document.getElementById(firstError)?.scrollIntoView({ behavior: "smooth", block: "center" });
-			}, 80);
-			return;
-		}
 		// A stale doc would create records with the new data but a PDF with the
 		// old — never let those diverge.
 		if (docStale) {
@@ -646,11 +678,39 @@ export function DocumentWizard() {
 		}
 		const finalJson = currentDocJson();
 		if (!finalJson) return;
+
+		// The document IS the form: read the structured values back out of its
+		// cards and validate them before creating any records.
+		let mergedRental = rentalState;
+		let mergedSales = salesState;
+		let errors: Record<string, string>;
+		if (kind === "rental") {
+			const ex = extractRentalFromDoc(finalJson);
+			mergedRental = mergeRentalExtract(rentalState, ex);
+			errors = validateRental(mergedRental);
+			if (ex.startDateRaw && !ex.startDate) {
+				errors.startDate =
+					`Başlangıç tarihi okunamadı ("${ex.startDateRaw}") — "12 Temmuz 2026" ya da "12.07.2026" biçiminde yazın.`;
+			}
+		} else {
+			const ex = extractSalesFromDoc(finalJson);
+			mergedSales = mergeSalesExtract(salesState, ex);
+			errors = validateSales(mergedSales);
+		}
+		if (Object.keys(errors).length > 0) {
+			setViewMode("edit");
+			setError("Belgedeki kartlarda eksik veya okunamayan bilgiler var: " + Object.values(errors).join(" "));
+			return;
+		}
+
 		setSubmitting(true);
 		setError(null);
 		try {
-			if (kind === "rental" && rentalData) {
-				const s = rentalState;
+			if (kind === "rental") {
+				const s = mergedRental;
+				// Snapshot built from the document's own values — this is what
+				// the archived PDF and the re-edit page will show.
+				const rentalDataFinal = buildRentalPDFData(property, s, teamClauses);
 				const c = createdRef.current;
 				if (!c.tenantId) {
 					const tenant = await createTenant({
@@ -716,7 +776,7 @@ export function DocumentWizard() {
 							title,
 							subtitle: docSubtitle.trim() || null,
 							content: finalJson,
-							source_data: rentalData,
+							source_data: rentalDataFinal,
 						});
 						c.contractDocId = cd.id;
 					} catch {
@@ -730,7 +790,7 @@ export function DocumentWizard() {
 						title,
 						subtitle: docSubtitle.trim() || null,
 						doc: finalJson,
-						sourceData: rentalData,
+						sourceData: rentalDataFinal,
 						branding: await getPdfBrandingFromStore(),
 					},
 					filename,
@@ -751,15 +811,17 @@ export function DocumentWizard() {
 				return;
 			}
 
-			if (kind === "sales" && salesData) {
+			if (kind === "sales") {
+				const s = mergedSales;
+				const salesDataFinal = buildSalesPDFData(property, s, teamClauses);
 				const c = createdRef.current;
 				// Buyer is stored in the tenants table (schema fits).
 				if (!c.buyerId) {
 					const buyer = await createTenant({
-						full_name: salesState.buyerName.trim(),
-						email: salesState.buyerEmail.trim() || null,
-						phone: salesState.buyerPhone.trim() || null,
-						national_id: salesState.buyerNationalId.trim() || null,
+						full_name: s.buyerName.trim(),
+						email: s.buyerEmail.trim() || null,
+						phone: s.buyerPhone.trim() || null,
+						national_id: s.buyerNationalId.trim() || null,
 					});
 					c.buyerId = buyer.id;
 				}
@@ -767,17 +829,17 @@ export function DocumentWizard() {
 					const sale = await createSale({
 						property_id: property.id,
 						buyer_id: c.buyerId,
-						sale_price: Number(salesState.salePrice || 0),
-						currency: salesState.currency,
-						sale_date: salesState.saleDate,
-						target_close_date: salesState.targetCloseDate || null,
-						deposit_amount: salesState.depositAmount ? Number(salesState.depositAmount) : null,
-						penalty_amount: salesState.penaltyAmount ? Number(salesState.penaltyAmount) : null,
-						validity_days: salesState.validityDays ? Number(salesState.validityDays) : null,
-						tax_responsibility: salesState.taxResponsibility,
-						buyer_commission_rate:  salesState.buyerCommissionRate  ? Number(salesState.buyerCommissionRate)  : null,
-						seller_commission_rate: salesState.sellerCommissionRate ? Number(salesState.sellerCommissionRate) : null,
-						special_conditions: salesState.specialConditions.trim() || null,
+						sale_price: Number(s.salePrice || 0),
+						currency: s.currency,
+						sale_date: s.saleDate,
+						target_close_date: s.targetCloseDate || null,
+						deposit_amount: s.depositAmount ? Number(s.depositAmount) : null,
+						penalty_amount: s.penaltyAmount ? Number(s.penaltyAmount) : null,
+						validity_days: s.validityDays ? Number(s.validityDays) : null,
+						tax_responsibility: s.taxResponsibility,
+						buyer_commission_rate:  s.buyerCommissionRate  ? Number(s.buyerCommissionRate)  : null,
+						seller_commission_rate: s.sellerCommissionRate ? Number(s.sellerCommissionRate) : null,
+						special_conditions: s.specialConditions.trim() || null,
 					});
 					c.saleId = sale.id;
 				}
@@ -796,21 +858,21 @@ export function DocumentWizard() {
 							title,
 							subtitle: docSubtitle.trim() || null,
 							content: finalJson,
-							source_data: salesData,
+							source_data: salesDataFinal,
 						});
 						c.contractDocId = cd.id;
 					} catch {
 						toast.error("Belgenin düzenlenebilir kopyası kaydedilemedi.");
 					}
 				}
-				const filename = `satis-${safeFilename(salesState.buyerName.trim())}-${safeFilename(property.address_line)}.pdf`;
+				const filename = `satis-${safeFilename(s.buyerName.trim())}-${safeFilename(property.address_line)}.pdf`;
 				const pdfFile = await generateEditorPdfFile(
 					{
 						kind: "sales",
 						title,
 						subtitle: docSubtitle.trim() || null,
 						doc: finalJson,
-						sourceData: salesData,
+						sourceData: salesDataFinal,
 						branding: await getPdfBrandingFromStore(),
 					},
 					filename,
@@ -836,26 +898,6 @@ export function DocumentWizard() {
 	}
 
 	const previewLabel = kind === "rental" ? "Kira sözleşmesi önizleme" : "Satış sözleşmesi önizleme";
-
-	const errorCount = Object.keys(fieldErrors).length;
-
-	// Collapsed-panel summary: who + how much, once known.
-	const panelSummary = useMemo(() => {
-		if (kind === "rental") {
-			const rent = Number(rentalState.monthlyRent || 0);
-			const parts = [
-				rentalState.tenantName.trim() || null,
-				rent > 0 ? `${rent.toLocaleString("tr-TR")} ${rentalState.currency}/ay` : null,
-			].filter(Boolean);
-			return parts.length ? parts.join(" · ") : "Taraflar, tutarlar ve tarihler";
-		}
-		const price = Number(salesState.salePrice || 0);
-		const parts = [
-			salesState.buyerName.trim() || null,
-			price > 0 ? `${price.toLocaleString("tr-TR")} ${salesState.currency}` : null,
-		].filter(Boolean);
-		return parts.length ? parts.join(" · ") : "Taraflar, tutarlar ve tarihler";
-	}, [kind, rentalState.tenantName, rentalState.monthlyRent, rentalState.currency, salesState.buyerName, salesState.salePrice, salesState.currency]);
 
 	const stepIndex = STEPS.indexOf(step);
 
@@ -1003,9 +1045,9 @@ export function DocumentWizard() {
 				<div className="space-y-4">
 					<div className="flex items-center justify-between gap-3 flex-wrap">
 						<div>
-							<h2 className="font-display text-lg font-semibold text-base-content">Sözleşmeyi hazırlayın</h2>
+							<h2 className="font-display text-lg font-semibold text-base-content">Belgeyi düzenleyin</h2>
 							<p className="text-sm text-base-content/60 mt-0.5">
-								Bilgileri doldurun — belge yazdıkça güncellenir. Metinlere tıklayarak düzenleyin, blokları sürükleyin.
+								Metinlere ve kartlara tıklayarak düzenleyin — taraf, tutar ve tarih bilgileri belgeden alınır.
 							</p>
 						</div>
 						{/* Edit / PDF preview toggle */}
@@ -1030,58 +1072,6 @@ export function DocumentWizard() {
 						</div>
 					</div>
 
-					{/* Essentials panel — the fields the tenant/buyer + lease/sale
-					    records need; the document rebuilds live from them. */}
-					<div className="rounded-2xl border border-base-300 bg-base-100">
-						<button
-							type="button"
-							onClick={() => setPanelOpen((o) => !o)}
-							aria-expanded={panelOpen}
-							className="w-full flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 text-left"
-						>
-							<span className="min-w-0">
-								<span className="block font-display text-sm font-semibold text-base-content">Sözleşme bilgileri</span>
-								<span className="block text-xs text-base-content/55 truncate mt-0.5">{panelSummary}</span>
-							</span>
-							<span className="flex items-center gap-3 shrink-0">
-								{errorCount > 0 && (
-									<span className="text-xs font-semibold text-error">{errorCount} eksik alan</span>
-								)}
-								<ChevronDown
-									className={cn(
-										"w-4 h-4 text-base-content/50 transition-transform duration-200",
-										panelOpen && "rotate-180",
-									)}
-								/>
-							</span>
-						</button>
-						{panelOpen && (
-							<div className="px-4 sm:px-5 pb-5 pt-4 border-t border-base-300 space-y-5">
-								<p className="text-xs text-base-content/55">
-									Bu bilgiler {kind === "rental" ? "kiracı ve kira kaydını" : "alıcı ve satış kaydını"} oluşturur;
-									belgeyi özelleştirene kadar değişiklikler belgeye anında yansır.
-								</p>
-								{/* Cover fields — the cover page itself is generated, not block-edited. */}
-								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-									<FormField label="Belge başlığı">
-										<Input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
-									</FormField>
-									<FormField label="Kapak alt başlığı">
-										<Input value={docSubtitle} onChange={(e) => setDocSubtitle(e.target.value)} />
-									</FormField>
-								</div>
-								{kind === "rental" ? (
-									<RentalDetailsForm state={rentalState} onChange={patchRental} errors={fieldErrors} />
-								) : (
-									<SalesDetailsForm state={salesState} onChange={patchSales} errors={fieldErrors} />
-								)}
-								{errorCount > 0 && (
-									<Alert>Bazı zorunlu alanlar eksik — yukarıda işaretlenen alanları kontrol edin.</Alert>
-								)}
-							</div>
-						)}
-					</div>
-
 					{docStale && (
 						<Alert
 							tone="warning"
@@ -1101,7 +1091,17 @@ export function DocumentWizard() {
 					) : !fontsLoaded || !clausesReady || !docJson ? (
 						<div className="h-[50vh] flex items-center justify-center"><Spinner /></div>
 					) : viewMode === "edit" ? (
-						<div className="rounded-2xl bg-base-200 border border-base-300 px-3 sm:px-6 pt-2">
+						<>
+							{/* Cover fields — the cover page itself is generated, not block-edited. */}
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								<FormField label="Belge başlığı">
+									<Input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
+								</FormField>
+								<FormField label="Kapak alt başlığı">
+									<Input value={docSubtitle} onChange={(e) => setDocSubtitle(e.target.value)} />
+								</FormField>
+							</div>
+							<div className="rounded-2xl bg-base-200 border border-base-300 px-3 sm:px-6 pt-2">
 							<ContractEditor
 								initialDoc={docJson}
 								palette={previewBranding?.palette ?? BRAND_PALETTES.kagu}
@@ -1119,7 +1119,8 @@ export function DocumentWizard() {
 								}}
 								onReset={() => setConfirmReset(true)}
 							/>
-						</div>
+							</div>
+						</>
 					) : (
 						<div className="h-[60vh] sm:h-[72vh] bg-base-200 rounded-2xl overflow-hidden border border-base-300">
 							{previewJson ? (

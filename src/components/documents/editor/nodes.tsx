@@ -10,9 +10,11 @@
  * src/lib/documents/blocks.ts.
  */
 
+import { useRef } from "react";
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { Plus, Trash2, TriangleAlert, Info } from "lucide-react";
 import type {
+	ImageAttrs,
 	KVCardAttrs,
 	MoneyPairAttrs,
 	PartyCardAttrs,
@@ -362,6 +364,76 @@ export function SignatureBlockView({ node, updateAttributes, editor }: NodeViewP
 					<Plus className="w-3 h-3" /> İmzacı ekle
 				</button>
 			)}
+		</NodeViewWrapper>
+	);
+}
+
+// ── Image (drag-to-resize) ───────────────────────────────────────────────────
+export function ImageView({ node, updateAttributes, editor, selected }: NodeViewProps) {
+	const attrs = node.attrs as ImageAttrs;
+	const imgRef = useRef<HTMLImageElement>(null);
+	const editable = editor.isEditable;
+
+	function startResize(e: React.PointerEvent) {
+		const img = imgRef.current;
+		if (!img || !editable) return;
+		e.preventDefault();
+		e.stopPropagation();
+		const startX = e.clientX;
+		const startW = img.offsetWidth;
+		const natW = attrs.width ?? img.naturalWidth ?? startW;
+		const natH = attrs.height ?? img.naturalHeight ?? Math.round(startW * 0.75);
+		const ratio = natW > 0 ? natH / natW : 0.75;
+		const pm = img.closest(".ProseMirror") as HTMLElement | null;
+		const maxW = pm?.clientWidth || 698;
+		let w = startW;
+		const onMove = (ev: PointerEvent) => {
+			w = Math.round(Math.max(80, Math.min(maxW, startW + (ev.clientX - startX))));
+			// Imperative during the drag — one attrs update on release keeps
+			// undo history to a single step.
+			img.style.width = `${w}px`;
+		};
+		const onUp = () => {
+			window.removeEventListener("pointermove", onMove);
+			updateAttributes({ width: w, height: Math.round(w * ratio) });
+		};
+		window.addEventListener("pointermove", onMove);
+		window.addEventListener("pointerup", onUp, { once: true });
+	}
+
+	return (
+		<NodeViewWrapper className="doc-block mb-3" data-drag-handle>
+			<div
+				className={cn(
+					"relative inline-block max-w-full group/img",
+					selected && "ring-2 ring-primary/50 rounded-sm",
+				)}
+			>
+				{/* Data-URI documents; next/image adds nothing here. */}
+				{/* eslint-disable-next-line @next/next/no-img-element */}
+				<img
+					ref={imgRef}
+					src={attrs.src}
+					alt={attrs.alt ?? ""}
+					draggable={false}
+					style={{ width: attrs.width ?? undefined }}
+					className="block h-auto max-w-full rounded-sm"
+				/>
+				{editable && (
+					<button
+						type="button"
+						contentEditable={false}
+						onPointerDown={startResize}
+						aria-label="Görseli yeniden boyutlandır"
+						className={cn(
+							"absolute -bottom-1.5 -right-1.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-primary shadow",
+							"cursor-se-resize touch-none opacity-0 transition-opacity",
+							"group-hover/img:opacity-100 focus-visible:opacity-100",
+							selected && "opacity-100",
+						)}
+					/>
+				)}
+			</div>
 		</NodeViewWrapper>
 	);
 }

@@ -21,6 +21,7 @@ import {
 	MoneyPairView,
 	SignatureBlockView,
 	CalloutView,
+	ImageView,
 } from "./nodes";
 
 /** Attribute helper: plain JSON attr with a default, no HTML parsing needed
@@ -127,14 +128,19 @@ export const PageBreak = Node.create({
 });
 
 /** Image with natural-dimension attrs so the PDF can size without measuring.
- *  src is always a compressed JPEG/PNG data URI (see Toolbar's upload flow). */
+ *  src is always a compressed JPEG/PNG data URI (see Toolbar's upload flow).
+ *  The node view adds drag-to-resize (attrs update on release). */
 export const DocImage = Image.extend({
+	draggable: true,
 	addAttributes() {
 		return {
 			...this.parent?.(),
 			width: jsonAttr(null),
 			height: jsonAttr(null),
 		};
+	},
+	addNodeView() {
+		return ReactNodeViewRenderer(ImageView);
 	},
 });
 
