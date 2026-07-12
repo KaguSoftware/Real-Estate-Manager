@@ -9,7 +9,8 @@
  * exposes move/delete buttons instead (drag is unreliable on touch).
  */
 
-import { useId, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import {
@@ -126,7 +127,6 @@ function ToolButton({
 	children,
 	className,
 	ref,
-	popoverTarget,
 }: {
 	onClick?: () => void;
 	active?: boolean;
@@ -135,14 +135,12 @@ function ToolButton({
 	children: React.ReactNode;
 	className?: string;
 	ref?: React.Ref<HTMLButtonElement>;
-	popoverTarget?: string;
 }) {
 	return (
 		<button
 			ref={ref}
 			type="button"
 			onClick={onClick}
-			popoverTarget={popoverTarget}
 			disabled={disabled}
 			title={label}
 			aria-label={label}
@@ -172,29 +170,40 @@ export function Toolbar({
 }) {
 	const fileRef = useRef<HTMLInputElement>(null);
 	const blockBtnRef = useRef<HTMLButtonElement>(null);
-	const blockMenuRef = useRef<HTMLUListElement>(null);
-	const blockMenuId = useId();
 	const vertical = orientation === "vertical";
 
-	/** The block menu is a native popover (top layer) — CSS dropdowns get
-	 *  clipped by the toolbar's own scroll containers. Positioned next to the
-	 *  trigger on open, clamped to the viewport. */
-	function onBlockMenuToggle(e: React.SyntheticEvent<HTMLUListElement>) {
-		if ((e.nativeEvent as ToggleEvent).newState !== "open") return;
+	// The block menu is a portal overlay on document.body — CSS dropdowns get
+	// clipped by the toolbar's own scroll containers, and popover toggle
+	// events proved unreliable. Position is computed synchronously from the
+	// trigger's rect at open time and clamped to the viewport.
+	const [blockMenu, setBlockMenu] = useState<{ top: number; left: number } | null>(null);
+
+	function toggleBlockMenu() {
+		if (blockMenu) {
+			setBlockMenu(null);
+			return;
+		}
 		const btn = blockBtnRef.current;
-		const menu = blockMenuRef.current;
-		if (!btn || !menu) return;
+		if (!btn) return;
 		const r = btn.getBoundingClientRect();
-		const w = menu.offsetWidth || 224;
-		const h = menu.offsetHeight || 260;
-		const left = Math.max(8, Math.min(vertical ? r.right + 10 : r.left, window.innerWidth - w - 8));
-		const top = Math.max(8, Math.min(vertical ? r.top : r.bottom + 6, window.innerHeight - h - 8));
-		menu.style.left = `${left}px`;
-		menu.style.top = `${top}px`;
+		const MENU_W = 224; // w-56
+		const MENU_H = 272; // 5 items + padding, approximate for clamping
+		const left = Math.max(8, Math.min(vertical ? r.right + 10 : r.left, window.innerWidth - MENU_W - 8));
+		const top = Math.max(8, Math.min(vertical ? r.top - 8 : r.bottom + 6, window.innerHeight - MENU_H - 8));
+		setBlockMenu({ top, left });
 	}
 
+	useEffect(() => {
+		if (!blockMenu) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") setBlockMenu(null);
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [blockMenu]);
+
 	function insertBlock(content: object) {
-		blockMenuRef.current?.hidePopover();
+		setBlockMenu(null);
 		insertAfterCurrentBlock(editor, content);
 	}
 	const state = useEditorState({
@@ -341,60 +350,65 @@ export function Toolbar({
 
 				{divider}
 
-				{/* Structured contract blocks — native popover so the menu is never
-				    clipped by the toolbar's scroll/overflow containers. */}
-				<ToolButton ref={blockBtnRef} popoverTarget={blockMenuId} label="Blok ekle">
+				{/* Structured contract blocks — the menu is a body-level portal
+				    overlay so no toolbar container can ever clip it. */}
+				<ToolButton ref={blockBtnRef} label="Blok ekle" active={!!blockMenu} onClick={toggleBlockMenu}>
 					<Plus className="w-4 h-4" /> {!vertical && <span className="hidden sm:inline">Blok</span>}
 				</ToolButton>
-				<ul
-					id={blockMenuId}
-					ref={blockMenuRef}
-					popover="auto"
-					onToggle={onBlockMenuToggle}
-					className="menu m-0 w-56 rounded-xl border border-base-300 bg-base-100 p-1.5 shadow-lg text-sm"
-					style={{ position: "fixed", inset: "auto" }}
-				>
-					<li>
-						<button type="button" onClick={() => insertBlock({ type: "sectionChip", attrs: { letter: null, title: "Yeni Bölüm" } })}>
-							<Tag className="w-4 h-4" /> Bölüm etiketi
-						</button>
-					</li>
-					<li>
-						<button type="button" onClick={() => insertBlock({ type: "kvCard", attrs: { title: null, items: [{ label: "", value: "" }] } })}>
-							<Rows3 className="w-4 h-4" /> Bilgi kartı
-						</button>
-					</li>
-					<li>
-						<button
-							type="button"
-							onClick={() => insertBlock({
-								type: "moneyPair",
-								attrs: {
-									left: { label: "Tutar", value: "", currency: "TRY" },
-									right: { label: "Tutar", value: "", currency: "TRY" },
-								},
-							})}
+				{blockMenu && createPortal(
+					<>
+						{/* Click-away layer (transparent, menu semantics) */}
+						<div className="fixed inset-0 z-40" onClick={() => setBlockMenu(null)} aria-hidden />
+						<ul
+							role="menu"
+							aria-label="Blok ekle"
+							className="menu m-0 fixed z-50 w-56 rounded-xl border border-base-300 bg-base-100 p-1.5 shadow-lg text-sm"
+							style={{ top: blockMenu.top, left: blockMenu.left }}
 						>
-							<LayoutList className="w-4 h-4" /> Tutar kutuları
-						</button>
-					</li>
-					<li>
-						<button
-							type="button"
-							onClick={() => insertBlock({ type: "clauseList", content: [{ type: "clause", content: [{ type: "text", text: "Yeni madde" }] }] })}
-						>
-							<ListOrdered className="w-4 h-4" /> Madde listesi
-						</button>
-					</li>
-					<li>
-						<button
-							type="button"
-							onClick={() => insertBlock({ type: "signatureBlock", attrs: { date: null, signers: [{ role: "Taraf 1" }, { role: "Taraf 2" }] } })}
-						>
-							<PenLine className="w-4 h-4" /> İmza bloğu
-						</button>
-					</li>
-				</ul>
+							<li>
+								<button type="button" onClick={() => insertBlock({ type: "sectionChip", attrs: { letter: null, title: "Yeni Bölüm" } })}>
+									<Tag className="w-4 h-4" /> Bölüm etiketi
+								</button>
+							</li>
+							<li>
+								<button type="button" onClick={() => insertBlock({ type: "kvCard", attrs: { title: null, items: [{ label: "", value: "" }] } })}>
+									<Rows3 className="w-4 h-4" /> Bilgi kartı
+								</button>
+							</li>
+							<li>
+								<button
+									type="button"
+									onClick={() => insertBlock({
+										type: "moneyPair",
+										attrs: {
+											left: { label: "Tutar", value: "", currency: "TRY" },
+											right: { label: "Tutar", value: "", currency: "TRY" },
+										},
+									})}
+								>
+									<LayoutList className="w-4 h-4" /> Tutar kutuları
+								</button>
+							</li>
+							<li>
+								<button
+									type="button"
+									onClick={() => insertBlock({ type: "clauseList", content: [{ type: "clause", content: [{ type: "text", text: "Yeni madde" }] }] })}
+								>
+									<ListOrdered className="w-4 h-4" /> Madde listesi
+								</button>
+							</li>
+							<li>
+								<button
+									type="button"
+									onClick={() => insertBlock({ type: "signatureBlock", attrs: { date: null, signers: [{ role: "Taraf 1" }, { role: "Taraf 2" }] } })}
+								>
+									<PenLine className="w-4 h-4" /> İmza bloğu
+								</button>
+							</li>
+						</ul>
+					</>,
+					document.body,
+				)}
 
 				{/* Table context controls */}
 				{state.inTable && (
