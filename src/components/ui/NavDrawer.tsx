@@ -89,7 +89,7 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 				inert={!open}
 				className={cn(
 					"fixed inset-y-0 left-0 z-50 w-[82%] max-w-xs bg-base-100 shadow-pop flex flex-col",
-					"transition-transform duration-200 ease-out safe-top safe-bottom",
+					"transition-transform duration-300 ease-fluid safe-top safe-bottom",
 					open ? "translate-x-0" : "-translate-x-full",
 				)}
 			>

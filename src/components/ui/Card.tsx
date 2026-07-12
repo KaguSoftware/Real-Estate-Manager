@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "./cn";
 
-/** Standard surface: warm charcoal/ivory panel, hairline border, deep soft
+/** Standard surface: cool grey panel, hairline border, soft slate-tinted
  *  shadow, generous interior padding (`padded`, default on). */
 export function Card({
 	className,
@@ -23,10 +23,10 @@ export function Card({
 	);
 }
 
-/** Section eyebrow used inside cards — gold, spaced small caps. */
+/** Card section label — quiet sentence-case ink, weight carries hierarchy. */
 export function CardLabel({ children, className }: { children: React.ReactNode; className?: string }) {
 	return (
-		<h2 className={cn("text-[11px] font-bold uppercase tracking-[0.18em] text-primary/90", className)}>
+		<h2 className={cn("text-sm font-semibold text-base-content/60", className)}>
 			{children}
 		</h2>
 	);

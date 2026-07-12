@@ -47,8 +47,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 				ref={ref}
 				disabled={disabled || loading}
 				className={cn(
-					"inline-flex items-center justify-center font-semibold tracking-wide rounded-lg whitespace-nowrap select-none",
-					"transition-[filter,background-color,color,box-shadow] duration-150",
+					"inline-flex items-center justify-center font-semibold rounded-lg whitespace-nowrap select-none",
+					"transition-[filter,background-color,color,box-shadow,transform] duration-150",
+					// Physical press: subtle scale-down on :active (tactile feedback).
+					"active:scale-[0.98]",
 					"focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25",
 					"disabled:opacity-50 disabled:pointer-events-none",
 					VARIANTS[variant],
