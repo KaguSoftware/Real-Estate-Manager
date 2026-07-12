@@ -110,7 +110,7 @@ export function LandingPage() {
 			<section className="mx-auto max-w-6xl safe-x pt-14 sm:pt-24 pb-16">
 				<div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
 					<div className="lg:col-span-7">
-						<h1 className="enter font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-base-content leading-[1.05]">
+						<h1 className="enter font-display text-4xl sm:text-5xl font-bold text-base-content leading-[1.05]">
 							Emlak ofisinizin tamamı, tek uygulamada
 						</h1>
 						<p className="enter enter-2 mt-5 max-w-xl text-base sm:text-lg text-base-content/70 leading-relaxed">
