@@ -53,6 +53,10 @@ export interface ContractEditorProps {
 	 *  programmatic setContent) — lets the wizard stop live-rebuilding the
 	 *  document once the user has customized it. */
 	onDirty?: () => void;
+	/** initialDoc failed schema validation (corrupt/outdated draft). Without
+	 *  this, Tiptap silently falls back to an EMPTY document — and the next
+	 *  autosave would overwrite the stored draft with it. */
+	onInvalidContent?: () => void;
 	/** Shown in the toolbar when provided ("Şablona sıfırla"). */
 	onReset?: () => void;
 	/** Ref-object alternative to the forwarded ref — next/dynamic does not
@@ -63,22 +67,29 @@ export interface ContractEditorProps {
 
 export const ContractEditor = forwardRef<ContractEditorHandle, ContractEditorProps>(
 	function ContractEditor(
-		{ initialDoc, palette, editable = true, onChangeJson, onDirty, onReset, apiRef, className },
+		{ initialDoc, palette, editable = true, onChangeJson, onDirty, onInvalidContent, onReset, apiRef, className },
 		ref,
 	) {
 		const changeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 		const onChangeRef = useRef(onChangeJson);
 		const onDirtyRef = useRef(onDirty);
+		const onInvalidRef = useRef(onInvalidContent);
 		useEffect(() => {
 			onChangeRef.current = onChangeJson;
 			onDirtyRef.current = onDirty;
-		}, [onChangeJson, onDirty]);
+			onInvalidRef.current = onInvalidContent;
+		}, [onChangeJson, onDirty, onInvalidContent]);
 
 		const editor = useEditor({
 			extensions: buildExtensions(),
 			content: initialDoc,
 			editable,
 			immediatelyRender: false,
+			enableContentCheck: true,
+			onContentError() {
+				// Defer: fires during editor creation, before parents have refs.
+				setTimeout(() => onInvalidRef.current?.(), 0);
+			},
 			onUpdate({ editor: e }) {
 				onDirtyRef.current?.();
 				if (!onChangeRef.current) return;
@@ -89,9 +100,19 @@ export const ContractEditor = forwardRef<ContractEditorHandle, ContractEditorPro
 			},
 		});
 
-		useEffect(() => () => {
-			if (changeTimer.current) clearTimeout(changeTimer.current);
-		}, []);
+		// Flush (not just drop) a pending debounced change on unmount —
+		// otherwise the last ~800 ms of typing never reaches the draft.
+		useEffect(() => {
+			if (!editor) return;
+			return () => {
+				if (!changeTimer.current) return;
+				clearTimeout(changeTimer.current);
+				changeTimer.current = null;
+				if (!editor.isDestroyed) {
+					onChangeRef.current?.(editor.getJSON() as EditorDocJSON);
+				}
+			};
+		}, [editor]);
 
 		useEffect(() => {
 			// second arg false: setEditable also emits `update` by default.

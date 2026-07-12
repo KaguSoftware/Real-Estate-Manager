@@ -11,7 +11,7 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { TableKit } from "@tiptap/extension-table";
+import { TableKit, TableCell, TableHeader } from "@tiptap/extension-table";
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import {
@@ -152,7 +152,14 @@ export function buildExtensions() {
 		}),
 		TableKit.configure({
 			table: { resizable: false },
+			// Replaced below: the default cells accept ANY block (nested tables,
+			// contract cards…) which the PDF cell renderer flattens to text —
+			// blocks would show in the editor but vanish from the PDF.
+			tableCell: false,
+			tableHeader: false,
 		}),
+		TableCell.extend({ content: "paragraph+" }),
+		TableHeader.extend({ content: "paragraph+" }),
 		DocImage,
 		SectionChip,
 		PartyCard,

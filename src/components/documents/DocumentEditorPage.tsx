@@ -61,6 +61,10 @@ export function DocumentEditorPage({ documentId }: { documentId: string }) {
 	const [subtitle, setSubtitle] = useState("");
 	const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
 	const [previewJson, setPreviewJson] = useState<EditorDocJSON | null>(null);
+	// Latest editor content across mode toggles. The editor unmounts in PDF
+	// mode; remounting from doc.content (last SAVED state) would silently
+	// discard everything typed since the last Kaydet.
+	const [liveContent, setLiveContent] = useState<EditorDocJSON | null>(null);
 	const [branding, setBranding] = useState<PdfBranding | undefined>(undefined);
 	const [ready, setReady] = useState(false);
 	const [busy, setBusy] = useState<string | null>(null);
@@ -96,7 +100,8 @@ export function DocumentEditorPage({ documentId }: { documentId: string }) {
 	const editable = !!doc && doc.status === "draft" && (team?.is_writable ?? true);
 
 	function currentJson(): EditorDocJSON | null {
-		return (viewMode === "edit" ? editorApi.current?.getJSON() : null) ?? previewJson ?? doc?.content ?? null;
+		return (viewMode === "edit" ? editorApi.current?.getJSON() : null)
+			?? liveContent ?? previewJson ?? doc?.content ?? null;
 	}
 
 	function switchMode(mode: "edit" | "preview") {
@@ -104,6 +109,7 @@ export function DocumentEditorPage({ documentId }: { documentId: string }) {
 		if (mode === "preview") {
 			const json = currentJson();
 			if (!json) return;
+			setLiveContent(json);
 			setPreviewJson(json);
 		}
 		setViewMode(mode);
@@ -201,6 +207,7 @@ export function DocumentEditorPage({ documentId }: { documentId: string }) {
 			doc.source_data,
 			branding?.teamName ?? "Kagu Real Estate",
 		);
+		setLiveContent(built);
 		editorApi.current?.setContent(built);
 		setDirty(true);
 		toast.success("Belge şablondan yeniden oluşturuldu.");
@@ -288,11 +295,23 @@ export function DocumentEditorPage({ documentId }: { documentId: string }) {
 
 					<div className="rounded-2xl bg-base-200 border border-base-300 px-3 sm:px-6 pt-2">
 						<ContractEditor
-							initialDoc={doc.content}
+							initialDoc={liveContent ?? doc.content}
 							palette={branding?.palette ?? BRAND_PALETTES.kagu}
 							editable={editable}
 							apiRef={editorApi}
-							onChangeJson={() => setDirty(true)}
+							onChangeJson={(json) => setLiveContent(json)}
+							onDirty={() => setDirty(true)}
+							onInvalidContent={() => {
+								const built = buildInitialDoc(
+									doc.kind,
+									doc.source_data,
+									branding?.teamName ?? "Kagu Real Estate",
+								);
+								setLiveContent(built);
+								editorApi.current?.setContent(built);
+								setDirty(true);
+								toast.error("Belge içeriği okunamadı — şablondan yeniden oluşturuldu. Kaydetmeden önce kontrol edin.");
+							}}
 							onReset={editable ? () => setConfirming("reset") : undefined}
 						/>
 					</div>

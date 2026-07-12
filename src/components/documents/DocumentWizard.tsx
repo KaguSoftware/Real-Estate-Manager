@@ -85,6 +85,9 @@ interface WizardDraft {
 	docTitle?: string;
 	docSubtitle?: string;
 	docFingerprint?: string | null;
+	// Team clause set the doc was built with — restored on resume so a failed
+	// re-fetch can't shift the fingerprint and trip the stale banner.
+	teamClauses?: string[] | null;
 }
 
 function readDraft(): WizardDraft | null {
@@ -287,6 +290,18 @@ export function DocumentWizard() {
 	const [error, setError] = useState<string | null>(null);
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+	// Records already created by a partially-failed confirm — a retry must
+	// reuse them, not create duplicates (tenant/lease/sale are not atomic).
+	const createdRef = useRef<{
+		tenantId?: string;
+		guarantorId?: string;
+		leaseId?: string;
+		buyerId?: string;
+		saleId?: string;
+		propertyDone?: boolean;
+		contractDocId?: string;
+	}>({});
+
 	// ── Editable document state (final step) ────────────────────────────
 	const [docJson, setDocJson] = useState<EditorDocJSON | null>(null);
 	const [docTitle, setDocTitle] = useState("");
@@ -302,19 +317,33 @@ export function DocumentWizard() {
 	const [docStale, setDocStale] = useState(false);
 	const [panelOpen, setPanelOpen] = useState(true);
 	const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
+	// Team clause template state — declared here (before the draft persist
+	// effect that references it) to avoid a temporal-dead-zone crash.
+	const [teamClauses, setTeamClauses] = useState<string[] | null>(null);
+	const [clausesReady, setClausesReady] = useState(false);
+	const clausesFetchedFor = useRef<string | null>(null);
 	const [previewJson, setPreviewJson] = useState<EditorDocJSON | null>(null);
 	const [confirmReset, setConfirmReset] = useState(false);
 	const editorApi = useRef<ContractEditorHandle | null>(null);
 
 	// Offer to resume a saved draft from a previous (interrupted) session.
 	const [pendingDraft, setPendingDraft] = useState<WizardDraft | null>(() => readDraft());
+	const restoringDraft = useRef(false);
 	function resumeDraft() {
 		if (!pendingDraft) return;
+		restoringDraft.current = Boolean(pendingDraft.propertyId);
 		setKind(pendingDraft.kind);
 		setPropertyId(pendingDraft.propertyId);
 		setClientId(pendingDraft.clientId);
-		setRentalState(pendingDraft.rentalState);
-		setSalesState(pendingDraft.salesState);
+		// Merge over fresh defaults: fields added after the draft was saved
+		// would otherwise be undefined and crash .trim()/validation later.
+		setRentalState({ ...initialRentalFormState(null), ...(pendingDraft.rentalState ?? {}) });
+		setSalesState({ ...initialSalesFormState(null), ...(pendingDraft.salesState ?? {}) });
+		if ("teamClauses" in pendingDraft) {
+			setTeamClauses(pendingDraft.teamClauses ?? null);
+			setClausesReady(true);
+			clausesFetchedFor.current = pendingDraft.kind;
+		}
 		// v2 drafts carry the edited document; v1 drafts rebuild it from the
 		// restored form state when the editor step is entered.
 		setDocJson(pendingDraft.docJson ?? null);
@@ -341,11 +370,18 @@ export function DocumentWizard() {
 		if (step !== "preview") return;
 		const draft: WizardDraft = {
 			step, kind, propertyId, clientId, rentalState, salesState,
-			docJson, docTitle, docSubtitle, docFingerprint,
+			docJson, docTitle, docSubtitle, docFingerprint, teamClauses,
 			savedAt: new Date().toISOString(),
 		};
 		try { window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* ignore */ }
-	}, [pendingDraft, step, kind, propertyId, clientId, rentalState, salesState, docJson, docTitle, docSubtitle, docFingerprint]);
+	}, [pendingDraft, step, kind, propertyId, clientId, rentalState, salesState, docJson, docTitle, docSubtitle, docFingerprint, teamClauses]);
+
+	// An unresumed draft blocks autosave (it must not be overwritten while the
+	// user can still choose "Devam et"). The choice window ends when they start
+	// a new flow — keep the banner only on the first step.
+	useEffect(() => {
+		if (pendingDraft && step !== "type") setPendingDraft(null);
+	}, [pendingDraft, step]);
 
 	// Work done in the final stage is lost on a refresh/close — warn first.
 	useEffect(() => {
@@ -360,54 +396,71 @@ export function DocumentWizard() {
 	// text collapses onto a single baseline. Hold the preview until fonts load.
 	const [fontsLoaded, setFontsLoaded] = useState(false);
 	const [previewBranding, setPreviewBranding] = useState<PdfBranding | undefined>(undefined);
+	const [assetError, setAssetError] = useState<string | null>(null);
+	const [assetRetry, setAssetRetry] = useState(0);
 	useEffect(() => {
 		if (step !== "preview" || fontsLoaded) return;
 		let cancelled = false;
+		setAssetError(null);
 		// Team branding (name/logo/palette) is resolved with the fonts so the
-		// preview matches the downloaded document.
+		// preview matches the downloaded document. A failure must surface with
+		// a retry — an uncaught rejection here means a spinner forever.
 		Promise.all([
 			import("@/src/lib/pdf/styles").then((m) => m.loadPdfFonts()),
-			getPdfBrandingFromStore().then((b) => { if (!cancelled) setPreviewBranding(b); }),
-		]).then(() => { if (!cancelled) setFontsLoaded(true); });
+			getPdfBrandingFromStore(),
+		])
+			.then(([, b]) => {
+				if (cancelled) return;
+				setPreviewBranding(b);
+				setFontsLoaded(true);
+			})
+			.catch((e) => { if (!cancelled) setAssetError(humanizeError(e)); });
 		return () => { cancelled = true; };
-	}, [step, fontsLoaded]);
+	}, [step, fontsLoaded, assetRetry]);
 
 	// The team's clause template (if any) overrides the built-in T&C set.
-	// Fetched on entering the preview so the rendered contract matches what
-	// will be generated; a fetch failure falls back to the defaults.
-	const [teamClauses, setTeamClauses] = useState<string[] | null>(null);
-	const [clausesReady, setClausesReady] = useState(false);
+	// Fetched once per kind on entering the final stage; re-entries reuse the
+	// cached set so the doc fingerprint stays stable across back/forward.
 	useEffect(() => {
 		if (step !== "preview" || (kind !== "rental" && kind !== "sales")) return;
+		if (clausesFetchedFor.current === kind) return;
 		let cancelled = false;
 		setClausesReady(false);
 		getClauseTemplate(kind)
-			.then((c) => { if (!cancelled) setTeamClauses(c); })
+			.then((c) => { if (!cancelled) { setTeamClauses(c); clausesFetchedFor.current = kind; } })
 			.catch(() => { if (!cancelled) setTeamClauses(null); })
 			.finally(() => { if (!cancelled) setClausesReady(true); });
 		return () => { cancelled = true; };
 	}, [step, kind]);
 
-	// Load eligible properties whenever we enter step 2.
+	// Load eligible properties on step 2 — and on the final step when a draft
+	// resumed straight into it (the picked property must be re-fetched, or the
+	// stage has nothing to render and the screen goes blank).
+	const [propertiesLoaded, setPropertiesLoaded] = useState(false);
 	useEffect(() => {
-		if (step !== "property") return;
+		const resumedIntoPreview = step === "preview" && propertyId != null && !propertiesLoaded;
+		if (step !== "property" && !resumedIntoPreview) return;
+		let cancelled = false;
 		setLoadingProperties(true);
 		setError(null);
 		listEligiblePropertiesForDocType(kind)
-			.then(setProperties)
-			.catch((e) => setError(humanizeError(e)))
-			.finally(() => setLoadingProperties(false));
-	}, [step, kind]);
+			.then((p) => { if (!cancelled) { setProperties(p); setPropertiesLoaded(true); } })
+			.catch((e) => { if (!cancelled) setError(humanizeError(e)); })
+			.finally(() => { if (!cancelled) setLoadingProperties(false); });
+		return () => { cancelled = true; };
+	}, [step, kind, propertyId, propertiesLoaded]);
 
 	// Load clients whenever we enter the client step.
 	useEffect(() => {
 		if (step !== "client") return;
+		let cancelled = false;
 		setLoadingClients(true);
 		setError(null);
 		listLeads()
-			.then(setClients)
-			.catch((e) => setError(humanizeError(e)))
-			.finally(() => setLoadingClients(false));
+			.then((c) => { if (!cancelled) setClients(c); })
+			.catch((e) => { if (!cancelled) setError(humanizeError(e)); })
+			.finally(() => { if (!cancelled) setLoadingClients(false); });
+		return () => { cancelled = true; };
 	}, [step]);
 
 	// Prefill the tenant (rental) / buyer (sales) party from a picked client.
@@ -437,8 +490,22 @@ export function DocumentWizard() {
 	}
 
 	// When property is chosen, prefill rental-specific fields…
+	// Keyed by property ID, not object identity: re-entering the property step
+	// refetches the list (new identities), and an identity-keyed reseed wiped
+	// the user's typed amounts/dates on every back-and-forward pass.
+	const seededKey = useRef<string | null>(null);
 	useEffect(() => {
 		if (!property) return;
+		const key = `${kind}:${property.id}`;
+		// On draft resume the property arrives async AFTER the form state was
+		// restored — reseeding would clobber the restored fields.
+		if (restoringDraft.current) {
+			restoringDraft.current = false;
+			seededKey.current = key;
+			return;
+		}
+		if (seededKey.current === key) return;
+		seededKey.current = key;
 		if (kind === "rental") {
 			// Re-seed the rental form from the picked property, preserving any
 			// tenant/guarantor/clause edits if the user bounces back+forward.
@@ -584,15 +651,18 @@ export function DocumentWizard() {
 		try {
 			if (kind === "rental" && rentalData) {
 				const s = rentalState;
-				const tenant = await createTenant({
-					full_name: s.tenantName.trim(),
-					email: s.tenantEmail.trim() || null,
-					phone: s.tenantPhone.trim() || null,
-					national_id: s.tenantNationalId.trim() || null,
-				});
+				const c = createdRef.current;
+				if (!c.tenantId) {
+					const tenant = await createTenant({
+						full_name: s.tenantName.trim(),
+						email: s.tenantEmail.trim() || null,
+						phone: s.tenantPhone.trim() || null,
+						national_id: s.tenantNationalId.trim() || null,
+					});
+					c.tenantId = tenant.id;
+				}
 				// Optional guarantor (kefil) is stored as its own tenants row.
-				let guarantorId: string | null = null;
-				if (s.guarantorEnabled && s.guarantorName.trim()) {
+				if (!c.guarantorId && s.guarantorEnabled && s.guarantorName.trim()) {
 					const guarantor = await createTenant({
 						full_name: s.guarantorName.trim(),
 						email: s.guarantorEmail.trim() || null,
@@ -600,53 +670,60 @@ export function DocumentWizard() {
 						national_id: s.guarantorNationalId.trim() || null,
 						notes: "Kefil (guarantor)",
 					});
-					guarantorId = guarantor.id;
+					c.guarantorId = guarantor.id;
 				}
-				const lease = await createLease({
-					property_id: property.id,
-					tenant_id: tenant.id,
-					term: s.term,
-					start_date: s.startDate,
-					end_date: computeLeaseEndDate(s.startDate, s.term),
-					monthly_rent: Number(s.monthlyRent || 0),
-					deposit: Number(s.deposit || 0),
-					currency: s.currency,
-					guarantor_id: guarantorId,
-					payment_day: s.paymentDay ? Number(s.paymentDay) : null,
-					payment_method: s.paymentMethod.trim() || null,
-					bank_account: s.bankAccount.trim() || null,
-					util_electricity: s.utilElectricity,
-					util_water: s.utilWater,
-					util_gas: s.utilGas,
-					util_internet: s.utilInternet,
-					util_aidat: s.utilAidat,
-					subletting_allowed: s.sublettingAllowed,
-					rent_increase_note: s.rentIncreaseNote.trim() || null,
-					inventory: s.inventory.filter((r) => r.item.trim()),
-					condition_notes: s.conditionNotes.trim() || null,
-					special_conditions: s.specialConditions.trim() || null,
-				});
-				const updated = await updateProperty(property.id, { status: "occupied" });
-				upsertProperty(updated);
+				if (!c.leaseId) {
+					const lease = await createLease({
+						property_id: property.id,
+						tenant_id: c.tenantId,
+						term: s.term,
+						start_date: s.startDate,
+						end_date: computeLeaseEndDate(s.startDate, s.term),
+						monthly_rent: Number(s.monthlyRent || 0),
+						deposit: Number(s.deposit || 0),
+						currency: s.currency,
+						guarantor_id: c.guarantorId ?? null,
+						payment_day: s.paymentDay ? Number(s.paymentDay) : null,
+						payment_method: s.paymentMethod.trim() || null,
+						bank_account: s.bankAccount.trim() || null,
+						util_electricity: s.utilElectricity,
+						util_water: s.utilWater,
+						util_gas: s.utilGas,
+						util_internet: s.utilInternet,
+						util_aidat: s.utilAidat,
+						subletting_allowed: s.sublettingAllowed,
+						rent_increase_note: s.rentIncreaseNote.trim() || null,
+						inventory: s.inventory.filter((r) => r.item.trim()),
+						condition_notes: s.conditionNotes.trim() || null,
+						special_conditions: s.specialConditions.trim() || null,
+					});
+					c.leaseId = lease.id;
+				}
+				if (!c.propertyDone) {
+					const updated = await updateProperty(property.id, { status: "occupied" });
+					upsertProperty(updated);
+					c.propertyDone = true;
+				}
 				invalidateCache("tenants");
 				// Persist the editable document first (re-editable later from the
 				// property page). Best-effort: a failure must not lose the PDF.
 				const title = docTitle.trim() || "Konut Kira Sözleşmesi";
-				let contractDocId: string | null = null;
-				try {
-					const cd = await createContractDocument({
-						kind: "rental",
-						lease_id: lease.id,
-						title,
-						subtitle: docSubtitle.trim() || null,
-						content: finalJson,
-						source_data: rentalData,
-					});
-					contractDocId = cd.id;
-				} catch {
-					toast.error("Belgenin düzenlenebilir kopyası kaydedilemedi.");
+				if (!c.contractDocId) {
+					try {
+						const cd = await createContractDocument({
+							kind: "rental",
+							lease_id: c.leaseId,
+							title,
+							subtitle: docSubtitle.trim() || null,
+							content: finalJson,
+							source_data: rentalData,
+						});
+						c.contractDocId = cd.id;
+					} catch {
+						toast.error("Belgenin düzenlenebilir kopyası kaydedilemedi.");
+					}
 				}
-				const filename = `kira-${safeFilename(tenant.full_name)}-${safeFilename(property.address_line)}.pdf`;
+				const filename = `kira-${safeFilename(s.tenantName.trim())}-${safeFilename(property.address_line)}.pdf`;
 				const pdfFile = await generateEditorPdfFile(
 					{
 						kind: "rental",
@@ -662,59 +739,71 @@ export function DocumentWizard() {
 				// Keep a copy in storage for later reference. Best-effort: the
 				// user already has the download, so a failed upload only warns.
 				try {
-					const path = await saveDocumentPdf({ table: "leases", id: lease.id }, pdfFile);
-					if (contractDocId) await setContractDocumentPdfPath(contractDocId, path);
+					const path = await saveDocumentPdf({ table: "leases", id: c.leaseId }, pdfFile);
+					if (c.contractDocId) await setContractDocumentPdfPath(c.contractDocId, path);
 				} catch {
 					toast.error("Sözleşme indirildi ancak çevrimiçi kopya kaydedilemedi.");
 				}
 				clearDraft();
+				createdRef.current = {};
 				toast.success("Kira sözleşmesi oluşturuldu ve indirildi.");
-				router.push(`/properties/${updated.id}`);
+				router.push(`/properties/${property.id}`);
 				return;
 			}
 
 			if (kind === "sales" && salesData) {
+				const c = createdRef.current;
 				// Buyer is stored in the tenants table (schema fits).
-				const buyer = await createTenant({
-					full_name: salesState.buyerName.trim(),
-					email: salesState.buyerEmail.trim() || null,
-					phone: salesState.buyerPhone.trim() || null,
-					national_id: salesState.buyerNationalId.trim() || null,
-				});
-				const sale = await createSale({
-					property_id: property.id,
-					buyer_id: buyer.id,
-					sale_price: Number(salesState.salePrice || 0),
-					currency: salesState.currency,
-					sale_date: salesState.saleDate,
-					target_close_date: salesState.targetCloseDate || null,
-					deposit_amount: salesState.depositAmount ? Number(salesState.depositAmount) : null,
-					penalty_amount: salesState.penaltyAmount ? Number(salesState.penaltyAmount) : null,
-					validity_days: salesState.validityDays ? Number(salesState.validityDays) : null,
-					tax_responsibility: salesState.taxResponsibility,
-					buyer_commission_rate:  salesState.buyerCommissionRate  ? Number(salesState.buyerCommissionRate)  : null,
-					seller_commission_rate: salesState.sellerCommissionRate ? Number(salesState.sellerCommissionRate) : null,
-					special_conditions: salesState.specialConditions.trim() || null,
-				});
-				const updated = await updateProperty(property.id, { status: "sold" });
-				upsertProperty(updated);
+				if (!c.buyerId) {
+					const buyer = await createTenant({
+						full_name: salesState.buyerName.trim(),
+						email: salesState.buyerEmail.trim() || null,
+						phone: salesState.buyerPhone.trim() || null,
+						national_id: salesState.buyerNationalId.trim() || null,
+					});
+					c.buyerId = buyer.id;
+				}
+				if (!c.saleId) {
+					const sale = await createSale({
+						property_id: property.id,
+						buyer_id: c.buyerId,
+						sale_price: Number(salesState.salePrice || 0),
+						currency: salesState.currency,
+						sale_date: salesState.saleDate,
+						target_close_date: salesState.targetCloseDate || null,
+						deposit_amount: salesState.depositAmount ? Number(salesState.depositAmount) : null,
+						penalty_amount: salesState.penaltyAmount ? Number(salesState.penaltyAmount) : null,
+						validity_days: salesState.validityDays ? Number(salesState.validityDays) : null,
+						tax_responsibility: salesState.taxResponsibility,
+						buyer_commission_rate:  salesState.buyerCommissionRate  ? Number(salesState.buyerCommissionRate)  : null,
+						seller_commission_rate: salesState.sellerCommissionRate ? Number(salesState.sellerCommissionRate) : null,
+						special_conditions: salesState.specialConditions.trim() || null,
+					});
+					c.saleId = sale.id;
+				}
+				if (!c.propertyDone) {
+					const updated = await updateProperty(property.id, { status: "sold" });
+					upsertProperty(updated);
+					c.propertyDone = true;
+				}
 				invalidateCache("tenants");
 				const title = docTitle.trim() || "Satılık Alım, Satış Sözleşmesi";
-				let contractDocId: string | null = null;
-				try {
-					const cd = await createContractDocument({
-						kind: "sales",
-						sale_id: sale.id,
-						title,
-						subtitle: docSubtitle.trim() || null,
-						content: finalJson,
-						source_data: salesData,
-					});
-					contractDocId = cd.id;
-				} catch {
-					toast.error("Belgenin düzenlenebilir kopyası kaydedilemedi.");
+				if (!c.contractDocId) {
+					try {
+						const cd = await createContractDocument({
+							kind: "sales",
+							sale_id: c.saleId,
+							title,
+							subtitle: docSubtitle.trim() || null,
+							content: finalJson,
+							source_data: salesData,
+						});
+						c.contractDocId = cd.id;
+					} catch {
+						toast.error("Belgenin düzenlenebilir kopyası kaydedilemedi.");
+					}
 				}
-				const filename = `satis-${safeFilename(buyer.full_name)}-${safeFilename(property.address_line)}.pdf`;
+				const filename = `satis-${safeFilename(salesState.buyerName.trim())}-${safeFilename(property.address_line)}.pdf`;
 				const pdfFile = await generateEditorPdfFile(
 					{
 						kind: "sales",
@@ -728,14 +817,15 @@ export function DocumentWizard() {
 				);
 				await downloadPdfFile(pdfFile);
 				try {
-					const path = await saveDocumentPdf({ table: "sales", id: sale.id }, pdfFile);
-					if (contractDocId) await setContractDocumentPdfPath(contractDocId, path);
+					const path = await saveDocumentPdf({ table: "sales", id: c.saleId }, pdfFile);
+					if (c.contractDocId) await setContractDocumentPdfPath(c.contractDocId, path);
 				} catch {
 					toast.error("Sözleşme indirildi ancak çevrimiçi kopya kaydedilemedi.");
 				}
 				clearDraft();
+				createdRef.current = {};
 				toast.success("Satış kaydedildi ve sözleşme indirildi.");
-				router.push(`/properties/${updated.id}`);
+				router.push(`/properties/${property.id}`);
 				return;
 			}
 		} catch (e) {
@@ -893,6 +983,21 @@ export function DocumentWizard() {
 				</div>
 			)}
 
+			{/* Step 4 fallback: a resumed draft re-fetches its property async —
+			    show progress (or a recovery path) instead of a blank stage. */}
+			{step === "preview" && !property && (
+				loadingProperties || !propertiesLoaded ? (
+					<div className="h-[40vh] flex items-center justify-center"><Spinner /></div>
+				) : (
+					<Alert
+						action={<Button size="sm" onClick={() => setStep("property")}>Taşınmaz seç</Button>}
+					>
+						Seçilen taşınmaza artık ulaşılamıyor — bu arada kiralanmış veya satılmış olabilir.
+						Lütfen yeniden seçim yapın.
+					</Alert>
+				)
+			)}
+
 			{/* Step 4: essentials panel + editor (merged stage) */}
 			{step === "preview" && wizardData && (kind === "rental" || kind === "sales") && (
 				<div className="space-y-4">
@@ -987,7 +1092,13 @@ export function DocumentWizard() {
 						</Alert>
 					)}
 
-					{!fontsLoaded || !clausesReady || !docJson ? (
+					{assetError ? (
+						<Alert
+							action={<Button size="sm" onClick={() => setAssetRetry((n) => n + 1)}>Yeniden dene</Button>}
+						>
+							Belge bileşenleri (yazı tipleri/marka) yüklenemedi: {assetError}
+						</Alert>
+					) : !fontsLoaded || !clausesReady || !docJson ? (
 						<div className="h-[50vh] flex items-center justify-center"><Spinner /></div>
 					) : viewMode === "edit" ? (
 						<div className="rounded-2xl bg-base-200 border border-base-300 px-3 sm:px-6 pt-2">
@@ -997,6 +1108,15 @@ export function DocumentWizard() {
 								apiRef={editorApi}
 								onChangeJson={(json) => setDocJson(json)}
 								onDirty={() => setDocDirty(true)}
+								onInvalidContent={() => {
+									// Corrupt/outdated draft doc: drop it and let the
+									// rebuild effect regenerate from the form data.
+									setDocJson(null);
+									setDocFingerprint(null);
+									setDocDirty(false);
+									setDocStale(false);
+									toast.error("Kaydedilmiş belge okunamadı — bilgilerinizden yeniden oluşturuluyor.");
+								}}
 								onReset={() => setConfirmReset(true)}
 							/>
 						</div>

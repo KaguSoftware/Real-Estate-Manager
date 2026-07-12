@@ -9,7 +9,7 @@
  * exposes move/delete buttons instead (drag is unreliable on touch).
  */
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import {
@@ -65,7 +65,7 @@ function countImages(json: unknown): { count: number; bytes: number } {
 function topLevelBlockRange(editor: Editor): { index: number; from: number; to: number } | null {
 	const { state } = editor;
 	const { $from } = state.selection;
-	const index = $from.depth === 0 ? $from.index(0) : $from.index(0);
+	const index = $from.index(0);
 	if (index < 0 || index >= state.doc.childCount) return null;
 	let from = 0;
 	state.doc.forEach((child, offset, i) => {
@@ -103,6 +103,21 @@ function deleteBlock(editor: Editor) {
 	editor.view.focus();
 }
 
+/** Insert a block AFTER the top-level block containing the selection.
+ *  Inserting at the raw selection is a trap: inside a table cell the block
+ *  lands in the cell, and with an atom selected it REPLACES the atom. */
+function insertAfterCurrentBlock(editor: Editor, content: object) {
+	const { doc, selection } = editor.state;
+	const { $from } = selection;
+	const index = Math.min(
+		$from.depth === 0 ? $from.indexAfter(0) : $from.index(0) + 1,
+		doc.childCount,
+	);
+	let pos = 0;
+	for (let i = 0; i < index; i++) pos += doc.child(i).nodeSize;
+	editor.chain().insertContentAt(pos, content).focus().scrollIntoView().run();
+}
+
 function ToolButton({
 	onClick,
 	active,
@@ -110,18 +125,24 @@ function ToolButton({
 	label,
 	children,
 	className,
+	ref,
+	popoverTarget,
 }: {
-	onClick: () => void;
+	onClick?: () => void;
 	active?: boolean;
 	disabled?: boolean;
 	label: string;
 	children: React.ReactNode;
 	className?: string;
+	ref?: React.Ref<HTMLButtonElement>;
+	popoverTarget?: string;
 }) {
 	return (
 		<button
+			ref={ref}
 			type="button"
 			onClick={onClick}
+			popoverTarget={popoverTarget}
 			disabled={disabled}
 			title={label}
 			aria-label={label}
@@ -150,7 +171,32 @@ export function Toolbar({
 	orientation?: "horizontal" | "vertical";
 }) {
 	const fileRef = useRef<HTMLInputElement>(null);
+	const blockBtnRef = useRef<HTMLButtonElement>(null);
+	const blockMenuRef = useRef<HTMLUListElement>(null);
+	const blockMenuId = useId();
 	const vertical = orientation === "vertical";
+
+	/** The block menu is a native popover (top layer) — CSS dropdowns get
+	 *  clipped by the toolbar's own scroll containers. Positioned next to the
+	 *  trigger on open, clamped to the viewport. */
+	function onBlockMenuToggle(e: React.SyntheticEvent<HTMLUListElement>) {
+		if ((e.nativeEvent as ToggleEvent).newState !== "open") return;
+		const btn = blockBtnRef.current;
+		const menu = blockMenuRef.current;
+		if (!btn || !menu) return;
+		const r = btn.getBoundingClientRect();
+		const w = menu.offsetWidth || 224;
+		const h = menu.offsetHeight || 260;
+		const left = Math.max(8, Math.min(vertical ? r.right + 10 : r.left, window.innerWidth - w - 8));
+		const top = Math.max(8, Math.min(vertical ? r.top : r.bottom + 6, window.innerHeight - h - 8));
+		menu.style.left = `${left}px`;
+		menu.style.top = `${top}px`;
+	}
+
+	function insertBlock(content: object) {
+		blockMenuRef.current?.hidePopover();
+		insertAfterCurrentBlock(editor, content);
+	}
 	const state = useEditorState({
 		editor,
 		selector: ({ editor: e }) => ({
@@ -184,7 +230,9 @@ export function Toolbar({
 			const compressed = await compress(file, {
 				maxSizeMB: 0.3,
 				maxWidthOrHeight: 1400,
-				fileType: "image/jpeg",
+				// Keep PNG as PNG — re-encoding to JPEG turns transparency into
+				// black boxes (react-pdf renders both formats fine).
+				fileType: file.type === "image/png" ? "image/png" : "image/jpeg",
 				useWebWorker: true,
 			});
 			if (bytes + compressed.size > MAX_TOTAL_IMAGE_BYTES) {
@@ -203,16 +251,14 @@ export function Toolbar({
 				img.onerror = () => reject(new Error("decode failed"));
 				img.src = src;
 			});
-			editor.chain().focus().insertContent({
+			insertAfterCurrentBlock(editor, {
 				type: "image",
 				attrs: { src, width: dims.w, height: dims.h },
-			}).run();
+			});
 		} catch {
 			toast.error("Görsel eklenemedi — dosyayı kontrol edip yeniden deneyin.");
 		}
 	}
-
-	const insert = (content: object) => editor.chain().focus().insertContent(content).run();
 
 	const divider = (
 		<span
@@ -225,7 +271,7 @@ export function Toolbar({
 		<div
 			className={cn(
 				vertical
-					? "flex flex-col items-center gap-0.5 rounded-2xl border border-base-300 bg-base-100/95 backdrop-blur p-1.5 shadow-lg max-h-[calc(100dvh-5rem)] overflow-y-auto overflow-x-visible"
+					? "flex flex-col items-center gap-0.5 rounded-2xl border border-base-300 bg-base-100/95 backdrop-blur p-1.5 shadow-lg max-h-[calc(100dvh-5rem)] overflow-y-auto"
 					: "sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-base-100/95 backdrop-blur border-b border-base-300",
 			)}
 		>
@@ -263,7 +309,19 @@ export function Toolbar({
 				<ToolButton
 					label="Tablo ekle"
 					active={state.inTable}
-					onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+					onClick={() => insertBlock({
+						type: "table",
+						content: [
+							{
+								type: "tableRow",
+								content: Array.from({ length: 3 }, () => ({ type: "tableHeader", content: [{ type: "paragraph" }] })),
+							},
+							...Array.from({ length: 2 }, () => ({
+								type: "tableRow",
+								content: Array.from({ length: 3 }, () => ({ type: "tableCell", content: [{ type: "paragraph" }] })),
+							})),
+						],
+					})}
 				>
 					<TableIcon className="w-4 h-4" />
 				</ToolButton>
@@ -273,64 +331,70 @@ export function Toolbar({
 				<input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={onPickImage} />
 				<ToolButton
 					label="Not kutusu"
-					onClick={() => insert({ type: "callout", attrs: { tone: "note" }, content: [{ type: "text", text: "Not…" }] })}
+					onClick={() => insertBlock({ type: "callout", attrs: { tone: "note" }, content: [{ type: "text", text: "Not…" }] })}
 				>
 					<Info className="w-4 h-4" />
 				</ToolButton>
-				<ToolButton label="Sayfa sonu" onClick={() => insert({ type: "pageBreak" })}>
+				<ToolButton label="Sayfa sonu" onClick={() => insertBlock({ type: "pageBreak" })}>
 					<Scissors className="w-4 h-4" />
 				</ToolButton>
 
 				{divider}
 
-				{/* Structured contract blocks */}
-				<div className={cn("dropdown", vertical ? "dropdown-right" : "")}>
-					<ToolButton label="Blok ekle" onClick={() => { /* dropdown via focus */ }}>
-						<Plus className="w-4 h-4" /> {!vertical && <span className="hidden sm:inline">Blok</span>}
-					</ToolButton>
-					<ul className="dropdown-content menu z-30 mt-1 w-56 rounded-xl border border-base-300 bg-base-100 p-1.5 shadow-lg text-sm">
-						<li>
-							<button type="button" onClick={() => insert({ type: "sectionChip", attrs: { letter: null, title: "Yeni Bölüm" } })}>
-								<Tag className="w-4 h-4" /> Bölüm etiketi
-							</button>
-						</li>
-						<li>
-							<button type="button" onClick={() => insert({ type: "kvCard", attrs: { title: null, items: [{ label: "", value: "" }] } })}>
-								<Rows3 className="w-4 h-4" /> Bilgi kartı
-							</button>
-						</li>
-						<li>
-							<button
-								type="button"
-								onClick={() => insert({
-									type: "moneyPair",
-									attrs: {
-										left: { label: "Tutar", value: "", currency: "TRY" },
-										right: { label: "Tutar", value: "", currency: "TRY" },
-									},
-								})}
-							>
-								<LayoutList className="w-4 h-4" /> Tutar kutuları
-							</button>
-						</li>
-						<li>
-							<button
-								type="button"
-								onClick={() => insert({ type: "clauseList", content: [{ type: "clause", content: [{ type: "text", text: "Yeni madde" }] }] })}
-							>
-								<ListOrdered className="w-4 h-4" /> Madde listesi
-							</button>
-						</li>
-						<li>
-							<button
-								type="button"
-								onClick={() => insert({ type: "signatureBlock", attrs: { date: null, signers: [{ role: "Taraf 1" }, { role: "Taraf 2" }] } })}
-							>
-								<PenLine className="w-4 h-4" /> İmza bloğu
-							</button>
-						</li>
-					</ul>
-				</div>
+				{/* Structured contract blocks — native popover so the menu is never
+				    clipped by the toolbar's scroll/overflow containers. */}
+				<ToolButton ref={blockBtnRef} popoverTarget={blockMenuId} label="Blok ekle">
+					<Plus className="w-4 h-4" /> {!vertical && <span className="hidden sm:inline">Blok</span>}
+				</ToolButton>
+				<ul
+					id={blockMenuId}
+					ref={blockMenuRef}
+					popover="auto"
+					onToggle={onBlockMenuToggle}
+					className="menu m-0 w-56 rounded-xl border border-base-300 bg-base-100 p-1.5 shadow-lg text-sm"
+					style={{ position: "fixed", inset: "auto" }}
+				>
+					<li>
+						<button type="button" onClick={() => insertBlock({ type: "sectionChip", attrs: { letter: null, title: "Yeni Bölüm" } })}>
+							<Tag className="w-4 h-4" /> Bölüm etiketi
+						</button>
+					</li>
+					<li>
+						<button type="button" onClick={() => insertBlock({ type: "kvCard", attrs: { title: null, items: [{ label: "", value: "" }] } })}>
+							<Rows3 className="w-4 h-4" /> Bilgi kartı
+						</button>
+					</li>
+					<li>
+						<button
+							type="button"
+							onClick={() => insertBlock({
+								type: "moneyPair",
+								attrs: {
+									left: { label: "Tutar", value: "", currency: "TRY" },
+									right: { label: "Tutar", value: "", currency: "TRY" },
+								},
+							})}
+						>
+							<LayoutList className="w-4 h-4" /> Tutar kutuları
+						</button>
+					</li>
+					<li>
+						<button
+							type="button"
+							onClick={() => insertBlock({ type: "clauseList", content: [{ type: "clause", content: [{ type: "text", text: "Yeni madde" }] }] })}
+						>
+							<ListOrdered className="w-4 h-4" /> Madde listesi
+						</button>
+					</li>
+					<li>
+						<button
+							type="button"
+							onClick={() => insertBlock({ type: "signatureBlock", attrs: { date: null, signers: [{ role: "Taraf 1" }, { role: "Taraf 2" }] } })}
+						>
+							<PenLine className="w-4 h-4" /> İmza bloğu
+						</button>
+					</li>
+				</ul>
 
 				{/* Table context controls */}
 				{state.inTable && (
