@@ -8,6 +8,8 @@ export interface DropdownOption<T extends string = string> {
 	value: T;
 	label: string;
 	disabled?: boolean;
+	/** Optional color dots rendered before the label (e.g. palette presets). */
+	swatches?: string[];
 }
 
 interface DropdownProps<T extends string = string> {
@@ -25,6 +27,20 @@ interface DropdownProps<T extends string = string> {
 	"aria-invalid"?: boolean;
 	"aria-describedby"?: string;
 	"aria-label"?: string;
+}
+
+function Swatches({ colors }: { colors: string[] }) {
+	return (
+		<span className="flex shrink-0 -space-x-1" aria-hidden>
+			{colors.map((c, i) => (
+				<span
+					key={i}
+					className="h-3.5 w-3.5 rounded-full border border-base-100 ring-1 ring-base-300/60"
+					style={{ backgroundColor: c }}
+				/>
+			))}
+		</span>
+	);
 }
 
 /**
@@ -123,11 +139,11 @@ export function Dropdown<T extends string = string>({
 		switch (e.key) {
 			case "ArrowDown":
 				e.preventDefault();
-				open ? move(highlighted, 1) : openPanel();
+				if (open) move(highlighted, 1); else openPanel();
 				break;
 			case "ArrowUp":
 				e.preventDefault();
-				open ? move(highlighted, -1) : openPanel();
+				if (open) move(highlighted, -1); else openPanel();
 				break;
 			case "Home":
 				if (open) { e.preventDefault(); setHighlighted(firstEnabled(0, 1)); }
@@ -138,7 +154,7 @@ export function Dropdown<T extends string = string>({
 			case "Enter":
 			case " ":
 				e.preventDefault();
-				open ? commit(highlighted) : openPanel();
+				if (open) commit(highlighted); else openPanel();
 				break;
 			case "Escape":
 				if (open) { e.preventDefault(); setOpen(false); triggerRef.current?.focus(); }
@@ -178,7 +194,10 @@ export function Dropdown<T extends string = string>({
 					className,
 				)}
 			>
-				<span className="truncate">{selected?.label ?? placeholder ?? "Seçin"}</span>
+				<span className="flex items-center gap-2 truncate">
+					{selected?.swatches && <Swatches colors={selected.swatches} />}
+					<span className="truncate">{selected?.label ?? placeholder ?? "Seçin"}</span>
+				</span>
 				<ChevronDown
 					className={cn("w-4 h-4 shrink-0 text-base-content/50 transition-transform", open && "rotate-180")}
 				/>
@@ -217,7 +236,10 @@ export function Dropdown<T extends string = string>({
 										opt.disabled && "opacity-40 cursor-not-allowed",
 									)}
 								>
-									<span className="truncate">{opt.label}</span>
+									<span className="flex items-center gap-2 truncate">
+										{opt.swatches && <Swatches colors={opt.swatches} />}
+										<span className="truncate">{opt.label}</span>
+									</span>
 									{isSelected && <Check className="w-4 h-4 shrink-0 text-primary" strokeWidth={2.5} />}
 								</button>
 							);

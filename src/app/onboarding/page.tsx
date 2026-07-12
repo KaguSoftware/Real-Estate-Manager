@@ -24,7 +24,7 @@ import {
 } from "@/src/lib/db/teams";
 import { updateMyProfile, getMyProfile } from "@/src/lib/db/profiles";
 import { AuthModal } from "@/src/components/auth/AuthModal";
-import { toast, Button, Card, Alert, FormField, Input, Select, cn } from "@/src/components/ui";
+import { toast, Button, Card, Alert, FormField, Input, Dropdown, cn } from "@/src/components/ui";
 
 // Must match the cookie set by /join/[code]/route.ts
 const PENDING_INVITE_COOKIE = "kagu_pending_invite";
@@ -316,11 +316,7 @@ export default function OnboardingPage() {
 								</FormField>
 							</div>
 							<FormField label="Bizi nereden duydunuz?">
-								<Select value={referralSource} onChange={(e) => setReferralSource(e.target.value)}>
-									{REFERRAL_SOURCES.map((o) => (
-										<option key={o.value} value={o.value}>{o.label}</option>
-									))}
-								</Select>
+								<Dropdown options={REFERRAL_SOURCES} value={referralSource} onChange={setReferralSource} />
 							</FormField>
 							<Button type="submit" block loading={busy === "create"} disabled={!teamName.trim()}>
 								Ekibi oluştur ve ücretsiz denemeyi başlat

@@ -5,8 +5,14 @@ import { useState } from "react";
 import { computeLeaseEndDate, renewLease } from "@/src/lib/db/leases";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import type { Lease, LeaseTerm, Tenant } from "@/src/lib/db/types";
-import { Sheet, FormField, Input, Select, Button, Alert, toast } from "@/src/components/ui";
+import { Sheet, FormField, Input, Dropdown, Button, Alert, toast, type DropdownOption } from "@/src/components/ui";
 import { positiveNumber, compactErrors } from "@/src/lib/validation";
+
+const TERM_OPTIONS: DropdownOption<LeaseTerm>[] = [
+	{ value: "1yr", label: "1 yıl" },
+	{ value: "2yr", label: "2 yıl" },
+	{ value: "undefined", label: "Süresiz" },
+];
 
 interface Props {
 	open: boolean;
@@ -92,11 +98,7 @@ export function RenewLeaseSheet({ open, lease, onClose, onRenewed }: Props) {
 						label="Süre"
 						hint={newEndDate ? `Bitiş: ${newEndDate}` : "Süresiz"}
 					>
-						<Select value={term} onChange={(e) => setTerm(e.target.value as LeaseTerm)}>
-							<option value="1yr">1 yıl</option>
-							<option value="2yr">2 yıl</option>
-							<option value="undefined">Süresiz</option>
-						</Select>
+						<Dropdown options={TERM_OPTIONS} value={term} onChange={setTerm} />
 					</FormField>
 				</div>
 

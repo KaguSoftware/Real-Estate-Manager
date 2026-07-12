@@ -18,10 +18,30 @@ import {
 	uploadTeamLogo,
 } from "@/src/lib/db/teams";
 import { paletteFromColors } from "@/src/lib/pdf/branding";
-import { Card, CardLabel, Button, Alert, toast } from "@/src/components/ui";
+import { Card, CardLabel, Button, Alert, Dropdown, toast, type DropdownOption } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
+
+/** Curated PDF palette presets: main (headers/tables), accent1, accent2. */
+const SUGGESTED_PALETTES = [
+	{ id: "antrasit-kiremit", label: "Antrasit & Kiremit", main: "#1e242e", accent1: "#b74427", accent2: "#8b929e" },
+	{ id: "lacivert-altin", label: "Lacivert & Altın", main: "#1b2a4a", accent1: "#c8a24b", accent2: "#7d8ba3" },
+	{ id: "orman-turuncu", label: "Orman & Turuncu", main: "#1f3d2b", accent1: "#d97b29", accent2: "#8aa393" },
+	{ id: "bordo-bakir", label: "Bordo & Bakır", main: "#4a1e26", accent1: "#c0803f", accent2: "#9c8f93" },
+	{ id: "kahve-terrakota", label: "Kahve & Terrakota", main: "#2d2a26", accent1: "#c96f4a", accent2: "#a89f91" },
+	{ id: "petrol-turkuaz", label: "Petrol & Turkuaz", main: "#123c4f", accent1: "#2f9e9b", accent2: "#92aab5" },
+	{ id: "patlican-orkide", label: "Patlıcan & Orkide", main: "#2e2440", accent1: "#a4508b", accent2: "#948ba3" },
+	{ id: "zeytin-hardal", label: "Zeytin & Hardal", main: "#3a3d2b", accent1: "#b5a642", accent2: "#9aa08a" },
+	{ id: "komur-mercan", label: "Kömür & Mercan", main: "#26262b", accent1: "#d64541", accent2: "#8e9199" },
+	{ id: "kum-kahve", label: "Kum & Kahve", main: "#4b3a2f", accent1: "#b98a4e", accent2: "#a99f8f" },
+] as const;
+
+const PALETTE_OPTIONS: DropdownOption[] = SUGGESTED_PALETTES.map((p) => ({
+	value: p.id,
+	label: p.label,
+	swatches: [p.main, p.accent1, p.accent2],
+}));
 
 // Chromium-only native eyedropper; feature-detected before use.
 interface EyeDropperAPI {
@@ -264,6 +284,26 @@ export function BrandingCard() {
 					Logonuzun renklerini kullanın: ana renk başlık ve tablolarda, vurgu
 					renkleri etiket ve detaylarda görünür.
 				</p>
+				{/* Preset palettes; value reflects an exact match so manual tweaks
+				    show the placeholder again instead of a stale preset name. */}
+				<div className="mb-4 max-w-xs">
+					<p className="text-[11px] font-medium text-base-content/60 mb-1">Önerilen paletler</p>
+					<Dropdown
+						options={PALETTE_OPTIONS}
+						value={
+							SUGGESTED_PALETTES.find(
+								(p) => p.main === colors.main && p.accent1 === colors.accent1 && p.accent2 === colors.accent2,
+							)?.id ?? ""
+						}
+						onChange={(id) => {
+							const p = SUGGESTED_PALETTES.find((x) => x.id === id);
+							if (p) setColors({ main: p.main, accent1: p.accent1, accent2: p.accent2 });
+						}}
+						placeholder="Hazır palet seçin"
+						disabled={locked}
+						aria-label="Önerilen renk paletleri"
+					/>
+				</div>
 				<div className="flex flex-wrap gap-4">
 					<ColorField label="Ana renk" value={colors.main} disabled={locked} onChange={(v) => setColors((c) => ({ ...c, main: v }))} />
 					<ColorField label="Vurgu 1" value={colors.accent1} disabled={locked} onChange={(v) => setColors((c) => ({ ...c, accent1: v }))} />

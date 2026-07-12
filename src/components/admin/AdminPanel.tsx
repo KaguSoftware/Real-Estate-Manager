@@ -12,7 +12,13 @@ import { humanizeError } from "@/src/lib/errors";
 import { useEffect, useState } from "react";
 import { adminListUsers, adminSetUserRole } from "@/src/lib/db/profiles";
 import type { ProfileRow, GlobalRole } from "@/src/lib/db/types";
-import { AppShell, Card, CardLabel, Select, Spinner, Alert, toast, cn } from "@/src/components/ui";
+import { AppShell, Card, CardLabel, Dropdown, type DropdownOption, Spinner, Alert, toast, cn } from "@/src/components/ui";
+
+const ROLE_OPTIONS: DropdownOption<GlobalRole>[] = [
+	{ value: "member", label: "Üye" },
+	{ value: "admin", label: "Yönetici" },
+	{ value: "client", label: "Müşteri" },
+];
 
 export function AdminPanel() {
 	const [users, setUsers] = useState<ProfileRow[]>([]);
@@ -49,17 +55,14 @@ export function AdminPanel() {
 	function roleSelect(user: ProfileRow) {
 		return (
 			<div className="flex items-center gap-2">
-				<Select
+				<Dropdown
+					options={ROLE_OPTIONS}
 					value={user.app_role}
 					disabled={updatingRole === user.id}
-					onChange={(e) => handleRoleChange(user.id, e.target.value as GlobalRole)}
+					onChange={(role) => handleRoleChange(user.id, role)}
 					className="h-10 w-auto"
 					aria-label={`${user.email} için rol`}
-				>
-					<option value="member">Üye</option>
-					<option value="admin">Yönetici</option>
-					<option value="client">Müşteri</option>
-				</Select>
+				/>
 				{updatingRole === user.id && <Spinner size="sm" />}
 			</div>
 		);

@@ -16,7 +16,7 @@ import {
 	transferOwnership,
 	type TeamMember,
 } from "@/src/lib/db/teams";
-import { Card, CardLabel, Button, Alert, Select, ConfirmDialog, toast } from "@/src/components/ui";
+import { Card, CardLabel, Button, Alert, Dropdown, ConfirmDialog } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
 
 export function TeamDangerZone({ members }: { members: TeamMember[] }) {
@@ -66,14 +66,12 @@ export function TeamDangerZone({ members }: { members: TeamMember[] }) {
 							Ekip yönetimi ve abonelik seçilen üyeye geçer; siz danışman olursunuz.
 						</p>
 						<div className="mt-2 flex gap-2 items-center max-w-sm">
-							<Select value={transferTo} onChange={(e) => setTransferTo(e.target.value)}>
-								<option value="">Üye seçin…</option>
-								{others.map((m) => (
-									<option key={m.user_id} value={m.user_id}>
-										{m.display_name || m.email}
-									</option>
-								))}
-							</Select>
+							<Dropdown
+								options={others.map((m) => ({ value: m.user_id, label: m.display_name || m.email }))}
+								value={transferTo}
+								onChange={setTransferTo}
+								placeholder="Üye seçin…"
+							/>
 							<Button
 								variant="outline"
 								size="sm"

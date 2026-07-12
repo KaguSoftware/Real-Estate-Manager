@@ -6,7 +6,7 @@ import type {
 	Property,
 	UtilityResponsibility,
 } from "@/src/lib/db/types";
-import { FormField, Input, Textarea, Select, Button } from "@/src/components/ui";
+import { FormField, Input, Textarea, Dropdown, Button, type DropdownOption } from "@/src/components/ui";
 
 /**
  * State container for the rental wizard details step (Turkish kira sözleşmesi).
@@ -115,10 +115,21 @@ interface Props {
 	errors?: Record<string, string>;
 }
 
-const UTILITY_OPTIONS: { value: UtilityResponsibility; label: string }[] = [
+const UTILITY_OPTIONS: DropdownOption<UtilityResponsibility>[] = [
 	{ value: "tenant", label: "Kiracı" },
 	{ value: "landlord", label: "Kiraya Veren" },
 	{ value: "shared", label: "Ortak" },
+];
+
+const TERM_OPTIONS: DropdownOption<LeaseTerm>[] = [
+	{ value: "1yr", label: "1 yıl" },
+	{ value: "2yr", label: "2 yıl" },
+	{ value: "undefined", label: "Belirsiz" },
+];
+
+const SUBLETTING_OPTIONS: DropdownOption<"no" | "yes">[] = [
+	{ value: "no", label: "İzin verilmez" },
+	{ value: "yes", label: "Yazılı onayla izinli" },
 ];
 
 function UtilitySelect({
@@ -132,11 +143,7 @@ function UtilitySelect({
 }) {
 	return (
 		<FormField label={label}>
-			<Select value={value} onChange={(e) => onChange(e.target.value as UtilityResponsibility)}>
-				{UTILITY_OPTIONS.map((o) => (
-					<option key={o.value} value={o.value}>{o.label}</option>
-				))}
-			</Select>
+			<Dropdown options={UTILITY_OPTIONS} value={value} onChange={onChange} />
 		</FormField>
 	);
 }
@@ -291,19 +298,13 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 					<FormField label="Süre">
-						<Select value={state.term} onChange={set("term")}>
-							<option value="1yr">1 yıl</option>
-							<option value="2yr">2 yıl</option>
-							<option value="undefined">Belirsiz</option>
-						</Select>
+						<Dropdown options={TERM_OPTIONS} value={state.term} onChange={(v) => onChange("term", v)} />
 					</FormField>
 					<FormField label="Başlangıç Tarihi" id="startDate" error={errors.startDate}>
 						<Input required type="date" value={state.startDate} onChange={set("startDate")} />
 					</FormField>
 					<FormField label="Para Birimi">
-						<Select value="TRY" disabled>
-							<option value="TRY">TRY (₺)</option>
-						</Select>
+						<Dropdown options={[{ value: "TRY", label: "TRY (₺)" }]} value="TRY" onChange={() => {}} disabled />
 					</FormField>
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -398,13 +399,11 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 					Diğer Şartlar
 				</h3>
 				<FormField label="Alt Kiraya Verme">
-					<Select
+					<Dropdown
+						options={SUBLETTING_OPTIONS}
 						value={state.sublettingAllowed ? "yes" : "no"}
-						onChange={(e) => onChange("sublettingAllowed", e.target.value === "yes")}
-					>
-						<option value="no">İzin verilmez</option>
-						<option value="yes">Yazılı onayla izinli</option>
-					</Select>
+						onChange={(v) => onChange("sublettingAllowed", v === "yes")}
+					/>
 				</FormField>
 				<FormField label="Kira Artışı Notu — opsiyonel">
 					<Textarea

@@ -4,7 +4,7 @@ import { humanizeError } from "@/src/lib/errors";
 import { useState } from "react";
 import { updateLease, type LeaseUpdate } from "@/src/lib/db/leases";
 import type { Lease } from "@/src/lib/db/types";
-import { Sheet, FormField, Input, Select, Button, Alert, toast } from "@/src/components/ui";
+import { Sheet, FormField, Input, Dropdown, Button, Alert, toast } from "@/src/components/ui";
 import { positiveNumber, compactErrors } from "@/src/lib/validation";
 
 interface Props {
@@ -105,9 +105,7 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Para birimi">
-						<Select value="TRY" disabled>
-							<option value="TRY">TRY (₺)</option>
-						</Select>
+						<Dropdown options={[{ value: "TRY", label: "TRY (₺)" }]} value="TRY" onChange={() => {}} disabled />
 					</FormField>
 					<FormField label="Bitiş tarihi" hint="Süresiz sözleşme için boş bırakın." error={fieldErrors.endDate}>
 						<Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />

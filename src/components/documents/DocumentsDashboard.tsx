@@ -12,8 +12,9 @@ import {
 import { getDocumentUrl } from "@/src/lib/db/documents";
 import { useCachedResource } from "@/src/lib/useCachedResource";
 import {
-	AppShell, Card, Alert, Button, Input, Select, Badge,
+	AppShell, Card, Alert, Button, Input, Dropdown, Badge,
 	SpinnerBlock, EmptyState, Pagination, usePagination, toast,
+	type DropdownOption,
 } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
 import { FileText, Search, Download, FilePlus2, PencilLine } from "lucide-react";
@@ -21,6 +22,18 @@ import { FileText, Search, Download, FilePlus2, PencilLine } from "lucide-react"
 function fmtDate(d: string) {
 	return new Date(d).toLocaleDateString("tr-TR", { year: "numeric", month: "short", day: "numeric" });
 }
+
+const KIND_OPTIONS: DropdownOption<ContractDocKind | "">[] = [
+	{ value: "", label: "Tüm türler" },
+	{ value: "rental", label: "Kira" },
+	{ value: "sales", label: "Satış" },
+];
+
+const STATUS_OPTIONS: DropdownOption<ContractDocStatus | "">[] = [
+	{ value: "", label: "Tüm durumlar" },
+	{ value: "draft", label: "Taslak" },
+	{ value: "finalized", label: "Kesinleşmiş" },
+];
 
 function KindBadge({ kind }: { kind: ContractDocKind }) {
 	return kind === "rental" ? <Badge tone="indigo">Kira</Badge> : <Badge tone="violet">Satış</Badge>;
@@ -36,8 +49,8 @@ export function DocumentsDashboard() {
 	const user = useAppStore((s) => s.user);
 	const [q, setQ] = useState("");
 	const [debouncedQ, setDebouncedQ] = useState("");
-	const [kind, setKind] = useState<ContractDocKind | "all">("all");
-	const [status, setStatus] = useState<ContractDocStatus | "all">("all");
+	const [kind, setKind] = useState<ContractDocKind | "">("");
+	const [status, setStatus] = useState<ContractDocStatus | "">("");
 	const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
 	const debounceTimer = useRef<number | undefined>(undefined);
@@ -49,8 +62,8 @@ export function DocumentsDashboard() {
 
 	const filter = {
 		q: debouncedQ || undefined,
-		kind: kind === "all" ? undefined : kind,
-		status: status === "all" ? undefined : status,
+		kind: kind === "" ? undefined : kind,
+		status: status === "" ? undefined : status,
 	};
 	const cacheKey = user ? `contract-documents:${JSON.stringify(filter)}` : null;
 	const { data, loading, error, refetch } = useCachedResource(
@@ -75,7 +88,7 @@ export function DocumentsDashboard() {
 		}
 	}
 
-	const hasFilter = debouncedQ !== "" || kind !== "all" || status !== "all";
+	const hasFilter = debouncedQ !== "" || kind !== "" || status !== "";
 
 	return (
 		<AppShell title="Belgeler" subtitle="Oluşturulan sözleşmeler ve belgeler" width="7xl">
@@ -97,26 +110,22 @@ export function DocumentsDashboard() {
 								aria-label="Belge ara"
 							/>
 						</div>
-						<Select
-							value={kind}
-							onChange={(e) => setKind(e.target.value as ContractDocKind | "all")}
-							className="sm:w-40"
-							aria-label="Belge türü"
-						>
-							<option value="all">Tüm türler</option>
-							<option value="rental">Kira</option>
-							<option value="sales">Satış</option>
-						</Select>
-						<Select
-							value={status}
-							onChange={(e) => setStatus(e.target.value as ContractDocStatus | "all")}
-							className="sm:w-44"
-							aria-label="Belge durumu"
-						>
-							<option value="all">Tüm durumlar</option>
-							<option value="draft">Taslak</option>
-							<option value="finalized">Kesinleşmiş</option>
-						</Select>
+						<div className="sm:w-40">
+							<Dropdown
+								options={KIND_OPTIONS}
+								value={kind}
+								onChange={setKind}
+								aria-label="Belge türü"
+							/>
+						</div>
+						<div className="sm:w-44">
+							<Dropdown
+								options={STATUS_OPTIONS}
+								value={status}
+								onChange={setStatus}
+								aria-label="Belge durumu"
+							/>
+						</div>
 						<Link href="/documents/new" className="hidden sm:block sm:ml-auto shrink-0">
 							<Button size="sm">
 								<FilePlus2 className="w-4 h-4" />

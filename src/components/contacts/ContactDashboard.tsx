@@ -6,7 +6,7 @@ import { useAppStore } from "@/src/store";
 import { listLeads, type LeadFilter } from "@/src/lib/db/leads";
 import { listTenants } from "@/src/lib/db/tenants";
 import { useCachedResource } from "@/src/lib/useCachedResource";
-import { AppShell, Card, Alert, Button, Input, Select } from "@/src/components/ui";
+import { AppShell, Card, Alert, Button, Input, Dropdown, type DropdownOption } from "@/src/components/ui";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "@/src/components/leads/leadStatus";
 import { LeadForm } from "@/src/components/leads/LeadForm";
 import { TenantForm } from "@/src/components/tenants/TenantForm";
@@ -24,6 +24,11 @@ type Editing =
 	| { mode: "edit-lead"; lead: Lead }
 	| { mode: "edit-tenant"; tenant: Tenant }
 	| null;
+
+const STATUS_OPTIONS: DropdownOption<LeadStatus | "all">[] = [
+	{ value: "all", label: "Tüm durumlar" },
+	...LEAD_STATUS_ORDER.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label })),
+];
 
 const TYPE_TABS: { value: TypeFilter; label: string }[] = [
 	{ value: "all", label: "Tümü" },
@@ -176,17 +181,13 @@ export function ContactDashboard() {
 							</div>
 
 							{typeFilter !== "tenant" && (
-								<Select
+								<Dropdown
+									options={STATUS_OPTIONS}
 									value={leadFilters.status}
-									onChange={(e) => setLeadFilter("status", e.target.value as LeadStatus | "all")}
+									onChange={(v) => setLeadFilter("status", v)}
 									className="sm:w-52"
 									aria-label="Müşteri durumu"
-								>
-									<option value="all">Tüm durumlar</option>
-									{LEAD_STATUS_ORDER.map((s) => (
-										<option key={s} value={s}>{LEAD_STATUS_META[s].label}</option>
-									))}
-								</Select>
+								/>
 							)}
 
 							<div className="relative hidden sm:block sm:ml-auto shrink-0">

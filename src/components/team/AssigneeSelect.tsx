@@ -3,8 +3,8 @@
 // Dropdown of team members for assigning a property/lead. Assignment is
 // responsibility-only: everyone in the team still sees the record.
 
-import { useEffect, useState } from "react";
-import { Select } from "@/src/components/ui";
+import { useEffect, useMemo, useState } from "react";
+import { Dropdown, type DropdownOption } from "@/src/components/ui";
 import { listTeamMembers, type TeamMember } from "@/src/lib/db/teams";
 
 interface Props {
@@ -19,15 +19,22 @@ export function AssigneeSelect({ value, onChange }: Props) {
 		listTeamMembers().then(setMembers).catch(() => setMembers([]));
 	}, []);
 
+	const options = useMemo<DropdownOption[]>(
+		() => [
+			{ value: "", label: "Unassigned" },
+			...members.map((m) => ({
+				value: m.user_id,
+				label: `${m.display_name || m.email}${m.role === "owner" ? " (owner)" : ""}`,
+			})),
+		],
+		[members],
+	);
+
 	return (
-		<Select value={value ?? ""} onChange={(e) => onChange(e.target.value || null)}>
-			<option value="">Unassigned</option>
-			{members.map((m) => (
-				<option key={m.user_id} value={m.user_id}>
-					{m.display_name || m.email}
-					{m.role === "owner" ? " (owner)" : ""}
-				</option>
-			))}
-		</Select>
+		<Dropdown
+			options={options}
+			value={value ?? ""}
+			onChange={(v) => onChange(v || null)}
+		/>
 	);
 }

@@ -4,8 +4,13 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "@/src/store";
 import type { LeadStatus } from "@/src/lib/db/types";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "./leadStatus";
-import { Input, Select, Button } from "@/src/components/ui";
+import { Input, Dropdown, Button, type DropdownOption } from "@/src/components/ui";
 import { Search, Plus } from "lucide-react";
+
+const STATUS_OPTIONS: DropdownOption<LeadStatus | "all">[] = [
+	{ value: "all", label: "Tüm durumlar" },
+	...LEAD_STATUS_ORDER.map((s) => ({ value: s, label: LEAD_STATUS_META[s].label })),
+];
 
 export function LeadFilters({ onAdd }: { onAdd?: () => void }) {
 	const leadFilters = useAppStore((s) => s.leadFilters);
@@ -35,16 +40,12 @@ export function LeadFilters({ onAdd }: { onAdd?: () => void }) {
 				/>
 			</div>
 
-			<Select
+			<Dropdown
+				options={STATUS_OPTIONS}
 				value={leadFilters.status}
-				onChange={(e) => setLeadFilter("status", e.target.value as LeadStatus | "all")}
+				onChange={(v) => setLeadFilter("status", v)}
 				className="sm:w-52"
-			>
-				<option value="all">Tüm durumlar</option>
-				{LEAD_STATUS_ORDER.map((s) => (
-					<option key={s} value={s}>{LEAD_STATUS_META[s].label}</option>
-				))}
-			</Select>
+			/>
 
 			{hasActiveFilter && (
 				<Button variant="ghost" size="sm" onClick={() => { setQ(""); resetLeadFilters(); }}>

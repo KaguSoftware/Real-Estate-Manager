@@ -24,7 +24,6 @@ export {
 	textareaClass,
 	Input,
 	Textarea,
-	Select,
 } from "./FormField";
 export { SectionHeader } from "./SectionHeader";
 export { Pagination, usePagination, DEFAULT_PAGE_SIZE } from "./Pagination";

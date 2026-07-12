@@ -11,7 +11,7 @@ import {
 	type PropertyInput,
 } from "@/src/lib/db/properties";
 import type { Property, ListingType, PropertyStatus } from "@/src/lib/db/types";
-import { FormField, Input, Textarea, Select, Button, Alert, ConfirmDialog, toast } from "@/src/components/ui";
+import { FormField, Input, Textarea, Dropdown, Button, Alert, ConfirmDialog, toast, type DropdownOption } from "@/src/components/ui";
 import type { ReverseAddress } from "@/src/lib/geocode";
 import { splitPlaceName, type ResolveResult } from "@/src/lib/maps-url";
 import { LocationPicker, type LatLon } from "./LocationPicker";
@@ -24,6 +24,23 @@ interface Props {
 	onDone?: () => void;
 	onCancel?: () => void;
 }
+
+const LISTING_TYPE_OPTIONS: DropdownOption<ListingType>[] = [
+	{ value: "for_rent", label: "Kiralık" },
+	{ value: "for_sale", label: "Satılık" },
+];
+
+const FURNISHED_OPTIONS: DropdownOption<"yes" | "no" | "">[] = [
+	{ value: "", label: "Belirtilmedi" },
+	{ value: "yes", label: "Eşyalı" },
+	{ value: "no", label: "Eşyasız" },
+];
+
+const STATUS_OPTIONS: DropdownOption<PropertyStatus>[] = [
+	{ value: "vacant", label: "Boş" },
+	{ value: "occupied", label: "Kirada" },
+	{ value: "sold", label: "Satıldı" },
+];
 
 /** Combine Turkish address parts into a single address_line string. */
 function joinAddress(parts: {
@@ -115,7 +132,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const [bedrooms,     setBedrooms]    = useState(initial?.bedrooms?.toString() ?? "");
 	const [bathrooms,    setBathrooms]   = useState(initial?.bathrooms?.toString() ?? "");
 	// "" = unknown, "yes" = furnished, "no" = unfurnished.
-	const [furnished,    setFurnished]   = useState(initial?.furnished == null ? "" : initial.furnished ? "yes" : "no");
+	const [furnished,    setFurnished]   = useState<"yes" | "no" | "">(initial?.furnished == null ? "" : initial.furnished ? "yes" : "no");
 	const [listing_type, setListingType] = useState<ListingType>(initial?.listing_type ?? "for_rent");
 	const [status,       setStatus]      = useState<PropertyStatus>(initial?.status ?? "vacant");
 	const [list_price,   setListPrice]   = useState(initial?.list_price?.toString() ?? "");
@@ -287,10 +304,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					<Input required value={homeowner_name} onChange={(e) => setHomeownerName(e.target.value)} placeholder="Ahmet Yılmaz" />
 				</FormField>
 				<FormField label="İlan türü">
-					<Select value={listing_type} onChange={(e) => setListingType(e.target.value as ListingType)}>
-						<option value="for_rent">Kiralık</option>
-						<option value="for_sale">Satılık</option>
-					</Select>
+					<Dropdown options={LISTING_TYPE_OPTIONS} value={listing_type} onChange={setListingType} />
 				</FormField>
 			</div>
 
@@ -345,29 +359,19 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					<Input type="number" inputMode="numeric" min="0" value={bathrooms} onChange={(e) => setBathrooms(e.target.value)} />
 				</FormField>
 				<FormField label="Eşya durumu">
-					<Select value={furnished} onChange={(e) => setFurnished(e.target.value)}>
-						<option value="">Belirtilmedi</option>
-						<option value="yes">Eşyalı</option>
-						<option value="no">Eşyasız</option>
-					</Select>
+					<Dropdown options={FURNISHED_OPTIONS} value={furnished} onChange={setFurnished} />
 				</FormField>
 			</div>
 
 			<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 				<FormField label="Durum">
-					<Select value={status} onChange={(e) => setStatus(e.target.value as PropertyStatus)}>
-						<option value="vacant">Boş</option>
-						<option value="occupied">Kirada</option>
-						<option value="sold">Satıldı</option>
-					</Select>
+					<Dropdown options={STATUS_OPTIONS} value={status} onChange={setStatus} />
 				</FormField>
 				<FormField label={listing_type === "for_rent" ? "Aylık kira" : "Satış fiyatı"}>
 					<Input type="number" inputMode="decimal" min="0" value={list_price} onChange={(e) => setListPrice(e.target.value)} placeholder="0.00" />
 				</FormField>
 				<FormField label="Para birimi">
-					<Select value="TRY" disabled>
-						<option value="TRY">TRY (₺)</option>
-					</Select>
+					<Dropdown options={[{ value: "TRY", label: "TRY (₺)" }]} value="TRY" onChange={() => {}} disabled />
 				</FormField>
 			</div>
 

@@ -2,9 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAppStore } from "@/src/store";
-import { Input, Select, Button, Sheet, FormField, MultiSelect, cn } from "@/src/components/ui";
+import { useAppStore, type FurnishedFilter } from "@/src/store";
+import { Input, Dropdown, Button, Sheet, FormField, MultiSelect, cn, type DropdownOption } from "@/src/components/ui";
+import type { ListingType, PropertyStatus } from "@/src/lib/db/types";
 import { SlidersHorizontal, Search, Plus } from "lucide-react";
+
+const FURNISHED_OPTIONS: DropdownOption<FurnishedFilter>[] = [
+	{ value: "all", label: "Tümü" },
+	{ value: "yes", label: "Eşyalı" },
+	{ value: "no", label: "Eşyasız" },
+];
+
+const LISTING_TYPE_OPTIONS: DropdownOption<ListingType | "all">[] = [
+	{ value: "all", label: "Tüm ilanlar" },
+	{ value: "for_rent", label: "Kiralık" },
+	{ value: "for_sale", label: "Satılık" },
+];
+
+const STATUS_OPTIONS: DropdownOption<PropertyStatus | "all">[] = [
+	{ value: "all", label: "Tüm durumlar" },
+	{ value: "vacant", label: "Boş" },
+	{ value: "occupied", label: "Kirada" },
+	{ value: "sold", label: "Satıldı" },
+];
 
 export function PropertyFilters() {
 	const router = useRouter();
@@ -72,34 +92,24 @@ export function PropertyFilters() {
 				/>
 			</FieldWrap>
 			<FieldWrap stacked={stacked} label="Eşya durumu">
-				<Select
+				<Dropdown
+					options={FURNISHED_OPTIONS}
 					value={filters.furnished}
-					onChange={(e) => setFilter("furnished", e.target.value as typeof filters.furnished)}
+					onChange={(v) => setFilter("furnished", v)}
 					className={stacked ? "" : "sm:w-auto"}
-				>
-					<option value="all">Tümü</option>
-					<option value="yes">Eşyalı</option>
-					<option value="no">Eşyasız</option>
-				</Select>
+				/>
 			</FieldWrap>
 			<FieldWrap stacked={stacked} label="İlan">
-				<Select value={filters.listing_type}
-					onChange={(e) => setFilter("listing_type", e.target.value as typeof filters.listing_type)}
-					className={stacked ? "" : "sm:w-auto"}>
-					<option value="all">Tüm ilanlar</option>
-					<option value="for_rent">Kiralık</option>
-					<option value="for_sale">Satılık</option>
-				</Select>
+				<Dropdown options={LISTING_TYPE_OPTIONS}
+					value={filters.listing_type}
+					onChange={(v) => setFilter("listing_type", v)}
+					className={stacked ? "" : "sm:w-auto"} />
 			</FieldWrap>
 			<FieldWrap stacked={stacked} label="Durum">
-				<Select value={filters.status}
-					onChange={(e) => setFilter("status", e.target.value as typeof filters.status)}
-					className={stacked ? "" : "sm:w-auto"}>
-					<option value="all">Tüm durumlar</option>
-					<option value="vacant">Boş</option>
-					<option value="occupied">Kirada</option>
-					<option value="sold">Satıldı</option>
-				</Select>
+				<Dropdown options={STATUS_OPTIONS}
+					value={filters.status}
+					onChange={(v) => setFilter("status", v)}
+					className={stacked ? "" : "sm:w-auto"} />
 			</FieldWrap>
 		</div>
 	);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
 	clamp,
 	formatTrMoney,
@@ -58,23 +58,21 @@ export const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
 ) {
 	const [text, setText] = useState(() => toEditingText(value));
 	const [focused, setFocused] = useState(false);
-	// Last value we emitted — distinguishes our own echo from external resets.
-	const lastEmitted = useRef<number | null>(value);
 
-	useEffect(() => {
-		if (value !== lastEmitted.current) {
-			lastEmitted.current = value;
-			setText(toEditingText(value));
-		}
-	}, [value]);
+	// Render-phase sync (not an effect): when the prop changes to something the
+	// current editing text doesn't represent, it was an external reset — re-seed.
+	// Our own emits echo back with parse(text) === value, so "12," survives.
+	const [prevValue, setPrevValue] = useState(value);
+	if (prevValue !== value) {
+		setPrevValue(value);
+		if (parseTrNumber(text) !== value) setText(toEditingText(value));
+	}
 
 	const opts = { decimal: mode === "decimal", negative: min !== undefined && min < 0 };
 
 	function emit(nextText: string) {
 		setText(nextText);
-		const n = parseTrNumber(nextText);
-		lastEmitted.current = n;
-		onChange(n);
+		onChange(parseTrNumber(nextText));
 	}
 
 	function onBlur() {

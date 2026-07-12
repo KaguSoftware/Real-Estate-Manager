@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { createLead, updateLead, deleteLead, type LeadInput } from "@/src/lib/db/leads";
 import type { Lead, LeadStatus, ListingType } from "@/src/lib/db/types";
-import { Sheet, Button, FormField, Input, Textarea, Select, Alert, ConfirmDialog, toast } from "@/src/components/ui";
+import { Sheet, Button, FormField, Input, Textarea, Dropdown, Alert, ConfirmDialog, toast, type DropdownOption } from "@/src/components/ui";
 import { validEmail, compactErrors } from "@/src/lib/validation";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "./leadStatus";
 import { AssigneeSelect } from "@/src/components/team/AssigneeSelect";
@@ -18,6 +18,17 @@ interface Props {
 	onClose: () => void;
 	onDone: () => void;
 }
+
+const PREF_LISTING_TYPE_OPTIONS: DropdownOption<ListingType | "">[] = [
+	{ value: "", label: "Fark etmez" },
+	{ value: "for_rent", label: "Kiralamak" },
+	{ value: "for_sale", label: "Satın almak" },
+];
+
+const STATUS_OPTIONS: DropdownOption<LeadStatus>[] = LEAD_STATUS_ORDER.map((s) => ({
+	value: s,
+	label: LEAD_STATUS_META[s].label,
+}));
 
 /** Eyebrow heading separating field groups inside the form. */
 function GroupTitle({ children }: { children: React.ReactNode }) {
@@ -171,11 +182,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 					<p className="text-sm font-semibold text-base-content/60">Arama tercihleri (isteğe bağlı)</p>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<FormField label="Amaç">
-							<Select value={pref_listing_type} onChange={(e) => setPrefListingType(e.target.value as ListingType | "")}>
-								<option value="">Fark etmez</option>
-								<option value="for_rent">Kiralamak</option>
-								<option value="for_sale">Satın almak</option>
-							</Select>
+							<Dropdown options={PREF_LISTING_TYPE_OPTIONS} value={pref_listing_type} onChange={setPrefListingType} />
 						</FormField>
 						<FormField label="Nitelik (örn. 3+1)">
 							<Input value={pref_nitelik} onChange={(e) => setPrefNitelik(e.target.value)} placeholder="3+1" />
@@ -197,11 +204,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 				<GroupTitle>Durum ve takip</GroupTitle>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Durum">
-						<Select value={status} onChange={(e) => setStatus(e.target.value as LeadStatus)}>
-							{LEAD_STATUS_ORDER.map((s) => (
-								<option key={s} value={s}>{LEAD_STATUS_META[s].label}</option>
-							))}
-						</Select>
+						<Dropdown options={STATUS_OPTIONS} value={status} onChange={setStatus} />
 					</FormField>
 					<FormField label="Son arama">
 						<Input type="date" value={last_call_at ?? ""} onChange={(e) => setLastCallAt(e.target.value)} />

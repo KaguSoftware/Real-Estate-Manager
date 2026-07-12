@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Property, TaxResponsibility } from "@/src/lib/db/types";
-import { FormField, Input, Textarea, Select } from "@/src/components/ui";
+import { FormField, Input, Textarea, Dropdown, type DropdownOption } from "@/src/components/ui";
 
 /**
  * State container for the sales wizard step 3.
@@ -71,6 +71,12 @@ export const initialSalesFormState = (property: Property | null): SalesFormState
 	sellerCommissionRate: "2",
 	specialConditions: "",
 });
+
+const TAX_RESPONSIBILITY_OPTIONS: DropdownOption<TaxResponsibility>[] = [
+	{ value: "buyer", label: "Alıcı tarafından" },
+	{ value: "seller", label: "Satıcı tarafından" },
+	{ value: "legal", label: "Yasal sorumluluklar çerçevesinde" },
+];
 
 interface Props {
 	state: SalesFormState;
@@ -192,9 +198,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Input required type="number" inputMode="decimal" min="0" step="0.01" value={state.salePrice} onChange={set("salePrice")} />
 					</FormField>
 					<FormField label="Para Birimi">
-						<Select value="TRY" disabled>
-							<option value="TRY">TRY (₺)</option>
-						</Select>
+						<Dropdown options={[{ value: "TRY", label: "TRY (₺)" }]} value="TRY" onChange={() => {}} disabled />
 					</FormField>
 					<FormField label="Sözleşme Tarihi" id="saleDate" error={errors.saleDate}>
 						<Input required type="date" value={state.saleDate} onChange={set("saleDate")} />
@@ -216,11 +220,11 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Input type="number" inputMode="numeric" min="0" step="1" value={state.validityDays} onChange={set("validityDays")} />
 					</FormField>
 					<FormField label="Vergi Sorumluluğu">
-						<Select value={state.taxResponsibility} onChange={set("taxResponsibility")}>
-							<option value="buyer">Alıcı tarafından</option>
-							<option value="seller">Satıcı tarafından</option>
-							<option value="legal">Yasal sorumluluklar çerçevesinde</option>
-						</Select>
+						<Dropdown
+							options={TAX_RESPONSIBILITY_OPTIONS}
+							value={state.taxResponsibility}
+							onChange={(v) => onChange("taxResponsibility", v)}
+						/>
 					</FormField>
 				</div>
 			</section>
