@@ -26,9 +26,9 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
 						</Link>
 						<Link
 							href="/signup"
-							className="px-4 h-10 inline-flex items-center rounded-xl text-sm font-semibold bg-primary text-primary-content hover:opacity-90 transition-opacity"
+							className="px-4 h-10 inline-flex items-center rounded-xl text-sm font-semibold bg-primary text-primary-content hover:brightness-110 active:scale-[0.98] transition-[filter,transform]"
 						>
-							Ücretsiz dene
+							Ücretsiz deneyin
 						</Link>
 					</nav>
 				</div>

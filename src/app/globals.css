@@ -177,6 +177,29 @@
 	.no-scrollbar::-webkit-scrollbar { display: none; }
 }
 
+/* ─── Marketing motion ───────────────────────────────────────────────────── */
+/* Hero entrance: fade-up on load, staggered via .enter-2/.enter-3. */
+@layer utilities {
+	@keyframes lx-fade-up {
+		from { opacity: 0; transform: translateY(16px); }
+		to { opacity: 1; transform: none; }
+	}
+	.enter { animation: lx-fade-up 0.7s var(--ease-fluid) both; }
+	.enter-2 { animation-delay: 0.08s; }
+	.enter-3 { animation-delay: 0.16s; }
+	/* Scroll reveal: progressive enhancement only — content is fully visible
+	   wherever scroll-driven animations are unsupported (SEO/headless safe). */
+	@supports (animation-timeline: view()) {
+		@media (prefers-reduced-motion: no-preference) {
+			.reveal {
+				animation: lx-fade-up linear both;
+				animation-timeline: view();
+				animation-range: entry 5% entry 35%;
+			}
+		}
+	}
+}
+
 /* Reduced motion: collapse every animation/transition to a near-instant
    crossfade. Individual components may layer richer fallbacks on top. */
 @media (prefers-reduced-motion: reduce) {
