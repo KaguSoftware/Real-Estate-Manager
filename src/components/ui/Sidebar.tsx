@@ -5,10 +5,13 @@
  * for smaller screens; both read the same NAV_GROUPS so they never drift.
  *
  * Identity: a graphite rail (the kagu's ash-grey plumage) that stays dark in
- * BOTH themes, with the red-orange accent reserved for the active item — the
- * one committed surface in an otherwise restrained product UI.
+ * BOTH themes. Instead of the usual pill-highlight nav, a single vertical
+ * "flight line" runs through the items and one orange marker (the kagu's
+ * bill) slides along it to the active route — the one committed accent in an
+ * otherwise restrained product UI.
  */
 
+import { useLayoutEffect, useRef, useState } from "react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/src/lib/supabase/client";
@@ -32,20 +35,40 @@ function PendingHint() {
 	);
 }
 
+/** x-center of the flight line inside the <nav>, in px (matches left-[27px] + w-px). */
+const LINE_X = 27;
+
 export function Sidebar() {
 	const user = useAppStore((s) => s.user);
 	const team = useAppStore((s) => s.team);
 	const pathname = usePathname();
 	const router = useRouter();
 
-	if (!user) return null;
-	const isAdmin = user.app_role === "admin";
+	const navRef = useRef<HTMLElement>(null);
+	const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
+	const [markerY, setMarkerY] = useState<number | null>(null);
+
+	const isAdmin = user?.app_role === "admin";
 	const groups = NAV_GROUPS.map((g) => ({
 		...g,
 		items: g.items.filter((i) => !i.adminOnly || isAdmin),
 	})).filter((g) => g.items.length > 0);
 	const allItems = groups.flatMap((g) => g.items);
-	const activeHref = activeNavHref(pathname, allItems);
+	const activeHref = user ? activeNavHref(pathname, allItems) : null;
+
+	// Position the marker on the vertical center of the active link. offsetTop
+	// is measured against the <nav> (its offsetParent, via `relative`), so the
+	// marker scrolls together with the items.
+	useLayoutEffect(() => {
+		if (!activeHref) {
+			setMarkerY(null);
+			return;
+		}
+		const el = itemRefs.current.get(activeHref);
+		setMarkerY(el ? el.offsetTop + el.offsetHeight / 2 : null);
+	}, [activeHref, isAdmin]);
+
+	if (!user) return null;
 
 	const logoUrl = getTeamLogoUrl(team?.logo_path ?? null);
 	const avatarUrl = getAvatarUrl(user.avatar_path ?? null);
@@ -61,7 +84,7 @@ export function Sidebar() {
 			className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col bg-[#1b202a] text-white/80 safe-top safe-bottom"
 		>
 			{/* Workspace identity */}
-			<div className="px-5 pt-6 pb-5">
+			<div className="px-5 pt-6 pb-6">
 				<div className="flex items-center gap-3 min-w-0">
 					{logoUrl ? (
 						// eslint-disable-next-line @next/next/no-img-element
@@ -80,14 +103,29 @@ export function Sidebar() {
 				</div>
 			</div>
 
-			{/* Nav groups */}
-			<nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-5">
+			{/* Nav: flight line + sliding marker */}
+			<nav ref={navRef} className="relative flex-1 overflow-y-auto px-3 pb-4">
+				{/* The line itself. Fades out at both ends instead of hard-stopping. */}
+				<span
+					aria-hidden
+					className="pointer-events-none absolute top-0 bottom-0 w-px bg-linear-to-b from-transparent via-white/12 to-transparent"
+					style={{ left: LINE_X }}
+				/>
+				{/* The kagu's bill: one marker for the whole nav, gliding to the active item. */}
+				{markerY !== null && (
+					<span
+						aria-hidden
+						className="pointer-events-none absolute z-10 h-1.75 w-1.75 rounded-full bg-primary shadow-[0_0_10px_2px_--theme(--color-primary/45%)] transition-transform duration-200 ease-out motion-reduce:transition-none"
+						style={{ left: LINE_X - 3, top: 0, transform: `translateY(${markerY - 3.5}px)` }}
+					/>
+				)}
+
 				{groups.map((g, gi) => (
-					<div key={g.label ?? gi}>
+					<div key={g.label ?? gi} className="pt-6 first:pt-0">
 						{g.label && (
-							<p className="px-3 mb-1 text-[11px] font-semibold text-white/35">{g.label}</p>
+							<p className="mb-1.5 pl-10 text-[11px] font-semibold text-white/30">{g.label}</p>
 						)}
-						<ul className="space-y-0.5">
+						<ul>
 							{g.items.map(({ href, label, icon: Icon }) => {
 								const active = activeHref === href;
 								return (
@@ -95,17 +133,21 @@ export function Sidebar() {
 										<Link
 											href={href}
 											aria-current={active ? "page" : undefined}
+											ref={(el) => {
+												if (el) itemRefs.current.set(href, el);
+												else itemRefs.current.delete(href);
+											}}
 											className={cn(
-												"group flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium transition-colors duration-150",
+												"group flex items-center gap-3 h-11 pl-10 pr-3 text-sm transition-colors duration-150",
 												active
-													? "bg-primary text-primary-content font-semibold shadow-soft"
-													: "text-white/70 hover:text-white hover:bg-white/5",
+													? "text-white font-semibold"
+													: "font-medium text-white/55 hover:text-white",
 											)}
 										>
 											<Icon
 												className={cn(
-													"w-[18px] h-[18px] shrink-0 transition-colors duration-150",
-													active ? "" : "text-white/45 group-hover:text-white/80",
+													"w-4.5 h-4.5 shrink-0 transition-colors duration-150",
+													active ? "text-primary" : "text-white/35 group-hover:text-white/75",
 												)}
 											/>
 											{label}
