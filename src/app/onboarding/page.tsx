@@ -383,7 +383,7 @@ export default function OnboardingPage() {
 						</>
 					)}
 					<a
-						href="mailto:destek@kagu.app"
+						href="mailto:contact@kagusoftware.com"
 						className="inline-flex items-center gap-1 hover:text-base-content/80 transition-colors"
 					>
 						<HelpCircle className="w-3.5 h-3.5" /> Yardım
