@@ -101,7 +101,8 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 		const supabase = createClient();
 		const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
 		if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); return; }
-		setStatus("done");
+		// Stay in "loading" until navigation lands — flipping to "done" here
+		// stopped the spinner seconds before the app actually opened.
 		await routeAfterAuth();
 	}
 
@@ -165,7 +166,7 @@ export function AuthForm({ mode, next, standalone = true, onClose }: AuthFormPro
 		if (error) { setStatus("error"); setErrorMsg(humanizeError(error)); return; }
 		// When email confirmation is disabled, Supabase returns a live session —
 		// route straight into onboarding instead of asking them to check email.
-		if (data.session) { setStatus("done"); await routeAfterAuth(); return; }
+		if (data.session) { await routeAfterAuth(); return; } // spinner stays on until nav
 		setStatus("done");
 		setSuccessMsg("Hesabınızı doğrulamak için e-postanızı kontrol edin. Bağlantı sizi doğrudan kuruluma yönlendirecek.");
 	}

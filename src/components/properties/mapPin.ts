@@ -5,10 +5,12 @@ import L from "leaflet";
 
 export const PIN_SIZE = 30;
 
+// Theme-driven colors (daisyUI vars) so the pin stays visible in dark mode
+// instead of the old hardcoded near-black fill.
 export const PIN_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" width="${PIN_SIZE}" height="${PIN_SIZE}" viewBox="0 0 24 24" fill="#0f172a" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35))">
+<svg xmlns="http://www.w3.org/2000/svg" width="${PIN_SIZE}" height="${PIN_SIZE}" viewBox="0 0 24 24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="fill:var(--color-base-content,#0f172a);stroke:var(--color-base-100,#ffffff);filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35))">
   <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/>
-  <circle cx="12" cy="10" r="3" fill="#ffffff" stroke="#0f172a" stroke-width="1.5"/>
+  <circle cx="12" cy="10" r="3" style="fill:var(--color-base-100,#ffffff);stroke:var(--color-base-content,#0f172a)" stroke-width="1.5"/>
 </svg>`;
 
 /** Single pin (1 property / picker pin). */
@@ -27,9 +29,9 @@ export function stackedPinIcon(count: number): L.DivIcon {
 		`position:absolute;top:-4px;right:-4px;` +
 		`min-width:18px;height:18px;padding:0 4px;` +
 		`display:flex;align-items:center;justify-content:center;` +
-		`border-radius:9999px;background:#0f172a;color:#fff;` +
+		`border-radius:9999px;background:var(--color-base-content,#0f172a);color:var(--color-base-100,#fff);` +
 		`font-size:10px;font-weight:700;` +
-		`border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,0.35);` +
+		`border:2px solid var(--color-base-100,#fff);box-shadow:0 1px 2px rgba(0,0,0,0.35);` +
 		`pointer-events:none;` +
 		`">${count}</div>`;
 	return L.divIcon({

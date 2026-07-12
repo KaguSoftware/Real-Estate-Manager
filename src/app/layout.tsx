@@ -45,8 +45,10 @@ export const viewport: Viewport = {
 };
 
 // Light is the default (no attribute needed). Only an explicit "dark" choice
-// sets the attribute — before first paint, so there is no flash.
-const themeBootScript = `try{if(localStorage.getItem("kagu-theme")==="dark")document.documentElement.setAttribute("data-theme","estate-dark");}catch(e){}`;
+// sets the attribute — before first paint, so there is no flash. The team's
+// brand accent (persisted per-theme by BrandTheme under "kagu-brand-vars") is
+// applied in the same pass so a hard refresh never flashes the stock palette.
+const themeBootScript = `try{var d=localStorage.getItem("kagu-theme")==="dark";if(d)document.documentElement.setAttribute("data-theme","estate-dark");var b=localStorage.getItem("kagu-brand-vars");if(b){var v=JSON.parse(b)[d?"dark":"light"];if(v&&v.p){var s=document.documentElement.style;s.setProperty("--color-primary",v.p);s.setProperty("--color-primary-content",v.pc);}}}catch(e){}`;
 
 export default function RootLayout({
 	children,

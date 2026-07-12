@@ -97,7 +97,7 @@ export function LeaseEditSheet({ open, lease, onClose, onSaved }: Props) {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Para birimi">
-						<Dropdown options={[{ value: "TRY", label: "TRY (₺)" }]} value="TRY" onChange={() => {}} disabled />
+						<Dropdown options={[{ value: "TRY", label: "TL" }]} value="TRY" onChange={() => {}} disabled />
 					</FormField>
 					<FormField label="Bitiş tarihi" hint="Süresiz sözleşme için boş bırakın." error={fieldErrors.endDate}>
 						<Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />

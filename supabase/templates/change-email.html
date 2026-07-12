@@ -1,42 +1,40 @@
-<!-- Supabase Auth email template: Change Email Address
-     Subject suggestion: Confirm your new email — Kagu Real Estate -->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 16px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;">
-  <tr>
-    <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
-        <tr>
-          <td style="background-color:#0f766e;padding:20px 32px;">
-            <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:0.3px;">Kagu Real Estate</span>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:32px;">
-            <h1 style="margin:0 0 12px;font-size:20px;color:#0f172a;">Confirm your new email address</h1>
-            <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#475569;">
-              We received a request to change your account email from {{ .Email }} to {{ .NewEmail }}. Confirm the change below.
-            </p>
-            <p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#94a3b8;">
-              E-posta adresi değişikliğini onaylamak için aşağıdaki düğmeye tıklayın.
-            </p>
-            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
-              <tr>
-                <td style="border-radius:10px;background-color:#0f766e;">
-                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:12px 32px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;">Confirm change</a>
-                </td>
-              </tr>
-            </table>
-            <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">If the button doesn't work, copy and paste this link into your browser:</p>
-            <p style="margin:0;font-size:12px;word-break:break-all;"><a href="{{ .ConfirmationURL }}" style="color:#0f766e;">{{ .ConfirmationURL }}</a></p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:20px 32px;border-top:1px solid #e2e8f0;">
-            <p style="margin:0;font-size:12px;line-height:1.6;color:#94a3b8;">
-              If you didn't request this change, you can safely ignore this email and your address will stay the same.
-            </p>
-          </td>
-        </tr>
+<!-- Supabase Auth şablonu: Change Email Address
+     Önerilen konu: Yeni e-posta adresinizi onaylayın — Kagu -->
+<!doctype html>
+<html lang="tr">
+<body style="margin:0;padding:0;background-color:#f2f0ec;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f2f0ec;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+        <tr><td style="padding:0 8px 16px;">
+          <span style="font-size:20px;font-weight:800;color:#1e242e;letter-spacing:-0.02em;">Kagu</span>
+          <span style="font-size:12px;color:#8b929e;"> · Emlak Yönetim Sistemi</span>
+        </td></tr>
+        <tr><td style="background:#ffffff;border-radius:16px;padding:32px 28px;border:1px solid #e6e2da;">
+          <h1 style="margin:0 0 12px;font-size:20px;color:#1e242e;">Yeni e-posta adresinizi onaylayın</h1>
+          <p style="margin:0 0 20px;font-size:15px;color:#4b5158;line-height:1.6;">
+            Kagu hesabınızın e-posta adresini <strong>{{ .Email }}</strong> adresinden
+            <strong>{{ .NewEmail }}</strong> adresine taşıma talebi aldık. Değişikliği
+            tamamlamak için aşağıdaki butonla onay verin.
+          </p>
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:12px;background:#b74427;">
+            <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:12px 24px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">
+              Değişikliği onayla
+            </a>
+          </td></tr></table>
+          <p style="margin:20px 0 0;font-size:13px;color:#8b929e;line-height:1.6;">
+            Buton çalışmazsa bu bağlantıyı tarayıcınıza yapıştırın:<br>
+            <a href="{{ .ConfirmationURL }}" style="color:#b74427;word-break:break-all;">{{ .ConfirmationURL }}</a>
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 8px 0;">
+          <p style="margin:0;font-size:12px;color:#8b929e;line-height:1.5;">
+            Bu e-posta Kagu Emlak Yönetim Sistemi tarafından gönderildi.
+            Bu değişikliği siz talep etmediyseniz e-postayı güvenle yok sayabilirsiniz; adresiniz aynı kalır.
+          </p>
+        </td></tr>
       </table>
-    </td>
-  </tr>
-</table>
+    </td></tr>
+  </table>
+</body>
+</html>

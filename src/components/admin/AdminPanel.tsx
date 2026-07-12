@@ -60,7 +60,7 @@ export function AdminPanel() {
 					value={user.app_role}
 					disabled={updatingRole === user.id}
 					onChange={(role) => handleRoleChange(user.id, role)}
-					className="h-10 w-auto"
+					className="w-auto"
 					aria-label={`${user.email} için rol`}
 				/>
 				{updatingRole === user.id && <Spinner size="sm" />}

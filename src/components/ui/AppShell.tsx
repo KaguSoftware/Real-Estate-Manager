@@ -5,8 +5,10 @@ import Link from "next/link";
 import { Menu } from "lucide-react";
 import { useAppStore } from "@/src/store";
 import { getTeamLogoUrl } from "@/src/lib/db/teams";
+import { getAvatarUrl } from "@/src/lib/db/profiles";
 import { NotificationBell } from "@/src/components/notifications/NotificationBell";
 import { NavDrawer } from "./NavDrawer";
+import { Sidebar } from "./Sidebar";
 import { Button } from "./Button";
 import { AddMenu } from "./AddMenu";
 import { cn } from "./cn";
@@ -32,24 +34,34 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 	const team = useAppStore((s) => s.team);
 	const [drawerOpen, setDrawerOpen] = useState(false);
 
-	const maxW = width === "7xl" ? "max-w-7xl" : width === "3xl" ? "max-w-3xl" : "max-w-5xl";
+	// TV / very large displays (item: agencies showing the dashboard on office
+	// screens): widen the cap at 2xl instead of centering a small column.
+	const maxW =
+		width === "7xl" ? "max-w-7xl 2xl:max-w-[96rem]"
+		: width === "3xl" ? "max-w-3xl"
+		: "max-w-5xl 2xl:max-w-7xl";
 	const logoUrl = getTeamLogoUrl(team?.logo_path ?? null);
+	const avatarUrl = getAvatarUrl(user?.avatar_path ?? null);
 
 	return (
-		<div className="min-h-screen bg-base-200">
+		<div className={cn("min-h-screen bg-base-200", user && "lg:pl-64")}>
+			{user && <Sidebar />}
 			<header className="safe-top sticky top-0 z-30 bg-base-100/85 backdrop-blur border-b border-base-300/70">
 				<div className={cn("mx-auto px-3 sm:px-6 h-16 flex items-center gap-2.5", maxW)}>
 					<button
 						onClick={() => setDrawerOpen(true)}
 						aria-label="Menüyü aç"
-						className="h-11 w-11 -ml-1 inline-flex items-center justify-center rounded-lg text-base-content/70 hover:bg-base-200 transition-colors"
+						className={cn(
+							"h-11 w-11 -ml-1 inline-flex items-center justify-center rounded-lg text-base-content/70 hover:bg-base-200 transition-colors",
+							user && "lg:hidden", // desktop gets the persistent sidebar
+						)}
 					>
 						<Menu className="w-5 h-5" />
 					</button>
 
 					{logoUrl && (
 						// eslint-disable-next-line @next/next/no-img-element
-						<img src={logoUrl} alt={team?.name ?? "Ekip logosu"} className="h-8 w-auto max-w-27.5 object-contain shrink-0" />
+						<img src={logoUrl} alt={team?.name ?? "Ekip logosu"} className={cn("h-8 w-auto max-w-27.5 object-contain shrink-0", user && "lg:hidden")} />
 					)}
 
 					<div className="min-w-0 flex-1">
@@ -65,9 +77,14 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 							<button
 								onClick={() => setDrawerOpen(true)}
 								aria-label="Hesap"
-								className="h-9 w-9 rounded-full bg-primary text-primary-content ring-1 ring-primary/40 ring-offset-2 ring-offset-base-100 flex items-center justify-center text-sm font-bold uppercase select-none"
+								className="lg:hidden h-9 w-9 rounded-full bg-primary text-primary-content ring-1 ring-primary/40 ring-offset-2 ring-offset-base-100 flex items-center justify-center text-sm font-bold uppercase select-none overflow-hidden"
 							>
-								{user.email.charAt(0)}
+								{avatarUrl ? (
+									// eslint-disable-next-line @next/next/no-img-element
+									<img src={avatarUrl} alt="Profil fotoğrafı" className="h-full w-full object-cover" />
+								) : (
+									user.email.charAt(0)
+								)}
 							</button>
 						) : (
 							<Link href="/login"><Button size="sm">Giriş yap</Button></Link>

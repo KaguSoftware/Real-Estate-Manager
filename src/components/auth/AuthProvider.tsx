@@ -31,10 +31,10 @@ async function resolveUser(supabase: ReturnType<typeof createClient>, id: string
   try {
     const { data } = await supabase
       .from("profiles")
-      .select("app_role")
+      .select("app_role, avatar_path")
       .eq("id", id)
       .single();
-    return { id, email, app_role: data?.app_role ?? undefined };
+    return { id, email, app_role: data?.app_role ?? undefined, avatar_path: data?.avatar_path ?? null };
   } catch {
     return { id, email };
   }

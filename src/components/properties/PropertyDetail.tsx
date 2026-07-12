@@ -12,7 +12,8 @@ import { getContractDocumentByRecord, type ContractDocument } from "@/src/lib/db
 import { cancelSale, closeSale, getActiveSaleForProperty, listSalesForProperty } from "@/src/lib/db/sales";
 import { listPropertyImages } from "@/src/lib/db/propertyImages";
 import { invalidateCache } from "@/src/lib/useCachedResource";
-import { exportToPDF, getPdfBrandingFromStore, type ListingPDFData, type ReceiptPDFData } from "@/src/lib/pdf";
+import { exportToPDF, getPdfBrandingFromStore, type ListingPDFData } from "@/src/lib/pdf";
+import { buildReceiptPDFData, receiptFilename } from "@/src/lib/pdf/receiptData";
 import { fmtMoney } from "@/src/lib/format";
 import type { Lease, Payment, PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
 import { PaymentList } from "@/src/components/payments/PaymentList";
@@ -151,20 +152,8 @@ export function PropertyDetail({ propertyId }: Props) {
 	async function handleReceipt(payment: Payment) {
 		if (!data?.active_lease) return;
 		try {
-			const receipt: ReceiptPDFData = {
-				landlord_name: data.homeowner_name,
-				tenant_name: data.active_lease.tenant.full_name,
-				property_address: data.address_line,
-				city: data.city,
-				period_start: payment.period_start,
-				period_end: payment.period_end,
-				amount: Number(payment.amount_paid),
-				currency: data.active_lease.currency,
-				method: payment.method,
-				paid_at: payment.paid_at,
-				generatedAt: new Date().toISOString(),
-			};
-			await exportToPDF("receipt", receipt, `makbuz-${payment.period_start}`, await getPdfBrandingFromStore());
+			const receipt = buildReceiptPDFData(data, data.active_lease, data.active_lease.tenant, payment);
+			await exportToPDF("receipt", receipt, receiptFilename(payment), await getPdfBrandingFromStore());
 		} catch (e) {
 			toast.error(humanizeError(e));
 		}

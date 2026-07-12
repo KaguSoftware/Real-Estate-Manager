@@ -18,6 +18,7 @@ import {
 } from "@/src/lib/db/teams";
 import { Card, CardLabel, Button, Alert, Dropdown, ConfirmDialog } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
+import { clearCache } from "@/src/lib/useCachedResource";
 
 export function TeamDangerZone({ members }: { members: TeamMember[] }) {
 	const team = useAppStore((s) => s.team);
@@ -39,8 +40,12 @@ export function TeamDangerZone({ members }: { members: TeamMember[] }) {
 		try {
 			await action();
 			if (after === "exit") {
-				setTeam(null);
+				// Navigate first, then clear state: clearing the team while /team is
+				// still mounted made its team-gated widgets refetch against the
+				// just-deleted team and flash an RLS error before onboarding showed.
 				router.replace("/onboarding");
+				clearCache();
+				setTeam(null);
 			} else {
 				setTeam(await fetchTeamContext());
 			}

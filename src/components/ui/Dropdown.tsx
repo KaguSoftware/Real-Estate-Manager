@@ -167,8 +167,11 @@ export function Dropdown<T extends string = string>({
 		}
 	}
 
+	// className sizes the WRAPPER (like MultiSelect) — putting widths on the
+	// inner button while the wrapper stayed w-full made every inline filter row
+	// collapse into overlapping full-width controls.
 	return (
-		<div ref={rootRef} className="relative w-full">
+		<div ref={rootRef} className={cn("relative w-full", className)}>
 			<button
 				ref={triggerRef}
 				type="button"
@@ -191,7 +194,8 @@ export function Dropdown<T extends string = string>({
 					"disabled:bg-base-200 disabled:text-base-content/50",
 					open && "border-primary ring-4 ring-primary/15",
 					selected ? "text-base-content" : "text-base-content/40",
-					className,
+					// FormField's error class lands on the wrapper now; mirror it here.
+					ariaInvalid && "border-error/40 focus:border-error/60 focus:ring-error/15",
 				)}
 			>
 				<span className="flex items-center gap-2 truncate">

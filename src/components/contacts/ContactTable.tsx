@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAppStore } from "@/src/store";
-import { updateLead } from "@/src/lib/db/leads";
+import { useAppStore, useTeamReady, useIsWritable } from "@/src/store";
+import { updateLead, deleteLead } from "@/src/lib/db/leads";
+import { deleteTenant } from "@/src/lib/db/tenants";
 import { listProperties } from "@/src/lib/db/properties";
 import { rankPropertiesForLead } from "@/src/lib/matching/score";
 import { humanizeError } from "@/src/lib/errors";
@@ -10,9 +11,11 @@ import { invalidateCache, useCachedResource } from "@/src/lib/useCachedResource"
 import { toast } from "@/src/components/ui";
 import type { Lead, Tenant } from "@/src/lib/db/types";
 import { LEAD_STATUS_META } from "@/src/components/leads/leadStatus";
-import { Badge, Card, SpinnerBlock, EmptyState, Pagination, usePagination } from "@/src/components/ui";
+import { Badge, Button, Card, SpinnerBlock, EmptyState, Pagination, usePagination, BulkActionBar, ConfirmDialog } from "@/src/components/ui";
 import { WhatsAppButton } from "@/src/components/ui/WhatsAppButton";
-import { Home, PhoneCall, Users, Pencil } from "lucide-react";
+import { useMultiSelect } from "@/src/hooks/useMultiSelect";
+import { downloadCsv } from "@/src/lib/csv";
+import { Home, PhoneCall, Users, Pencil, Download, Trash2 } from "lucide-react";
 
 /** A merged row: a CRM lead ("Müşteri") or a contract party ("Kiracı"). */
 export type ContactRow =
@@ -62,7 +65,17 @@ interface Props {
 
 export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props) {
 	const upsertLead = useAppStore((s) => s.upsertLead);
+	const removeLead = useAppStore((s) => s.removeLead);
+	const teamReady = useTeamReady();
+	const isWritable = useIsWritable();
 	const [callBusyId, setCallBusyId] = useState<string | null>(null);
+
+	// Selection keys are "type:id" — lead and tenant ids live in separate tables
+	// and could theoretically collide.
+	const rowKey = (r: ContactRow) => `${r.type}:${r.id}`;
+	const { selected, toggle, toggleAll, clear, isSelected, allSelected, count } = useMultiSelect();
+	const [confirmDelete, setConfirmDelete] = useState(false);
+	const [bulkBusy, setBulkBusy] = useState(false);
 
 	async function markCalledToday(lead: Lead) {
 		setCallBusyId(lead.id);
@@ -86,7 +99,12 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 	}
 
 	// Column-light property fetch reused across the app ("Matches" hints).
-	const { data: properties } = useCachedResource("properties:for-matching", () => listProperties());
+	const { data: properties } = useCachedResource(
+		teamReady ? "properties:for-matching" : null,
+		() => listProperties(),
+		undefined,
+		{ enabled: teamReady },
+	);
 	const matchCounts = useMemo(() => {
 		const counts = new Map<string, number>();
 		if (!properties) return counts;
@@ -97,6 +115,59 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 	}, [rows, properties]);
 
 	const { page, setPage, pageCount, pageItems, total, pageSize } = usePagination(rows);
+
+	const pageKeys = pageItems.map(rowKey);
+	const selectedRows = rows.filter((r) => selected.has(rowKey(r)));
+
+	function exportSelectedCsv() {
+		downloadCsv(
+			"kisiler-secim",
+			["Ad", "Tür", "Telefon", "E-posta", "Detay", "Durum", "Notlar"],
+			selectedRows.map((r) => {
+				const p = r.type === "lead" ? r.lead : r.tenant;
+				return [
+					p.full_name,
+					r.type === "lead" ? "Müşteri" : "Kiracı",
+					p.phone,
+					p.email,
+					r.type === "lead" ? r.lead.interested_in : r.tenant.national_id,
+					r.type === "lead" ? LEAD_STATUS_META[r.lead.status].label : "",
+					p.notes,
+				];
+			}),
+		);
+	}
+
+	async function bulkDelete() {
+		setBulkBusy(true);
+		let ok = 0;
+		let failed = 0;
+		let tenantsDeleted = 0;
+		for (const r of selectedRows) {
+			try {
+				if (r.type === "lead") {
+					await deleteLead(r.id);
+					removeLead(r.id);
+				} else {
+					await deleteTenant(r.id);
+					tenantsDeleted++;
+				}
+				ok++;
+			} catch {
+				failed++;
+			}
+		}
+		if (tenantsDeleted > 0) {
+			// Tenants aren't in the store; drop the cache so the dashboard refetches.
+			invalidateCache("tenants");
+			invalidateCache("stats");
+		}
+		setBulkBusy(false);
+		setConfirmDelete(false);
+		clear();
+		if (failed === 0) toast.success(`${ok} kişi silindi.`);
+		else toast.error(`${ok} kişi silindi, ${failed} kişi silinemedi.`);
+	}
 
 	if (loading) return <SpinnerBlock />;
 
@@ -133,6 +204,14 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 							className="w-full text-left bg-base-100 border border-base-300 rounded-2xl shadow-card p-4 active:bg-base-200 transition-colors cursor-pointer"
 						>
 							<div className="flex items-start justify-between gap-3">
+								<input
+									type="checkbox"
+									checked={isSelected(rowKey(r))}
+									onChange={() => toggle(rowKey(r))}
+									onClick={(e) => e.stopPropagation()}
+									aria-label={`${p.full_name} kaydını seç`}
+									className="checkbox checkbox-sm checkbox-primary mt-1 shrink-0"
+								/>
 								<div className="min-w-0 flex-1">
 									<p className="text-base font-bold text-base-content truncate">{p.full_name}</p>
 									{(p.phone || p.email) && (
@@ -183,6 +262,15 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 					<table className="w-full min-w-140 text-sm">
 						<thead className="bg-base-200/60 border-b border-base-300">
 							<tr>
+								<th className="px-4 py-3 w-10">
+									<input
+										type="checkbox"
+										checked={allSelected(pageKeys)}
+										onChange={() => toggleAll(pageKeys)}
+										aria-label="Sayfadaki tüm kişileri seç"
+										className="checkbox checkbox-sm checkbox-primary align-middle"
+									/>
+								</th>
 								<th className={headerCls}>Ad</th>
 								<th className={headerCls}>Tür</th>
 								<th className={headerCls}>Telefon</th>
@@ -202,6 +290,15 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 										onClick={() => onEdit(r)}
 										className="border-b border-base-300 last:border-0 hover:bg-base-200 transition-colors cursor-pointer"
 									>
+										<td className="px-4 py-3 w-10" onClick={(e) => e.stopPropagation()}>
+											<input
+												type="checkbox"
+												checked={isSelected(rowKey(r))}
+												onChange={() => toggle(rowKey(r))}
+												aria-label={`${p.full_name} kaydını seç`}
+												className="checkbox checkbox-sm checkbox-primary align-middle"
+											/>
+										</td>
 										<td className="px-4 py-3 text-sm font-medium text-base-content">{p.full_name}</td>
 										<td className="px-4 py-3"><TypeBadge type={r.type} /></td>
 										<td className="px-4 py-3 text-sm text-base-content/70 whitespace-nowrap">
@@ -271,6 +368,29 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 				</div>
 			</Card>
 			<Pagination page={page} pageCount={pageCount} total={total} pageSize={pageSize} onPageChange={setPage} />
+
+			<BulkActionBar count={count} label={`${count} kişi seçildi`} onClear={clear}>
+				<Button size="sm" variant="outline" onClick={exportSelectedCsv}>
+					<Download className="w-4 h-4" />
+					CSV indir
+				</Button>
+				{isWritable && (
+					<Button size="sm" variant="danger" onClick={() => setConfirmDelete(true)}>
+						<Trash2 className="w-4 h-4" />
+						Seçilenleri sil
+					</Button>
+				)}
+			</BulkActionBar>
+
+			<ConfirmDialog
+				open={confirmDelete}
+				title="Seçilen kişiler silinsin mi?"
+				message={`${count} kişi kalıcı olarak silinecek. Bu işlem geri alınamaz.`}
+				confirmLabel="Seçilenleri sil"
+				loading={bulkBusy}
+				onConfirm={bulkDelete}
+				onCancel={() => setConfirmDelete(false)}
+			/>
 		</>
 	);
 }

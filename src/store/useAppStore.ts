@@ -7,6 +7,7 @@ export interface UserProfile {
 	id: string;
 	email: string;
 	app_role?: "admin" | "member" | "client";
+	avatar_path?: string | null;
 }
 
 export type FurnishedFilter = "all" | "yes" | "no";
@@ -139,6 +140,13 @@ export const useAppStore = create<AppState>((set) => ({
 	setLeadFilter: (k, v) => set((s) => ({ leadFilters: { ...s.leadFilters, [k]: v } })),
 	resetLeadFilters: () => set({ leadFilters: { ...EMPTY_LEAD_FILTERS } }),
 }));
+
+/** True once the signed-in user's team context has loaded AND a team exists.
+ *  Team-scoped fetchers (requireTeamId) throw before that point — gate their
+ *  `enabled` on this to avoid the transient post-login error flash. */
+export function useTeamReady(): boolean {
+	return useAppStore((s) => s.teamLoaded && s.team != null);
+}
 
 /** Client mirror of the DB-side team_is_writable() write gate. Optimistic
  *  before team context loads; RLS stays authoritative. Use it to disable

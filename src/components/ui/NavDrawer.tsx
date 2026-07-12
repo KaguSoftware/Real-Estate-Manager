@@ -5,30 +5,13 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/src/lib/supabase/client";
 import { getTeamLogoUrl } from "@/src/lib/db/teams";
+import { getAvatarUrl } from "@/src/lib/db/profiles";
 import { useAppStore } from "@/src/store";
 import { cn } from "./cn";
 import { useFocusTrap } from "./useFocusTrap";
 import { ThemeToggle } from "./ThemeToggle";
-import { LayoutDashboard, Home, Users, Files, FilePlus2, Shield, UsersRound, CreditCard, UserCog, LogOut, X } from "lucide-react";
-
-interface NavItem {
-	href: string;
-	label: string;
-	icon: React.ComponentType<{ className?: string }>;
-	adminOnly?: boolean;
-}
-
-const NAV: NavItem[] = [
-	{ href: "/", label: "Genel bakış", icon: LayoutDashboard },
-	{ href: "/properties", label: "Portföy", icon: Home },
-	{ href: "/leads", label: "Müşteriler", icon: Users },
-	{ href: "/documents", label: "Belgeler", icon: Files },
-	{ href: "/documents/new", label: "Yeni belge", icon: FilePlus2 },
-	{ href: "/team", label: "Ekip", icon: UsersRound },
-	{ href: "/settings/billing", label: "Abonelik", icon: CreditCard },
-	{ href: "/settings/profile", label: "Profil", icon: UserCog },
-	{ href: "/admin", label: "Yönetim", icon: Shield, adminOnly: true },
-];
+import { NAV_ITEMS, activeNavHref } from "@/src/lib/nav";
+import { LogOut, X } from "lucide-react";
 
 /** Spinner shown while this link's navigation is in flight (useLinkStatus). */
 function PendingHint() {
@@ -67,7 +50,8 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 	}
 
 	const isAdmin = user?.app_role === "admin";
-	const items = NAV.filter((i) => !i.adminOnly || isAdmin);
+	const items = NAV_ITEMS.filter((i) => !i.adminOnly || isAdmin);
+	const activeHref = activeNavHref(pathname, items);
 
 	return (
 		<>
@@ -119,11 +103,7 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
 				<nav className="flex-1 overflow-y-auto p-3">
 					{items.map(({ href, label, icon: Icon }) => {
-						// Longest matching href wins so nested routes ("/documents/new")
-						// don't also light up their parent ("/documents").
-						const matches = (h: string) => (h === "/" ? pathname === "/" : pathname.startsWith(h));
-						const best = items.filter((i) => matches(i.href)).sort((a, b) => b.href.length - a.href.length)[0];
-						const active = best?.href === href;
+						const active = activeHref === href;
 						return (
 							<Link
 								key={href}
@@ -151,9 +131,24 @@ export function NavDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 					</div>
 					{user && (
 						<>
-							<div className="px-3 py-2">
-								<p className="text-xs text-base-content/50">Oturum açık:</p>
-								<p className="text-sm font-medium text-base-content/80 truncate">{user.email}</p>
+							<div className="px-3 py-2 flex items-center gap-3">
+								{(() => {
+									const avatarUrl = getAvatarUrl(user.avatar_path ?? null);
+									return (
+										<span className="h-9 w-9 shrink-0 rounded-full bg-primary text-primary-content flex items-center justify-center text-sm font-bold uppercase select-none overflow-hidden">
+											{avatarUrl ? (
+												// eslint-disable-next-line @next/next/no-img-element
+												<img src={avatarUrl} alt="Profil fotoğrafı" className="h-full w-full object-cover" />
+											) : (
+												user.email.charAt(0)
+											)}
+										</span>
+									);
+								})()}
+								<div className="min-w-0">
+									<p className="text-xs text-base-content/50">Oturum açık:</p>
+									<p className="text-sm font-medium text-base-content/80 truncate">{user.email}</p>
+								</div>
 							</div>
 							<button
 								onClick={handleSignOut}

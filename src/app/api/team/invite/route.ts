@@ -1,16 +1,17 @@
 /**
  * POST /api/team/invite { email } — owner-only email invite.
  *
- * Creates an invite row (RLS: only the team owner can insert), then emails the
- * invitee via the service-role admin API with a redirect to /join/[code].
- * Existing accounts can't be re-invited through inviteUserByEmail, so for them
- * we return the join link for the owner to share directly.
+ * Creates an invite row (RLS: only the team owner can insert), then delivers it:
+ *  - new address → Supabase auth invite email (signup + redirect to /join/[code])
+ *  - existing account → in-app team_invite notification + Resend email; the
+ *    join link is still returned so the owner can share it manually too.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/src/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { isRateLimited } from "@/src/lib/rateLimit";
+import { sendTeamInviteEmail } from "@/src/lib/email";
 
 export async function POST(request: NextRequest) {
 	const supabase = await createClient();
@@ -56,11 +57,45 @@ export async function POST(request: NextRequest) {
 	const { error: mailErr } = await service.auth.admin.inviteUserByEmail(email, {
 		redirectTo: joinUrl,
 	});
+	if (!mailErr) return NextResponse.json({ ok: true, emailed: true, joinUrl });
 
-	// Existing users can't receive a signup invite email — hand the owner the
-	// link so they can send it themselves (WhatsApp etc. is common here).
-	if (mailErr) {
+	// inviteUserByEmail rejects addresses that already have an account. Reach
+	// those users directly: in-app notification (+ Resend email when configured).
+	const { data: existing } = await service
+		.from("profiles")
+		.select("id")
+		.eq("email", email)
+		.maybeSingle();
+	if (!existing) {
+		// Not an existing user either — the auth invite failed for another
+		// reason (SMTP etc.). Fall back to the shareable link.
 		return NextResponse.json({ ok: true, emailed: false, joinUrl });
 	}
-	return NextResponse.json({ ok: true, emailed: true, joinUrl });
+
+	const [{ data: teamRow }, { data: inviterRow }] = await Promise.all([
+		service.from("teams").select("name").eq("id", teamId).single(),
+		service.from("profiles").select("full_name, display_name").eq("id", user.id).single(),
+	]);
+	const teamName = teamRow?.name ?? "Kagu";
+	const inviterName = inviterRow?.full_name || inviterRow?.display_name || null;
+
+	const { error: notifErr } = await service.from("notifications").insert({
+		user_id: existing.id,
+		team_id: teamId,
+		type: "team_invite",
+		title: `${teamName} ekibine davet edildiniz`,
+		body: inviterName
+			? `${inviterName} sizi ${teamName} ekibine danışman olarak davet etti.`
+			: `${teamName} ekibine danışman olarak davet edildiniz.`,
+		href: joinUrl,
+	});
+
+	const emailResult = await sendTeamInviteEmail({ to: email, teamName, inviterName, joinUrl });
+
+	return NextResponse.json({
+		ok: true,
+		emailed: emailResult.sent,
+		notified: !notifErr,
+		joinUrl,
+	});
 }

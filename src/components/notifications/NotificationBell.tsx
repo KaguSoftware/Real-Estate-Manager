@@ -25,6 +25,7 @@ const ICONS: Record<NotificationType, React.ComponentType<{ className?: string }
 	trial_ending: Clock,
 	trial_ended: AlertTriangle,
 	subscription_activated: CreditCard,
+	team_invite: UserPlus,
 };
 
 function timeAgo(iso: string): string {
@@ -102,6 +103,14 @@ export function NotificationBell() {
 									<div className="min-w-0">
 										<p className="text-sm font-semibold text-base-content">{n.title}</p>
 										{n.body && <p className="text-sm text-base-content/60">{n.body}</p>}
+										{n.href && (
+											<a
+												href={n.href}
+												className="inline-block mt-1 text-sm font-semibold text-primary underline underline-offset-2"
+											>
+												{n.type === "team_invite" ? "Daveti görüntüle" : "Görüntüle"}
+											</a>
+										)}
 										<p className="text-xs text-base-content/50 mt-0.5">{timeAgo(n.created_at)}</p>
 									</div>
 								</li>

@@ -174,7 +174,7 @@ $$;
 -- 4. BUSINESS TABLES → TEAM SCOPE (fresh start: data cleared)
 -- =============================================================================
 TRUNCATE public.payments, public.leases, public.sales, public.property_images,
-         public.properties, public.tenants, public.leads;
+         public.properties, public.tenants, public.leads CASCADE;
 
 DO $$
 DECLARE t TEXT;

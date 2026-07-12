@@ -23,6 +23,7 @@ import {
 	type TeamSizeBracket,
 } from "@/src/lib/db/teams";
 import { updateMyProfile, getMyProfile } from "@/src/lib/db/profiles";
+import { humanizeError } from "@/src/lib/errors";
 import { AuthModal } from "@/src/components/auth/AuthModal";
 import { toast, Button, Card, Alert, FormField, Input, PhoneInput, Dropdown, cn } from "@/src/components/ui";
 
@@ -111,10 +112,10 @@ export default function OnboardingPage() {
 				toast.success(team?.name ? `${team.name} ekibine danışman olarak katıldınız 🎉` : "Ekibe danışman olarak katıldınız 🎉");
 				router.replace("/");
 			})
-			.catch((e: Error) => {
+			.catch((e: unknown) => {
 				clearPendingInvite();
 				setBusy(null);
-				setError(e.message || "Davet kabul edilemedi");
+				setError(humanizeError(e));
 			});
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [user?.id]);
@@ -139,7 +140,7 @@ export default function OnboardingPage() {
 			await finish("14 günlük ücretsiz denemeniz başladı 🎉");
 		} catch (err) {
 			setBusy(null);
-			setError(err instanceof Error ? err.message : "Ekip oluşturulamadı");
+			setError(humanizeError(err));
 		}
 	}
 
@@ -156,7 +157,7 @@ export default function OnboardingPage() {
 			router.replace("/");
 		} catch (err) {
 			setBusy(null);
-			setError(err instanceof Error ? err.message : "Ekibe katılınamadı");
+			setError(humanizeError(err));
 		}
 	}
 

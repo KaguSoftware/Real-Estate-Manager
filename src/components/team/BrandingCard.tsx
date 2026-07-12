@@ -282,7 +282,9 @@ export function BrandingCard() {
 				<p className="text-xs font-semibold text-base-content/70 mb-1">Belge renkleri</p>
 				<p className="text-[11px] text-base-content/50 mb-3">
 					Logonuzun renklerini kullanın: ana renk başlık ve tablolarda, vurgu
-					renkleri etiket ve detaylarda görünür.
+					renkleri etiket ve detaylarda görünür. Ana renk ayrıca uygulama
+					arayüzünde okunabilirlik için otomatik uyarlanmış bir vurgu tonu olarak
+					kullanılır.
 				</p>
 				{/* Preset palettes; value reflects an exact match so manual tweaks
 				    show the placeholder again instead of a stale preset name. */}

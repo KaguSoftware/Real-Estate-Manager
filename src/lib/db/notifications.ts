@@ -9,13 +9,16 @@ export type NotificationType =
 	| "member_joined"
 	| "trial_ending"
 	| "trial_ended"
-	| "subscription_activated";
+	| "subscription_activated"
+	| "team_invite";
 
 export interface AppNotification {
 	id: string;
 	type: NotificationType;
 	title: string;
 	body: string | null;
+	/** Optional deep link (e.g. the /join/[code] URL of a team invite). */
+	href: string | null;
 	read_at: string | null;
 	created_at: string;
 }
@@ -24,7 +27,7 @@ export async function listNotifications(limit = 30): Promise<AppNotification[]> 
 	const supabase = createClient();
 	const { data, error } = await supabase
 		.from("notifications")
-		.select("id, type, title, body, read_at, created_at")
+		.select("id, type, title, body, href, read_at, created_at")
 		.order("created_at", { ascending: false })
 		.limit(limit);
 	if (error) throw error;

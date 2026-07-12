@@ -48,7 +48,7 @@ const SMALL_FEATURES = [
 const PLANS = [
 	{
 		name: "Takip",
-		price: "₺3.000",
+		price: "3.000 TL",
 		features: [
 			"Müşteri ve taşınmaz takibi (CRM)",
 			"Kira ve tahsilat takibi",
@@ -59,7 +59,7 @@ const PLANS = [
 	},
 	{
 		name: "Takip + Belge",
-		price: "₺5.000",
+		price: "5.000 TL",
 		features: [
 			"Takip paketindeki her şey",
 			"Belge oluşturucu",
@@ -86,7 +86,7 @@ function AttentionPreview() {
 					<div className="min-w-0">
 						<p className="text-sm font-semibold text-base-content">Bahçelievler 2+1 — kira gecikti</p>
 						<p className="mt-0.5 text-xs text-base-content/60">
-							A. Yılmaz · 12 gün · <span className="font-numeric">₺18.500</span>
+							A. Yılmaz · 12 gün · <span className="font-numeric">18.500 TL</span>
 						</p>
 					</div>
 				</li>
@@ -171,14 +171,14 @@ export function LandingPage() {
 					</div>
 					{/* Standard cells */}
 					{SMALL_FEATURES.slice(0, 1).map(({ icon: Icon, title, body }) => (
-						<div key={title} className="reveal lg:col-span-2 rounded-2xl bg-base-100 border border-base-300/70 p-7 shadow-card">
+						<div key={title} className="reveal lg:col-span-2 rounded-2xl bg-base-100 border border-base-300/70 p-7 shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-pop motion-reduce:transform-none">
 							<Icon className="w-5 h-5 text-primary" />
 							<h3 className="mt-4 text-lg font-bold text-base-content">{title}</h3>
 							<p className="mt-2 text-sm text-base-content/70 leading-relaxed">{body}</p>
 						</div>
 					))}
 					{SMALL_FEATURES.slice(1).map(({ icon: Icon, title, body }) => (
-						<div key={title} className="reveal lg:col-span-2 rounded-2xl bg-base-100 border border-base-300/70 p-7 shadow-card">
+						<div key={title} className="reveal lg:col-span-2 rounded-2xl bg-base-100 border border-base-300/70 p-7 shadow-card transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-pop motion-reduce:transform-none">
 							<Icon className="w-5 h-5 text-primary" />
 							<h3 className="mt-4 text-lg font-bold text-base-content">{title}</h3>
 							<p className="mt-2 text-sm text-base-content/70 leading-relaxed">{body}</p>

@@ -2,13 +2,15 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useAppStore } from "@/src/store";
+import { useAppStore, useIsWritable } from "@/src/store";
 import type { Property } from "@/src/lib/db/types";
-import { Badge, Button, Card, SpinnerBlock, EmptyState, Pagination, usePagination, type BadgeTone } from "@/src/components/ui";
+import { Badge, Button, Card, SpinnerBlock, EmptyState, Pagination, usePagination, BulkActionBar, ConfirmDialog, toast, type BadgeTone } from "@/src/components/ui";
+import { useMultiSelect } from "@/src/hooks/useMultiSelect";
 import { downloadCsv } from "@/src/lib/csv";
+import { deleteProperty } from "@/src/lib/db/properties";
 import { listCoverImages } from "@/src/lib/db/propertyImages";
 import { useCachedResource } from "@/src/lib/useCachedResource";
-import { Home, Download } from "lucide-react";
+import { Home, Download, Trash2 } from "lucide-react";
 
 /** Cover photo or a neutral placeholder, sized for list rows/cards. */
 function Thumb({ src, className }: { src: string | undefined; className?: string }) {
@@ -58,6 +60,12 @@ export function PropertyTable() {
 	const isLoading  = useAppStore((s) => s.isLoadingProperties);
 	const filters    = useAppStore((s) => s.filters);
 	const resetFilters = useAppStore((s) => s.resetFilters);
+	const removeProperty = useAppStore((s) => s.removeProperty);
+	const isWritable = useIsWritable();
+
+	const { selected, toggle: toggleRow, toggleAll, clear, isSelected, allSelected, count } = useMultiSelect();
+	const [confirmDelete, setConfirmDelete] = useState(false);
+	const [bulkBusy, setBulkBusy] = useState(false);
 
 	const hasActiveFilter =
 		filters.listing_type !== "all" ||
@@ -106,6 +114,43 @@ export function PropertyTable() {
 
 	function open(id: string) { router.push(`/properties/${id}`); }
 	function prefetch(id: string) { router.prefetch(`/properties/${id}`); }
+
+	const pageIds = pageItems.map((p) => p.id);
+	const selectedRows = sorted.filter((p) => selected.has(p.id));
+
+	function exportSelectedCsv() {
+		downloadCsv(
+			"portfoy-secim",
+			["Mülk sahibi", "Adres", "Şehir", "Mahalle", "Nitelik", "İlan", "Durum", "Büyüklük (m²)", "Yatak odası", "Banyo", "Eşyalı", "Fiyat", "Para birimi", "Notlar"],
+			selectedRows.map((p) => [
+				p.homeowner_name, p.address_line, p.city, p.mahalle, p.nitelik,
+				p.listing_type === "for_rent" ? "Kiralık" : "Satılık", STATUS_LABEL[p.status],
+				p.size_sqm, p.bedrooms, p.bathrooms,
+				p.furnished == null ? "" : p.furnished ? "evet" : "hayır",
+				p.list_price, p.currency, p.notes,
+			]),
+		);
+	}
+
+	async function bulkDelete() {
+		setBulkBusy(true);
+		let ok = 0;
+		let failed = 0;
+		for (const p of selectedRows) {
+			try {
+				await deleteProperty(p.id);
+				removeProperty(p.id);
+				ok++;
+			} catch {
+				failed++;
+			}
+		}
+		setBulkBusy(false);
+		setConfirmDelete(false);
+		clear();
+		if (failed === 0) toast.success(`${ok} taşınmaz silindi.`);
+		else toast.error(`${ok} taşınmaz silindi, ${failed} taşınmaz silinemedi.`);
+	}
 
 	if (isLoading) {
 		return <SpinnerBlock />;
@@ -175,13 +220,25 @@ export function PropertyTable() {
 			{/* Mobile: card list */}
 			<div className="block sm:hidden space-y-3">
 				{pageItems.map((p) => (
-					<button
+					// div (not button) so the selection checkbox can live inside
+					// without invalid interactive nesting.
+					<div
 						key={p.id}
-						type="button"
+						role="button"
+						tabIndex={0}
 						onClick={() => open(p.id)}
-						className="w-full text-left bg-base-100 border border-base-300 rounded-2xl shadow-card p-4 active:bg-base-200 transition-colors"
+						onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(p.id); } }}
+						className="w-full text-left bg-base-100 border border-base-300 rounded-2xl shadow-card p-4 active:bg-base-200 transition-colors cursor-pointer"
 					>
 						<div className="flex items-start justify-between gap-3">
+							<input
+								type="checkbox"
+								checked={isSelected(p.id)}
+								onChange={() => toggleRow(p.id)}
+								onClick={(e) => e.stopPropagation()}
+								aria-label={`${p.address_line} kaydını seç`}
+								className="checkbox checkbox-sm checkbox-primary mt-1 shrink-0"
+							/>
 							<Thumb src={covers?.[p.id]} className="w-14 h-14 rounded-xl shrink-0" />
 							<div className="min-w-0 flex-1">
 								<p className="text-base font-bold text-base-content line-clamp-2">{p.address_line}</p>
@@ -196,7 +253,7 @@ export function PropertyTable() {
 							</div>
 							<p className="text-xs text-base-content/50">{p.size_sqm ? `${p.size_sqm} m²` : ""}</p>
 						</div>
-					</button>
+					</div>
 				))}
 			</div>
 
@@ -206,6 +263,15 @@ export function PropertyTable() {
 					<table className="w-full min-w-160 text-sm">
 						<thead className="bg-base-200/60 border-b border-base-300">
 							<tr>
+								<th className="px-4 py-3 w-10">
+									<input
+										type="checkbox"
+										checked={allSelected(pageIds)}
+										onChange={() => toggleAll(pageIds)}
+										aria-label="Sayfadaki tüm taşınmazları seç"
+										className="checkbox checkbox-sm checkbox-primary align-middle"
+									/>
+								</th>
 								<th className={staticHeaderCls}><span className="sr-only">Fotoğraf</span></th>
 								<th className={headerCls} onClick={() => toggle("homeowner_name")}>Mülk sahibi {sortArrow("homeowner_name")}</th>
 								<th className={headerCls} onClick={() => toggle("address_line")}>Adres {sortArrow("address_line")}</th>
@@ -224,6 +290,15 @@ export function PropertyTable() {
 									onMouseEnter={() => prefetch(p.id)}
 									className="border-b border-base-300 last:border-0 hover:bg-base-200 transition-colors cursor-pointer"
 								>
+									<td className="px-4 py-2 w-10" onClick={(e) => e.stopPropagation()}>
+										<input
+											type="checkbox"
+											checked={isSelected(p.id)}
+											onChange={() => toggleRow(p.id)}
+											aria-label={`${p.address_line} kaydını seç`}
+											className="checkbox checkbox-sm checkbox-primary align-middle"
+										/>
+									</td>
 									<td className="pl-4 pr-0 py-2">
 										<Thumb src={covers?.[p.id]} className="w-11 h-11 rounded-lg" />
 									</td>
@@ -243,6 +318,29 @@ export function PropertyTable() {
 				</div>
 			</Card>
 			<Pagination page={page} pageCount={pageCount} total={total} pageSize={pageSize} onPageChange={setPage} />
+
+			<BulkActionBar count={count} label={`${count} taşınmaz seçildi`} onClear={clear}>
+				<Button size="sm" variant="outline" onClick={exportSelectedCsv}>
+					<Download className="w-4 h-4" />
+					CSV indir
+				</Button>
+				{isWritable && (
+					<Button size="sm" variant="danger" onClick={() => setConfirmDelete(true)}>
+						<Trash2 className="w-4 h-4" />
+						Seçilenleri sil
+					</Button>
+				)}
+			</BulkActionBar>
+
+			<ConfirmDialog
+				open={confirmDelete}
+				title="Seçilen taşınmazlar silinsin mi?"
+				message={`${count} taşınmaz kalıcı olarak silinecek. Bu işlem geri alınamaz.`}
+				confirmLabel="Seçilenleri sil"
+				loading={bulkBusy}
+				onConfirm={bulkDelete}
+				onCancel={() => setConfirmDelete(false)}
+			/>
 		</>
 	);
 }

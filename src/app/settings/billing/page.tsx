@@ -182,7 +182,7 @@ export default function BillingPage() {
 										{current && <Badge tone="emerald">Mevcut plan</Badge>}
 									</div>
 									<p className="mt-2 text-3xl font-bold text-base-content">
-										₺{Number(p.price_monthly).toLocaleString("tr-TR")}
+										{Number(p.price_monthly).toLocaleString("tr-TR")} TL
 										<span className="text-sm font-normal text-base-content/50"> / ay</span>
 									</p>
 									<ul className="mt-3 space-y-1.5 text-sm text-base-content/70">

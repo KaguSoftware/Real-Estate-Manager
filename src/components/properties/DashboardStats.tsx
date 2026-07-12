@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useAppStore } from "@/src/store";
+import { useAppStore, useTeamReady } from "@/src/store";
 import { getDashboardStats } from "@/src/lib/db/stats";
 import { useCachedResource } from "@/src/lib/useCachedResource";
 import { cn } from "@/src/components/ui";
@@ -21,13 +21,14 @@ function joinByCurrency(map: Record<string, number>): string | null {
 export function DashboardStats() {
 	const router = useRouter();
 	const user = useAppStore((s) => s.user);
+	const teamReady = useTeamReady();
 	const setFilters = useAppStore((s) => s.setFilters);
 	const resetFilters = useAppStore((s) => s.resetFilters);
 	const { data, loading } = useCachedResource(
-		user ? "stats" : null,
+		user && teamReady ? "stats" : null,
 		getDashboardStats,
 		undefined,
-		{ enabled: !!user },
+		{ enabled: !!user && teamReady },
 	);
 
 	if (loading && !data) {

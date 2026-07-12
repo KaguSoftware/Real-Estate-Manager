@@ -71,8 +71,22 @@ export function computeIsWritable(
 	return false;
 }
 
+// Single-flight: sign-in triggers this from AuthForm AND AuthProvider's
+// auth-state listener at once; sharing one promise avoids duplicate round
+// trips and the transient team-null flicker between them.
+let inFlightTeamContext: Promise<TeamContext | null> | null = null;
+
 /** Full team context for the signed-in user, or null when they have no team. */
-export async function fetchTeamContext(): Promise<TeamContext | null> {
+export function fetchTeamContext(): Promise<TeamContext | null> {
+	if (!inFlightTeamContext) {
+		inFlightTeamContext = fetchTeamContextUncached().finally(() => {
+			inFlightTeamContext = null;
+		});
+	}
+	return inFlightTeamContext;
+}
+
+async function fetchTeamContextUncached(): Promise<TeamContext | null> {
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
 		.from("team_members")

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAppStore } from "@/src/store";
+import { useAppStore, useTeamReady } from "@/src/store";
 import { getAttentionData } from "@/src/lib/db/attention";
 import {
 	DEFAULT_USER_SETTINGS,
@@ -25,6 +25,7 @@ import {
  */
 export function AttentionPanel() {
 	const user = useAppStore((s) => s.user);
+	const teamReady = useTeamReady();
 	const [open, setOpen] = useState(true);
 	const [editing, setEditing] = useState(false);
 
@@ -37,10 +38,10 @@ export function AttentionPanel() {
 	const thresholds = settings ?? DEFAULT_USER_SETTINGS;
 
 	const { data } = useCachedResource(
-		user ? `attention:${thresholds.upcomingDays}:${thresholds.leaseWarnDays}:${thresholds.leadSilentDays}` : null,
+		user && teamReady ? `attention:${thresholds.upcomingDays}:${thresholds.leaseWarnDays}:${thresholds.leadSilentDays}` : null,
 		() => getAttentionData(thresholds),
 		undefined,
-		{ enabled: !!user },
+		{ enabled: !!user && teamReady },
 	);
 
 	if (!data) return null;

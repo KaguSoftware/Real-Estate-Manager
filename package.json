@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "backfill:geocode": "tsx scripts/backfill-geocode.ts"
+    "backfill:geocode": "tsx scripts/backfill-geocode.ts",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

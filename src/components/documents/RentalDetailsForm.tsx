@@ -311,7 +311,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Input required type="date" value={state.startDate} onChange={set("startDate")} />
 					</FormField>
 					<FormField label="Para Birimi">
-						<Dropdown options={[{ value: "TRY", label: "TRY (₺)" }]} value="TRY" onChange={() => {}} disabled />
+						<Dropdown options={[{ value: "TRY", label: "TL" }]} value="TRY" onChange={() => {}} disabled />
 					</FormField>
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

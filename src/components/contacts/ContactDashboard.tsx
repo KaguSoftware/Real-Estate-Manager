@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAppStore } from "@/src/store";
+import { useAppStore, useTeamReady } from "@/src/store";
 import { listLeads, type LeadFilter } from "@/src/lib/db/leads";
 import { listTenants } from "@/src/lib/db/tenants";
 import { useCachedResource } from "@/src/lib/useCachedResource";
@@ -45,6 +45,7 @@ export function ContactDashboard() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const user = useAppStore((s) => s.user);
+	const teamReady = useTeamReady();
 	const leadFilters = useAppStore((s) => s.leadFilters);
 	const setLeadFilter = useAppStore((s) => s.setLeadFilter);
 	const leads = useAppStore((s) => s.leads);
@@ -82,19 +83,19 @@ export function ContactDashboard() {
 		status: leadFilters.status === "all" ? undefined : leadFilters.status,
 		q: leadFilters.q || undefined,
 	};
-	const leadCacheKey = user ? `leads:${JSON.stringify(leadQuery)}` : null;
+	const leadCacheKey = user && teamReady ? `leads:${JSON.stringify(leadQuery)}` : null;
 	const {
 		loading: loadingLeads,
 		error: leadError,
 		refetch: refetchLeads,
-	} = useCachedResource(leadCacheKey, () => listLeads(leadQuery), setLeads, { enabled: !!user });
+	} = useCachedResource(leadCacheKey, () => listLeads(leadQuery), setLeads, { enabled: !!user && teamReady });
 
 	useEffect(() => {
 		setIsLoadingLeads(loadingLeads);
 	}, [loadingLeads, setIsLoadingLeads]);
 
 	// Tenants: same cached-resource pattern, held locally (no store slice needed).
-	const tenantCacheKey = user ? `tenants:${JSON.stringify({ q: leadFilters.q })}` : null;
+	const tenantCacheKey = user && teamReady ? `tenants:${JSON.stringify({ q: leadFilters.q })}` : null;
 	const {
 		data: tenantData,
 		loading: loadingTenants,
@@ -104,7 +105,7 @@ export function ContactDashboard() {
 		tenantCacheKey,
 		() => listTenants({ q: leadFilters.q || undefined }),
 		undefined,
-		{ enabled: !!user },
+		{ enabled: !!user && teamReady },
 	);
 	const tenants = useMemo(() => tenantData ?? [], [tenantData]);
 

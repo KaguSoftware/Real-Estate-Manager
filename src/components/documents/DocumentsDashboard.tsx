@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { useAppStore } from "@/src/store";
+import { useAppStore, useTeamReady } from "@/src/store";
 import {
 	listContractDocuments,
 	type ContractDocumentListItem,
@@ -14,8 +14,10 @@ import { useCachedResource } from "@/src/lib/useCachedResource";
 import {
 	AppShell, Card, Alert, Button, Input, Dropdown, Badge,
 	SpinnerBlock, EmptyState, Pagination, usePagination, toast,
+	BulkActionBar,
 	type DropdownOption,
 } from "@/src/components/ui";
+import { useMultiSelect } from "@/src/hooks/useMultiSelect";
 import { humanizeError } from "@/src/lib/errors";
 import { FileText, Search, Download, FilePlus2, PencilLine } from "lucide-react";
 
@@ -47,6 +49,7 @@ function StatusBadge({ status }: { status: ContractDocStatus }) {
  *  tür (kira/satış), durum (taslak/kesin) and title search. */
 export function DocumentsDashboard() {
 	const user = useAppStore((s) => s.user);
+	const teamReady = useTeamReady();
 	const [q, setQ] = useState("");
 	const [debouncedQ, setDebouncedQ] = useState("");
 	const [kind, setKind] = useState<ContractDocKind | "">("");
@@ -65,15 +68,51 @@ export function DocumentsDashboard() {
 		kind: kind === "" ? undefined : kind,
 		status: status === "" ? undefined : status,
 	};
-	const cacheKey = user ? `contract-documents:${JSON.stringify(filter)}` : null;
+	const cacheKey = user && teamReady ? `contract-documents:${JSON.stringify(filter)}` : null;
 	const { data, loading, error, refetch } = useCachedResource(
 		cacheKey,
 		() => listContractDocuments(filter),
 		undefined,
-		{ enabled: !!user },
+		{ enabled: !!user && teamReady },
 	);
 	const docs = data ?? [];
 	const { page, setPage, pageCount, pageItems, total, pageSize } = usePagination(docs);
+
+	// Bulk selection covers only downloadable rows (a saved PDF exists);
+	// contract documents have no bulk-delete API.
+	const { selected, toggle, toggleAll, clear, isSelected, allSelected, count } = useMultiSelect();
+	const [bulkDownloading, setBulkDownloading] = useState(false);
+	const pageIds = pageItems.filter((d) => d.pdf_path).map((d) => d.id);
+
+	async function bulkDownload() {
+		const selectedDocs = docs.filter((d) => selected.has(d.id) && d.pdf_path);
+		setBulkDownloading(true);
+		let failed = 0;
+		for (const d of selectedDocs) {
+			try {
+				// Same source as the per-row download, but fetched to a blob and
+				// saved via an anchor so multiple files don't trip popup blockers.
+				const url = await getDocumentUrl(d.pdf_path!);
+				const res = await fetch(url);
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				const blob = await res.blob();
+				const objectUrl = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = objectUrl;
+				a.download = `${d.title}.pdf`;
+				document.body.appendChild(a);
+				a.click();
+				a.remove();
+				URL.revokeObjectURL(objectUrl);
+			} catch {
+				failed++;
+			}
+		}
+		setBulkDownloading(false);
+		clear();
+		if (failed === 0) toast.success(`${selectedDocs.length} belge indirildi.`);
+		else toast.error(`${selectedDocs.length - failed} belge indirildi, ${failed} belge indirilemedi.`);
+	}
 
 	async function onDownload(doc: ContractDocumentListItem) {
 		if (!doc.pdf_path) return;
@@ -168,6 +207,18 @@ export function DocumentsDashboard() {
 										className="block bg-base-100 border border-base-300 rounded-2xl shadow-card p-4 active:bg-base-200 transition-colors"
 									>
 										<div className="flex items-start justify-between gap-3">
+											{d.pdf_path && (
+												<input
+													type="checkbox"
+													checked={isSelected(d.id)}
+													// preventDefault stops the surrounding Link from navigating;
+													// checked state is controlled so the box still toggles.
+													onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(d.id); }}
+													onChange={() => {}}
+													aria-label={`${d.title} belgesini seç`}
+													className="checkbox checkbox-sm checkbox-primary mt-1 shrink-0"
+												/>
+											)}
 											<div className="min-w-0 flex-1">
 												<p className="text-base font-bold text-base-content truncate">{d.title}</p>
 												{d.subtitle && <p className="text-sm text-base-content/60 mt-0.5 truncate">{d.subtitle}</p>}
@@ -188,6 +239,16 @@ export function DocumentsDashboard() {
 									<table className="w-full min-w-140 text-sm">
 										<thead className="bg-base-200/60 border-b border-base-300">
 											<tr>
+												<th className="px-4 py-3 w-10">
+													<input
+														type="checkbox"
+														checked={allSelected(pageIds)}
+														onChange={() => toggleAll(pageIds)}
+														disabled={pageIds.length === 0}
+														aria-label="Sayfadaki tüm belgeleri seç"
+														className="checkbox checkbox-sm checkbox-primary align-middle"
+													/>
+												</th>
 												<th className="text-left px-4 py-3 text-xs font-semibold text-base-content/50">Başlık</th>
 												<th className="text-left px-4 py-3 text-xs font-semibold text-base-content/50">Tür</th>
 												<th className="text-left px-4 py-3 text-xs font-semibold text-base-content/50">Durum</th>
@@ -201,6 +262,17 @@ export function DocumentsDashboard() {
 										<tbody>
 											{pageItems.map((d) => (
 												<tr key={d.id} className="border-b border-base-300 last:border-0 hover:bg-base-200 transition-colors">
+													<td className="px-4 py-3 w-10">
+														{d.pdf_path && (
+															<input
+																type="checkbox"
+																checked={isSelected(d.id)}
+																onChange={() => toggle(d.id)}
+																aria-label={`${d.title} belgesini seç`}
+																className="checkbox checkbox-sm checkbox-primary align-middle"
+															/>
+														)}
+													</td>
 													<td className="px-4 py-3">
 														<Link href={`/documents/${d.id}`} className="block">
 															<span className="text-sm font-medium text-base-content hover:underline">{d.title}</span>
@@ -242,6 +314,13 @@ export function DocumentsDashboard() {
 								</div>
 							</Card>
 							<Pagination page={page} pageCount={pageCount} total={total} pageSize={pageSize} onPageChange={setPage} />
+
+							<BulkActionBar count={count} label={`${count} belge seçildi`} onClear={clear}>
+								<Button size="sm" variant="outline" loading={bulkDownloading} onClick={bulkDownload}>
+									<Download className="w-4 h-4" />
+									İndir
+								</Button>
+							</BulkActionBar>
 						</>
 					)}
 				</>

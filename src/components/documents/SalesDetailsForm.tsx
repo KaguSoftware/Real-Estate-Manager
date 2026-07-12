@@ -207,7 +207,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 						<NumberInput required mode="decimal" format="money" min={0} value={numValue("salePrice")} onChange={setNum("salePrice")} />
 					</FormField>
 					<FormField label="Para Birimi">
-						<Dropdown options={[{ value: "TRY", label: "TRY (₺)" }]} value="TRY" onChange={() => {}} disabled />
+						<Dropdown options={[{ value: "TRY", label: "TL" }]} value="TRY" onChange={() => {}} disabled />
 					</FormField>
 					<FormField label="Sözleşme Tarihi" id="saleDate" error={errors.saleDate}>
 						<Input required type="date" value={state.saleDate} onChange={set("saleDate")} />

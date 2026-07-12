@@ -74,13 +74,15 @@ export default function TeamPage() {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ email: inviteEmail.trim() }),
 			});
-			const json = (await res.json()) as { error?: string; emailed?: boolean; joinUrl?: string };
+			const json = (await res.json()) as { error?: string; emailed?: boolean; notified?: boolean; joinUrl?: string };
 			if (!res.ok) throw new Error(json.error || "Davet gönderilemedi");
 			if (json.emailed) {
 				toast.success(`Davet ${inviteEmail.trim()} adresine gönderildi.`);
+			} else if (json.notified) {
+				toast.success("Davet gönderildi — bu kişinin hesabı olduğu için uygulama içi bildirim aldı.");
 			} else if (json.joinUrl) {
 				await navigator.clipboard.writeText(json.joinUrl).catch(() => {});
-				toast.info("Bu kişinin zaten bir hesabı var — davet bağlantısı kopyalandı, doğrudan kendisine iletin.");
+				toast.info("Davet e-postası gönderilemedi — davet bağlantısı kopyalandı, doğrudan kendisine iletin.");
 			}
 			setInviteEmail("");
 			await reload();

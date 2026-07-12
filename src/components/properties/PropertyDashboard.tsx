@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAppStore } from "@/src/store";
+import { useAppStore, useTeamReady } from "@/src/store";
 import { listProperties, type PropertyFilter } from "@/src/lib/db/properties";
 import { useCachedResource } from "@/src/lib/useCachedResource";
 import { AppShell, Card, Alert, Button } from "@/src/components/ui";
@@ -30,6 +30,7 @@ export function PropertyDashboard() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const user = useAppStore((s) => s.user);
+	const teamReady = useTeamReady();
 	const filters = useAppStore((s) => s.filters);
 	const setFilters = useAppStore((s) => s.setFilters);
 	const setProperties = useAppStore((s) => s.setProperties);
@@ -78,13 +79,13 @@ export function PropertyDashboard() {
 		furnished: filters.furnished === "all" ? undefined : filters.furnished === "yes",
 		location: filters.location.length ? filters.location : undefined,
 	};
-	const cacheKey = user ? `properties:${JSON.stringify(query)}` : null;
+	const cacheKey = user && teamReady ? `properties:${JSON.stringify(query)}` : null;
 
 	const { loading, error, refetch } = useCachedResource(
 		cacheKey,
 		() => listProperties(query),
 		setProperties,
-		{ enabled: !!user },
+		{ enabled: !!user && teamReady },
 	);
 
 	// Mirror the initial-load flag into the store so PropertyTable can show its

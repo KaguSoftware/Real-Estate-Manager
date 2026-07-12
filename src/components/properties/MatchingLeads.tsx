@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTeamReady } from "@/src/store";
 import { listLeads } from "@/src/lib/db/leads";
 import { rankLeadsForProperty } from "@/src/lib/matching/score";
 import { useCachedResource } from "@/src/lib/useCachedResource";
@@ -16,7 +17,13 @@ import { Users } from "lucide-react";
  * best matches are listed first with the matched preferences as badges.
  */
 export function MatchingLeads({ property }: { property: Property }) {
-	const { data } = useCachedResource("leads:for-matching", () => listLeads());
+	const teamReady = useTeamReady();
+	const { data } = useCachedResource(
+		teamReady ? "leads:for-matching" : null,
+		() => listLeads(),
+		undefined,
+		{ enabled: teamReady },
+	);
 	if (property.status === "sold") return null;
 
 	const matched = rankLeadsForProperty(data ?? [], property);

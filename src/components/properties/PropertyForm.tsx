@@ -1,7 +1,7 @@
 "use client";
 
 import { humanizeError } from "@/src/lib/errors";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import {
@@ -165,21 +165,35 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 
 	const addressPreview = joinAddress({ mahalle, street, buildingNo, apartmentNo, district });
 
-	/** Fill empty address fields from a reverse-geocoded/parsed result. */
+	// Last value each address field received from a pin autofill; lets a later
+	// pin move overwrite untouched fields without clobbering manual edits.
+	const autofilledRef = useRef<Record<string, string>>({});
+
+	/**
+	 * Fill address fields from a reverse-geocoded/parsed result. A field is
+	 * written when it's empty OR still holds the value a previous pin autofilled
+	 * (i.e. the user never touched it) — so moving the pin updates the address,
+	 * while manual edits are preserved.
+	 */
 	function autofillAddress(result: ResolveResult) {
 		const f = mapsToFormFields(result);
-		const fill = (val: string | undefined, current: string, setter: (v: string) => void) => {
-			if (val && !current.trim()) setter(val);
+		const prev = autofilledRef.current;
+		const fill = (key: string, val: string | undefined, current: string, setter: (v: string) => void) => {
+			if (!val) return;
+			if (!current.trim() || current === prev[key]) {
+				setter(val);
+				prev[key] = val;
+			}
 		};
-		fill(f.mahalle, mahalle, setMahalle);
-		fill(f.street, street, setStreet);
-		fill(f.buildingNo, buildingNo, setBuildingNo);
-		fill(f.apartmentNo, apartmentNo, setApartmentNo);
-		fill(f.district, district, setDistrict);
-		fill(f.city, city, setCity);
-		// Mirror into the tapu section where it's still blank.
-		fill(f.mahalle, tapuMahalle, setTapuMahalle);
-		fill(f.mevkii, mevkii, setMevkii);
+		fill("mahalle", f.mahalle, mahalle, setMahalle);
+		fill("street", f.street, street, setStreet);
+		fill("buildingNo", f.buildingNo, buildingNo, setBuildingNo);
+		fill("apartmentNo", f.apartmentNo, apartmentNo, setApartmentNo);
+		fill("district", f.district, district, setDistrict);
+		fill("city", f.city, city, setCity);
+		// Mirror into the tapu section under the same rules.
+		fill("tapuMahalle", f.mahalle, tapuMahalle, setTapuMahalle);
+		fill("mevkii", f.mevkii, mevkii, setMevkii);
 	}
 
 	function handleLocationChange(next: LatLon | null, address?: ReverseAddress | null) {
@@ -373,7 +387,7 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 					<NumberInput mode="decimal" format="money" min={0} value={list_price} onChange={setListPrice} placeholder="0,00" />
 				</FormField>
 				<FormField label="Para birimi">
-					<Dropdown options={[{ value: "TRY", label: "TRY (₺)" }]} value="TRY" onChange={() => {}} disabled />
+					<Dropdown options={[{ value: "TRY", label: "TL" }]} value="TRY" onChange={() => {}} disabled />
 				</FormField>
 			</div>
 

@@ -47,10 +47,12 @@ export function humanizeError(e: unknown): string {
 		return "Planınızın danışman sınırına ulaştınız — daha fazla üye eklemek için planınızı yükseltin.";
 	if (/transfer ownership or delete/i.test(raw))
 		return "Önce ekip sahipliğini devredin veya ekibi silin.";
-	if (/already belong to a team/i.test(raw))
-		return "Zaten bir ekibe üyesiniz.";
-	if (/invalid or expired invite/i.test(raw))
-		return "Davet kodu geçersiz veya süresi dolmuş.";
+	if (/already belong to a team/i.test(raw) || /already_in_team/i.test(raw))
+		return "Zaten başka bir ekibe üyesiniz. Bu ekibe katılmak için önce mevcut ekibinizden ayrılın.";
+	if (/invite_email_mismatch/i.test(raw))
+		return "Bu davet başka bir e-posta adresine gönderilmiş. Davetin geldiği e-posta adresiyle giriş yapın veya ekip sahibinden bu adrese yeni bir davet isteyin.";
+	if (/invalid or expired invite/i.test(raw) || /invite_invalid/i.test(raw))
+		return "Davet kodu geçersiz veya süresi dolmuş. Ekip sahibinden yeni bir davet isteyin.";
 
 	// Supabase Auth error strings.
 	if (/invalid login credentials/i.test(raw)) return "E-posta veya şifre hatalı. Lütfen tekrar deneyin.";

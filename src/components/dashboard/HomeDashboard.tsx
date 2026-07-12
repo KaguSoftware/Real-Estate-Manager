@@ -48,17 +48,18 @@ export function HomeDashboard() {
 		if (user && teamLoaded && !team) router.replace("/onboarding");
 	}, [user, teamLoaded, team, router]);
 
+	const teamReady = teamLoaded && team != null;
 	const { data: recentProperties } = useCachedResource(
-		user ? "properties:recent" : null,
+		user && teamReady ? "properties:recent" : null,
 		() => listProperties({}),
 		undefined,
-		{ enabled: !!user },
+		{ enabled: !!user && teamReady },
 	);
 	const { data: recentLeads } = useCachedResource(
-		user ? "leads:recent" : null,
+		user && teamReady ? "leads:recent" : null,
 		() => listLeads(),
 		undefined,
-		{ enabled: !!user },
+		{ enabled: !!user && teamReady },
 	);
 
 	return (

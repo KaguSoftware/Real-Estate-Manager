@@ -20,6 +20,7 @@ import { createContractDocument, setContractDocumentPdfPath } from "@/src/lib/db
 import type { ContractEditorHandle } from "./editor/ContractEditor";
 import type { Property, Lead } from "@/src/lib/db/types";
 import { PropertyPickerCardList } from "./PropertyPickerCardList";
+import { ReceiptWizard } from "./ReceiptWizard";
 import { ClientPickerCardList } from "./ClientPickerCardList";
 import { Button, cn, Alert, Spinner, toast, Input, FormField, ConfirmDialog } from "@/src/components/ui";
 import { invalidateCache } from "@/src/lib/useCachedResource";
@@ -329,6 +330,9 @@ export function DocumentWizard() {
 
 	const [step, setStep] = useState<Step>("type");
 	const [kind, setKind] = useState<DocKind>("rental");
+	// Rent receipts have their own short flow (property → lease → payment →
+	// confirm) with no editor/draft machinery — rendered as a sibling wizard.
+	const [receiptMode, setReceiptMode] = useState(false);
 
 	// Step 2 state — shared between rental and sales.
 	const [properties, setProperties] = useState<Property[]>([]);
@@ -717,7 +721,9 @@ export function DocumentWizard() {
 		}
 		if (Object.keys(errors).length > 0) {
 			setViewMode("edit");
-			setError("Belgedeki kartlarda eksik veya okunamayan bilgiler var: " + Object.values(errors).join(" "));
+			// Toast, not the top-of-page Alert — the user is scrolled deep into
+			// the document and would have to scroll up to notice an Alert.
+			toast.error("Belgedeki kartlarda eksik veya okunamayan bilgiler var: " + Object.values(errors).join(" "));
 			return;
 		}
 
@@ -904,7 +910,11 @@ export function DocumentWizard() {
 				return;
 			}
 		} catch (e) {
-			setError(humanizeError(e));
+			// Toast for immediate visibility (the user is mid-document), plus the
+			// persistent Alert for details that outlive the toast.
+			const msg = humanizeError(e);
+			toast.error(msg);
+			setError(msg);
 		} finally {
 			setSubmitting(false);
 		}
@@ -913,6 +923,12 @@ export function DocumentWizard() {
 	const previewLabel = kind === "rental" ? "Kira sözleşmesi önizleme" : "Satış sözleşmesi önizleme";
 
 	const stepIndex = STEPS.indexOf(step);
+
+	// After all hooks: the receipt flow replaces the contract wizard entirely
+	// (its "Geri" on the first step returns to this type-selection screen).
+	if (receiptMode) {
+		return <ReceiptWizard onExit={() => setReceiptMode(false)} />;
+	}
 
 	return (
 		<div>
@@ -972,13 +988,13 @@ export function DocumentWizard() {
 							<p className="font-display text-base font-semibold text-base-content">Satış Sözleşmesi</p>
 							<p className="text-sm text-base-content/60 mt-1">Satılık bir taşınmazı yeni bir alıcıya satın.</p>
 						</button>
-						<div className="p-5 rounded-2xl border border-base-300 bg-base-200">
+						<button
+							onClick={() => setReceiptMode(true)}
+							className="text-left p-5 rounded-2xl border-2 border-base-300 hover:border-primary/60 active:bg-primary/5 transition-colors"
+						>
 							<p className="font-display text-base font-semibold text-base-content">Kira Makbuzu</p>
-							<p className="text-sm text-base-content/60 mt-1">
-								Her ödeme için ayrı oluşturulur — taşınmazın Ödemeler listesini açın ve
-								satırdaki makbuz işlemini kullanın.
-							</p>
-						</div>
+							<p className="text-sm text-base-content/60 mt-1">Kayıtlı bir kira ödemesi için makbuz PDF&apos;i oluşturun.</p>
+						</button>
 					</div>
 				</div>
 			)}

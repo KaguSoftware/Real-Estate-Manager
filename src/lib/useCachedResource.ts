@@ -13,7 +13,9 @@ import { humanizeError } from "./errors";
  * background and updates in place only if the data actually changed.
  *
  * The cache is a module-level Map so it survives client-side navigations within
- * a session but is naturally dropped on a full page reload. Call `mutateCache`
+ * a session; entries are also mirrored to sessionStorage ("kagu:cache:*") so a
+ * hard reload paints instantly from the last snapshot and revalidates in the
+ * background. Call `mutateCache`
  * after a create/update/delete to seed/refresh an entry, or `clearCache` on
  * sign-out so the next user never sees the previous user's rows.
  */
@@ -29,6 +31,99 @@ const cache = new Map<string, Entry<unknown>>();
 // key -> in-flight promise, so concurrent mounts share one network request.
 const inflight = new Map<string, Promise<unknown>>();
 
+// ── sessionStorage persistence ───────────────────────────────────────────────
+// Entries are mirrored to sessionStorage so a hard reload paints instantly from
+// the last snapshot and then revalidates in the background (the hydrated entry
+// keeps its original fetchedAt, so it never counts as "fresh" under dedupeMs
+// beyond its real age). All storage access is best-effort: SSR, private mode
+// and quota errors are swallowed.
+const STORAGE_PREFIX = "kagu:cache:";
+// Entries can hold large arrays; don't persist anything whose JSON is huge.
+const MAX_PERSIST_CHARS = 200_000;
+// Keys we've already tried to hydrate (hit or miss) — avoids re-reading and
+// re-parsing storage on every render, and stops a deleted Map entry from being
+// resurrected out of a stale snapshot after invalidation.
+const hydrationAttempted = new Set<string>();
+
+function safeStorage(): Storage | null {
+	try {
+		if (typeof window === "undefined") return null;
+		return window.sessionStorage;
+	} catch {
+		return null;
+	}
+}
+
+function persistEntry(key: string, entry: Entry<unknown>) {
+	const storage = safeStorage();
+	if (!storage) return;
+	try {
+		const json = JSON.stringify(entry);
+		if (json.length > MAX_PERSIST_CHARS) {
+			// Too big to persist — drop any older (now stale) snapshot instead.
+			storage.removeItem(STORAGE_PREFIX + key);
+			return;
+		}
+		storage.setItem(STORAGE_PREFIX + key, json);
+	} catch {
+		// Quota exceeded / serialization failure — in-memory cache still works.
+	}
+}
+
+/** Remove persisted entries whose key matches `matches` (all when omitted). */
+function dropPersisted(matches?: (key: string) => boolean) {
+	const storage = safeStorage();
+	if (!storage) return;
+	try {
+		const doomed: string[] = [];
+		for (let i = 0; i < storage.length; i++) {
+			const raw = storage.key(i);
+			if (raw == null || !raw.startsWith(STORAGE_PREFIX)) continue;
+			const key = raw.slice(STORAGE_PREFIX.length);
+			if (!matches || matches(key)) doomed.push(raw);
+		}
+		for (const raw of doomed) storage.removeItem(raw);
+	} catch {
+		// best-effort
+	}
+}
+
+/**
+ * Read a cache entry, lazily hydrating it from sessionStorage on first access
+ * after a hard reload. Idempotent, so it is safe to call during render.
+ */
+function getEntry(key: string): Entry<unknown> | undefined {
+	const hit = cache.get(key);
+	if (hit) return hit;
+	if (hydrationAttempted.has(key)) return undefined;
+	hydrationAttempted.add(key);
+	const storage = safeStorage();
+	if (!storage) return undefined;
+	try {
+		const raw = storage.getItem(STORAGE_PREFIX + key);
+		if (!raw) return undefined;
+		const parsed: unknown = JSON.parse(raw);
+		if (
+			parsed !== null &&
+			typeof parsed === "object" &&
+			"data" in parsed &&
+			typeof (parsed as { fetchedAt?: unknown }).fetchedAt === "number"
+		) {
+			// Keep the snapshot's fetchedAt: a hydrated entry is only "fresh" for
+			// dedupe purposes within its real age, so revalidation still happens.
+			const entry: Entry<unknown> = {
+				data: (parsed as Entry<unknown>).data,
+				fetchedAt: (parsed as Entry<unknown>).fetchedAt,
+			};
+			cache.set(key, entry);
+			return entry;
+		}
+	} catch {
+		// corrupt snapshot — ignore
+	}
+	return undefined;
+}
+
 // Mounted hook instances, notified when cache entries are dropped/written so
 // they can refetch (their entry vanished) or re-render (it changed). Without
 // this, a component whose entry is invalidated while mounted renders null
@@ -38,24 +133,32 @@ function notifySubscribers() {
 	for (const fn of subscribers) fn();
 }
 
-/** Drop everything (e.g. on sign-out). */
+/** Drop everything (e.g. on sign-out), including persisted snapshots. */
 export function clearCache() {
 	cache.clear();
 	inflight.clear();
+	hydrationAttempted.clear();
+	dropPersisted();
 	notifySubscribers();
 }
 
 /** Drop a single key, or all keys sharing a prefix (e.g. "properties"). */
 export function invalidateCache(keyOrPrefix: string) {
+	const matches = (k: string) => k === keyOrPrefix || k.startsWith(`${keyOrPrefix}:`);
 	for (const k of cache.keys()) {
-		if (k === keyOrPrefix || k.startsWith(`${keyOrPrefix}:`)) cache.delete(k);
+		if (matches(k)) cache.delete(k);
 	}
+	// Also drop persisted snapshots so a reload can't resurrect stale data.
+	dropPersisted(matches);
 	notifySubscribers();
 }
 
 /** Imperatively write a value into the cache (e.g. after a mutation). */
 export function mutateCache<T>(key: string, data: T) {
-	cache.set(key, { data, fetchedAt: Date.now() });
+	const entry: Entry<unknown> = { data, fetchedAt: Date.now() };
+	cache.set(key, entry);
+	hydrationAttempted.add(key); // in-memory value is now authoritative
+	persistEntry(key, entry);
 	notifySubscribers();
 }
 
@@ -104,7 +207,7 @@ export function useCachedResource<T>(
 	// Displayed value is derived from the live cache during render, so a key change
 	// instantly shows that key's cached value with no setState-in-effect. State only
 	// tracks async results so a successful background fetch triggers a re-render.
-	const cached = key != null ? (cache.get(key) as Entry<T> | undefined) : undefined;
+	const cached = key != null ? (getEntry(key) as Entry<T> | undefined) : undefined;
 	const [, forceRender] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 	// True only while a fetch is in flight (whether initial or revalidation).
@@ -134,7 +237,7 @@ export function useCachedResource<T>(
 		const onCacheChange = () => {
 			const k = keyRef.current;
 			if (k == null) return;
-			if (!cache.has(k) && activeRef.current) setNonce((n) => n + 1);
+			if (getEntry(k) == null && activeRef.current) setNonce((n) => n + 1);
 			else forceRender((n) => n + 1);
 		};
 		subscribers.add(onCacheChange);
@@ -145,7 +248,7 @@ export function useCachedResource<T>(
 		if (!active || key == null) return;
 		let cancelled = false;
 
-		const existing = cache.get(key) as Entry<T> | undefined;
+		const existing = getEntry(key) as Entry<T> | undefined;
 		// Within the dedupe window a cached entry is considered fresh — skip the
 		// network entirely (only an explicit refetch via nonce overrides this).
 		if (existing && dedupeMs > 0 && Date.now() - existing.fetchedAt < dedupeMs && nonce === 0) {
@@ -169,7 +272,10 @@ export function useCachedResource<T>(
 
 		promise
 			.then((result) => {
-				cache.set(key, { data: result, fetchedAt: Date.now() });
+				const entry: Entry<unknown> = { data: result, fetchedAt: Date.now() };
+				cache.set(key, entry);
+				hydrationAttempted.add(key);
+				persistEntry(key, entry);
 				onDataRef.current?.(result);
 				if (!cancelled) forceRender((n) => n + 1);
 			})

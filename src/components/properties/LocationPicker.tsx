@@ -144,13 +144,18 @@ export function LocationPicker({ value, onChange, readOnly, heightClass }: Props
 	if (readOnly) {
 		return (
 			<PickerErrorBoundary>
-				<LocationPickerInner value={value} readOnly heightClass={heightClass} />
+				<div translate="no" className="notranslate">
+					<LocationPickerInner value={value} readOnly heightClass={heightClass} />
+				</div>
 			</PickerErrorBoundary>
 		);
 	}
 
+	// translate="no": Google Translate replaces text nodes in place, which makes
+	// React's removeChild blow up on the conditionally rendered status labels
+	// and Leaflet's DOM. Exempt the whole picker from page translation.
 	return (
-		<div className="space-y-2.5">
+		<div className="space-y-2.5 notranslate" translate="no">
 			<div className="flex flex-col sm:flex-row sm:items-center gap-2">
 				<Input
 					type="url"

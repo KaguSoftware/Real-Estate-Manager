@@ -1,11 +1,20 @@
-// Shared money formatting. Uses tr-TR grouping (1.234.567,89) with the
-// currency code displayed, e.g. "12.500,00 TRY" — consistent everywhere
-// instead of the previous mix of toFixed and toLocaleString.
+// Shared money formatting. Uses tr-TR grouping (1.234.567,89). TRY renders
+// with the everyday "TL" suffix ("12.500,00 TL") — the ISO "TRY" code and the
+// ₺ glyph (missing from some fonts) both confused users. Other currencies keep
+// their ISO code.
 
 const formatters = new Map<string, Intl.NumberFormat>();
 
 export function fmtMoney(amount: number, currency: string): string {
 	const ccy = (currency || "TRY").toUpperCase();
+	if (ccy === "TRY" || ccy === "TL") {
+		let fmt = formatters.get("TL");
+		if (!fmt) {
+			fmt = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+			formatters.set("TL", fmt);
+		}
+		return `${fmt.format(amount)} TL`;
+	}
 	let fmt = formatters.get(ccy);
 	if (!fmt) {
 		try {
