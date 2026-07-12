@@ -79,7 +79,8 @@ export default function TeamPage() {
 			if (json.emailed) {
 				toast.success(`Davet ${inviteEmail.trim()} adresine gönderildi.`);
 			} else if (json.notified) {
-				toast.success("Davet gönderildi — bu kişinin hesabı olduğu için uygulama içi bildirim aldı.");
+				if (json.joinUrl) await navigator.clipboard.writeText(json.joinUrl).catch(() => {});
+				toast.success("Bu kişinin zaten hesabı var — uygulama içi bildirim aldı; davet bağlantısı da panoya kopyalandı.");
 			} else if (json.joinUrl) {
 				await navigator.clipboard.writeText(json.joinUrl).catch(() => {});
 				toast.info("Davet e-postası gönderilemedi — davet bağlantısı kopyalandı, doğrudan kendisine iletin.");

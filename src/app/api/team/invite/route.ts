@@ -3,15 +3,14 @@
  *
  * Creates an invite row (RLS: only the team owner can insert), then delivers it:
  *  - new address → Supabase auth invite email (signup + redirect to /join/[code])
- *  - existing account → in-app team_invite notification + Resend email; the
- *    join link is still returned so the owner can share it manually too.
+ *  - existing account → in-app team_invite notification; the join link is
+ *    returned so the owner can share it directly (WhatsApp etc. is common).
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/src/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { isRateLimited } from "@/src/lib/rateLimit";
-import { sendTeamInviteEmail } from "@/src/lib/email";
 
 export async function POST(request: NextRequest) {
 	const supabase = await createClient();
@@ -60,7 +59,8 @@ export async function POST(request: NextRequest) {
 	if (!mailErr) return NextResponse.json({ ok: true, emailed: true, joinUrl });
 
 	// inviteUserByEmail rejects addresses that already have an account. Reach
-	// those users directly: in-app notification (+ Resend email when configured).
+	// those users with an in-app notification; the owner also gets the join
+	// link to forward directly. (All email goes through Supabase Auth only.)
 	const { data: existing } = await service
 		.from("profiles")
 		.select("id")
@@ -90,11 +90,9 @@ export async function POST(request: NextRequest) {
 		href: joinUrl,
 	});
 
-	const emailResult = await sendTeamInviteEmail({ to: email, teamName, inviterName, joinUrl });
-
 	return NextResponse.json({
 		ok: true,
-		emailed: emailResult.sent,
+		emailed: false,
 		notified: !notifErr,
 		joinUrl,
 	});

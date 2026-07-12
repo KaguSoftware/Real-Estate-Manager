@@ -1,8 +1,8 @@
 # Auth e-posta şablonları
 
-Branded replacements for Supabase's default auth emails, styled to match the in-app
-transactional emails in `src/lib/email.ts` (Kagu · Emlak Yönetim Sistemi — background
-`#f2f0ec`, white card, `#b74427` buttons, Turkish copy). Supabase stores these in the
+Branded replacements for Supabase's default auth emails (Kagu · Emlak Yönetim
+Sistemi — background `#f2f0ec`, white card, `#b74427` buttons, Turkish copy).
+Supabase stores these in the
 project dashboard, not in the repo, so they must be pasted in manually.
 
 ## How to install
@@ -43,12 +43,6 @@ biggest "looks like a scam" signal. To send from a Kagu domain:
    provider's credentials and a sender like `Kagu <bildirim@kagu.app>`.
 3. The templates above work unchanged.
 
-Note: the app also sends its own transactional mail outside Supabase Auth —
-`src/lib/email.ts` sends the in-app team invite (for users who already have an
-account) via the Resend API. That path uses two env vars:
-
-- `RESEND_API_KEY` — required to actually send (otherwise sends are skipped).
-- `EMAIL_FROM` — the verified sender, e.g. `Kagu <bildirim@kagu.app>`.
-
-Use the same verified domain for both SMTP and `EMAIL_FROM` so every Kagu email
-arrives from one consistent, trusted address.
+Note: all app email goes through Supabase Auth (no separate sending service).
+Inviting a user who already has an account creates an in-app notification and
+hands the owner the join link to forward directly.
