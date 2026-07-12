@@ -48,3 +48,6 @@ PRODUCTION_READINESS.md
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# machine-specific skill symlinks
+.claude/skills/

@@ -54,7 +54,7 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 
 					<div className="min-w-0 flex-1">
 						<h1 className="font-display text-lg font-semibold text-base-content truncate leading-tight">{title}</h1>
-						{subtitle && <p className="text-xs text-base-content/50 truncate tracking-wide">{subtitle}</p>}
+						{subtitle && <p className="text-xs text-base-content/50 truncate">{subtitle}</p>}
 					</div>
 
 					<div className="flex items-center gap-2">

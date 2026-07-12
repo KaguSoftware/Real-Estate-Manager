@@ -48,6 +48,8 @@ export interface RentalPDFData {
 	inventory: InventoryItem[];
 	condition_notes: string | null;
 	special_conditions: string | null;
+	/** Raw clause templates (with {tokens}); omitted = built-in defaults. */
+	clauses?: string[];
 	generatedAt: string; // ISO timestamp
 }
 
@@ -80,6 +82,7 @@ export interface SalesPDFData {
 		parsel_no: string | null;
 		mahalle: string | null;
 		mevkii: string | null;
+		city: string | null;        // jurisdiction city for the courts clause
 	};
 	sale: {
 		sale_price: number;
@@ -96,6 +99,8 @@ export interface SalesPDFData {
 		seller: CommissionLine;
 	};
 	special_conditions: string | null;
+	/** Raw clause templates (with {tokens}); omitted = built-in defaults. */
+	clauses?: string[];
 	generatedAt: string; // ISO timestamp
 }
 

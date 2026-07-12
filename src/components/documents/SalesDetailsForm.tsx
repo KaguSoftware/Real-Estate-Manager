@@ -119,7 +119,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 		<div className="space-y-8">
 			{/* A — Seller */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+				<h3 className="text-sm font-semibold text-base-content/60">
 					A — Satıcı (Mal Sahibi)
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -151,7 +151,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 
 			{/* B — Buyer */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+				<h3 className="text-sm font-semibold text-base-content/60">
 					B — Alıcı
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -184,7 +184,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 
 			{/* Sale info */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+				<h3 className="text-sm font-semibold text-base-content/60">
 					Satış Bilgileri
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -227,7 +227,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 
 			{/* Commission */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+				<h3 className="text-sm font-semibold text-base-content/60">
 					Komisyon
 				</h3>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -256,7 +256,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 
 			{/* Special conditions */}
 			<section className="space-y-4">
-				<h3 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+				<h3 className="text-sm font-semibold text-base-content/60">
 					Özel Şartlar
 				</h3>
 				<FormField label="Özel Şartlar — opsiyonel">

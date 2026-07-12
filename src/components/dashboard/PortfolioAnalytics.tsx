@@ -75,7 +75,7 @@ function Meter({
 	return (
 		<div>
 			<div className="flex items-baseline justify-between mb-1.5">
-				<p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">{label}</p>
+				<p className="text-xs font-semibold text-base-content/55">{label}</p>
 				<p className={`font-display text-base font-semibold ${danger ? "text-warning" : "text-base-content"}`}>{pct(ratio)}</p>
 			</div>
 			<div className="h-2 rounded-full bg-base-200 overflow-hidden" role="meter" aria-valuenow={Math.round(ratio * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>

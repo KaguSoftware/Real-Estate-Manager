@@ -22,7 +22,7 @@ interface Props {
 /** Eyebrow heading separating field groups inside the form. */
 function GroupTitle({ children }: { children: React.ReactNode }) {
 	return (
-		<p className="text-xs font-bold uppercase tracking-wider text-base-content/50 pt-1">{children}</p>
+		<p className="text-sm font-semibold text-base-content/60 pt-1">{children}</p>
 	);
 }
 
@@ -168,7 +168,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 				</FormField>
 
 				<div className="rounded-2xl bg-base-200 border border-base-300 p-4 space-y-4">
-					<p className="text-xs font-bold uppercase tracking-wider text-base-content/60">Arama tercihleri (isteğe bağlı)</p>
+					<p className="text-sm font-semibold text-base-content/60">Arama tercihleri (isteğe bağlı)</p>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<FormField label="Amaç">
 							<Select value={pref_listing_type} onChange={(e) => setPrefListingType(e.target.value as ListingType | "")}>

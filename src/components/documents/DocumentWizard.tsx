@@ -1,7 +1,8 @@
 "use client";
 
 import { humanizeError } from "@/src/lib/errors";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAppStore } from "@/src/store";
@@ -10,14 +11,19 @@ import { listLeads } from "@/src/lib/db/leads";
 import { createTenant } from "@/src/lib/db/tenants";
 import { createLease, computeLeaseEndDate } from "@/src/lib/db/leases";
 import { createSale } from "@/src/lib/db/sales";
-import { downloadPdfFile, generatePdfFile, getPdfBrandingFromStore, type PdfBranding } from "@/src/lib/pdf";
+import { downloadPdfFile, generateEditorPdfFile, getPdfBrandingFromStore, type PdfBranding } from "@/src/lib/pdf";
 import { saveDocumentPdf } from "@/src/lib/db/documents";
+import { getClauseTemplate } from "@/src/lib/db/clauseTemplates";
 import type { DocKind, RentalPDFData, SalesPDFData } from "@/src/lib/pdf";
-import { PDFDocument } from "@/src/lib/pdf";
+import { EditorPDFDocument, BRAND_PALETTES } from "@/src/lib/pdf";
+import { buildInitialDoc } from "@/src/lib/documents/buildInitialDoc";
+import type { EditorDocJSON } from "@/src/lib/documents/blocks";
+import { createContractDocument, setContractDocumentPdfPath } from "@/src/lib/db/contractDocuments";
+import type { ContractEditorHandle } from "./editor/ContractEditor";
 import type { Property, Lead } from "@/src/lib/db/types";
 import { PropertyPickerCardList } from "./PropertyPickerCardList";
 import { ClientPickerCardList } from "./ClientPickerCardList";
-import { Button, cn, Alert, Spinner, toast } from "@/src/components/ui";
+import { Button, cn, Alert, Spinner, toast, Input, FormField, ConfirmDialog } from "@/src/components/ui";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import {
 	SalesDetailsForm,
@@ -38,20 +44,33 @@ const PDFBlobProvider = dynamic(
 	{ ssr: false, loading: () => <div className="text-sm text-base-content/50 p-6">Önizleme yükleniyor…</div> },
 );
 
-type Step = "type" | "property" | "client" | "details" | "preview";
+// Tiptap ships only with the editor step — same SSR/bundle policy as react-pdf.
+const ContractEditor = dynamic(
+	() => import("./editor/ContractEditor").then((m) => m.ContractEditor),
+	{ ssr: false, loading: () => <div className="text-sm text-base-content/50 p-6 text-center">Düzenleyici yükleniyor…</div> },
+);
 
-const STEPS: Step[] = ["type", "property", "client", "details", "preview"];
+// The old separate "details" step is merged into the final stage: a
+// collapsible essentials panel (parties, amounts, dates — the fields the
+// lease/sale records need) sits above the editor and the document rebuilds
+// live as it is filled. Old drafts saved at "details" resume at "preview".
+type Step = "type" | "property" | "client" | "preview";
+
+const STEPS: Step[] = ["type", "property", "client", "preview"];
 
 const STEP_LABELS: Record<Step, string> = {
 	type: "Tür",
 	property: "Taşınmaz",
 	client: "Müşteri",
-	details: "Detaylar",
-	preview: "Önizleme",
+	preview: "Düzenle",
 };
 
 // Wizard progress survives a refresh/accidental close via localStorage.
-const DRAFT_KEY = "docwizard:draft:v1";
+// v2 adds the editable document (docJson/docTitle/docSubtitle/docFingerprint);
+// v1 drafts (pre-editor) are still readable — the editor step simply rebuilds
+// the document from the restored form state.
+const DRAFT_KEY = "docwizard:draft:v2";
+const DRAFT_KEY_V1 = "docwizard:draft:v1";
 
 interface WizardDraft {
 	step: Step;
@@ -61,12 +80,17 @@ interface WizardDraft {
 	rentalState: RentalFormState;
 	salesState: SalesFormState;
 	savedAt: string;
+	// v2 fields (absent on v1 drafts)
+	docJson?: EditorDocJSON | null;
+	docTitle?: string;
+	docSubtitle?: string;
+	docFingerprint?: string | null;
 }
 
 function readDraft(): WizardDraft | null {
 	if (typeof window === "undefined") return null;
 	try {
-		const raw = window.localStorage.getItem(DRAFT_KEY);
+		const raw = window.localStorage.getItem(DRAFT_KEY) ?? window.localStorage.getItem(DRAFT_KEY_V1);
 		if (!raw) return null;
 		const d = JSON.parse(raw) as WizardDraft;
 		return d && d.step && d.kind ? d : null;
@@ -76,14 +100,21 @@ function readDraft(): WizardDraft | null {
 }
 
 function clearDraft() {
-	try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+	try {
+		window.localStorage.removeItem(DRAFT_KEY);
+		window.localStorage.removeItem(DRAFT_KEY_V1);
+	} catch { /* ignore */ }
 }
 
 function safeFilename(s: string) {
 	return s.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "document";
 }
 
-function buildRentalPDFData(property: Property, s: RentalFormState): RentalPDFData {
+function buildRentalPDFData(
+	property: Property,
+	s: RentalFormState,
+	teamClauses?: string[] | null,
+): RentalPDFData {
 	const paymentDay = s.paymentDay ? Number(s.paymentDay) : null;
 	return {
 		landlord: {
@@ -147,11 +178,16 @@ function buildRentalPDFData(property: Property, s: RentalFormState): RentalPDFDa
 		inventory: s.inventory.filter((r) => r.item.trim()),
 		condition_notes: s.conditionNotes.trim() || null,
 		special_conditions: s.specialConditions.trim() || null,
+		clauses: teamClauses ?? undefined,
 		generatedAt: new Date().toISOString(),
 	};
 }
 
-function buildSalesPDFData(property: Property, s: SalesFormState): SalesPDFData {
+function buildSalesPDFData(
+	property: Property,
+	s: SalesFormState,
+	teamClauses?: string[] | null,
+): SalesPDFData {
 	const salePrice = Number(s.salePrice || 0);
 	return {
 		seller: {
@@ -181,6 +217,7 @@ function buildSalesPDFData(property: Property, s: SalesFormState): SalesPDFData 
 			parsel_no: property.parsel_no,
 			mahalle: property.mahalle,
 			mevkii: property.mevkii,
+			city: property.city,
 		},
 		sale: {
 			sale_price: salePrice,
@@ -197,6 +234,7 @@ function buildSalesPDFData(property: Property, s: SalesFormState): SalesPDFData 
 			seller: computeCommission(salePrice, s.sellerCommissionRate ? Number(s.sellerCommissionRate) : null),
 		},
 		special_conditions: s.specialConditions.trim() || null,
+		clauses: teamClauses ?? undefined,
 		generatedAt: new Date().toISOString(),
 	};
 }
@@ -249,6 +287,25 @@ export function DocumentWizard() {
 	const [error, setError] = useState<string | null>(null);
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+	// ── Editable document state (final step) ────────────────────────────
+	const [docJson, setDocJson] = useState<EditorDocJSON | null>(null);
+	const [docTitle, setDocTitle] = useState("");
+	const [docSubtitle, setDocSubtitle] = useState("");
+	// Snapshot of the wizard data the document was built from — when the user
+	// goes back and changes details, the doc is rebuilt so amounts/parties are
+	// never stale (custom text edits survive only while the data is unchanged).
+	const [docFingerprint, setDocFingerprint] = useState<string | null>(null);
+	// True once the user has edited the document itself — from then on, panel
+	// changes stop live-rebuilding it (a banner offers an explicit rebuild).
+	const [docDirty, setDocDirty] = useState(false);
+	// Data changed while the doc was dirty: doc no longer matches the fields.
+	const [docStale, setDocStale] = useState(false);
+	const [panelOpen, setPanelOpen] = useState(true);
+	const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
+	const [previewJson, setPreviewJson] = useState<EditorDocJSON | null>(null);
+	const [confirmReset, setConfirmReset] = useState(false);
+	const editorApi = useRef<ContractEditorHandle | null>(null);
+
 	// Offer to resume a saved draft from a previous (interrupted) session.
 	const [pendingDraft, setPendingDraft] = useState<WizardDraft | null>(() => readDraft());
 	function resumeDraft() {
@@ -258,9 +315,19 @@ export function DocumentWizard() {
 		setClientId(pendingDraft.clientId);
 		setRentalState(pendingDraft.rentalState);
 		setSalesState(pendingDraft.salesState);
-		// Re-enter at the property step so the pickers reload their data; the
-		// details entered in later steps are already restored above.
-		setStep(pendingDraft.propertyId ? pendingDraft.step : "type");
+		// v2 drafts carry the edited document; v1 drafts rebuild it from the
+		// restored form state when the editor step is entered.
+		setDocJson(pendingDraft.docJson ?? null);
+		setDocTitle(pendingDraft.docTitle ?? "");
+		setDocSubtitle(pendingDraft.docSubtitle ?? "");
+		setDocFingerprint(pendingDraft.docFingerprint ?? null);
+		// A saved document may hold custom edits we can't distinguish from the
+		// generated template — treat it as dirty so live rebuild never clobbers it.
+		setDocDirty(Boolean(pendingDraft.docJson));
+		// Drafts saved on the retired "details" step resume at the merged stage.
+		const restoredStep: Step =
+			(pendingDraft.step as string) === "details" ? "preview" : pendingDraft.step;
+		setStep(pendingDraft.propertyId ? restoredStep : "type");
 		setPendingDraft(null);
 	}
 	function discardDraft() {
@@ -268,36 +335,25 @@ export function DocumentWizard() {
 		setPendingDraft(null);
 	}
 
-	// Persist progress once the user has invested real effort (details onwards).
+	// Persist progress once the user has invested real effort (final stage).
 	useEffect(() => {
 		if (pendingDraft) return; // don't overwrite an unresumed draft
-		if (step !== "details" && step !== "preview") return;
+		if (step !== "preview") return;
 		const draft: WizardDraft = {
 			step, kind, propertyId, clientId, rentalState, salesState,
+			docJson, docTitle, docSubtitle, docFingerprint,
 			savedAt: new Date().toISOString(),
 		};
 		try { window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* ignore */ }
-	}, [pendingDraft, step, kind, propertyId, clientId, rentalState, salesState]);
+	}, [pendingDraft, step, kind, propertyId, clientId, rentalState, salesState, docJson, docTitle, docSubtitle, docFingerprint]);
 
-	// Details entered in steps 4–5 are lost on a refresh/close — warn first.
+	// Work done in the final stage is lost on a refresh/close — warn first.
 	useEffect(() => {
-		if (step !== "details" && step !== "preview") return;
+		if (step !== "preview") return;
 		const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); };
 		window.addEventListener("beforeunload", warn);
 		return () => window.removeEventListener("beforeunload", warn);
 	}, [step]);
-
-	/** Validate the details step; on failure show inline errors and scroll to the first one. */
-	function goToPreview() {
-		const errors = kind === "rental" ? validateRental(rentalState) : validateSales(salesState);
-		setFieldErrors(errors);
-		const first = Object.keys(errors)[0];
-		if (first) {
-			document.getElementById(first)?.scrollIntoView({ behavior: "smooth", block: "center" });
-			return;
-		}
-		setStep("preview");
-	}
 
 	// The PDF embeds web fonts fetched over HTTP. BlobProvider renders eagerly,
 	// so without this gate its first pass can run before the fonts arrive and
@@ -315,6 +371,22 @@ export function DocumentWizard() {
 		]).then(() => { if (!cancelled) setFontsLoaded(true); });
 		return () => { cancelled = true; };
 	}, [step, fontsLoaded]);
+
+	// The team's clause template (if any) overrides the built-in T&C set.
+	// Fetched on entering the preview so the rendered contract matches what
+	// will be generated; a fetch failure falls back to the defaults.
+	const [teamClauses, setTeamClauses] = useState<string[] | null>(null);
+	const [clausesReady, setClausesReady] = useState(false);
+	useEffect(() => {
+		if (step !== "preview" || (kind !== "rental" && kind !== "sales")) return;
+		let cancelled = false;
+		setClausesReady(false);
+		getClauseTemplate(kind)
+			.then((c) => { if (!cancelled) setTeamClauses(c); })
+			.catch(() => { if (!cancelled) setTeamClauses(null); })
+			.finally(() => { if (!cancelled) setClausesReady(true); });
+		return () => { cancelled = true; };
+	}, [step, kind]);
 
 	// Load eligible properties whenever we enter step 2.
 	useEffect(() => {
@@ -409,16 +481,104 @@ export function DocumentWizard() {
 
 	const rentalData = useMemo<RentalPDFData | null>(() => {
 		if (kind !== "rental" || step !== "preview" || !property) return null;
-		return buildRentalPDFData(property, rentalState);
-	}, [kind, step, property, rentalState]);
+		return buildRentalPDFData(property, rentalState, teamClauses);
+	}, [kind, step, property, rentalState, teamClauses]);
 
 	const salesData = useMemo<SalesPDFData | null>(() => {
 		if (kind !== "sales" || step !== "preview" || !property) return null;
-		return buildSalesPDFData(property, salesState);
-	}, [kind, step, property, salesState]);
+		return buildSalesPDFData(property, salesState, teamClauses);
+	}, [kind, step, property, salesState, teamClauses]);
+
+	const wizardData: RentalPDFData | SalesPDFData | null =
+		kind === "rental" ? rentalData : salesData;
+
+	useEffect(() => {
+		if (step !== "preview" || !fontsLoaded || !clausesReady || !wizardData) return;
+		if (kind !== "rental" && kind !== "sales") return;
+		const fingerprint = JSON.stringify({ ...wizardData, generatedAt: null });
+		if (docJson && fingerprint === docFingerprint) {
+			if (docStale) setDocStale(false); // data reverted to match the doc
+			return;
+		}
+		// The user customized the document — never clobber it silently; the
+		// stale banner offers an explicit rebuild instead.
+		if (docJson && docDirty) {
+			if (!docStale) setDocStale(true);
+			return;
+		}
+		// Debounced: wizardData changes identity on every panel keystroke, and
+		// each run clears the previous timer — the doc rebuilds 500 ms after
+		// the user stops typing (immediately on first build).
+		const t = setTimeout(() => {
+			const built = buildInitialDoc(kind, wizardData, previewBranding?.teamName ?? "Kagu Real Estate");
+			setDocJson(built);
+			setDocFingerprint(fingerprint);
+			editorApi.current?.setContent(built);
+			setPreviewJson((p) => (p ? built : p)); // keep an open PDF preview live
+			if (!docTitle) setDocTitle(kind === "rental" ? "Konut Kira Sözleşmesi" : "Satılık Alım, Satış Sözleşmesi");
+			if (!docSubtitle) setDocSubtitle(wizardData.property.address ?? "");
+		}, docJson ? 500 : 0);
+		return () => clearTimeout(t);
+	}, [step, kind, fontsLoaded, clausesReady, wizardData, previewBranding, docJson, docFingerprint, docDirty, docStale, docTitle, docSubtitle]);
+
+	/** Latest editor JSON — the live editor when mounted, else wizard state. */
+	function currentDocJson(): EditorDocJSON | null {
+		return (viewMode === "edit" ? editorApi.current?.getJSON() : null) ?? docJson;
+	}
+
+	function switchMode(mode: "edit" | "preview") {
+		if (mode === viewMode) return;
+		if (mode === "preview") {
+			const json = currentDocJson();
+			if (!json) return;
+			setDocJson(json);
+			setPreviewJson(json);
+		}
+		setViewMode(mode);
+	}
+
+	/** Rebuild the document from the current panel data (discards custom edits). */
+	function rebuildFromData() {
+		if (!wizardData || (kind !== "rental" && kind !== "sales")) return;
+		const built = buildInitialDoc(kind, wizardData, previewBranding?.teamName ?? "Kagu Real Estate");
+		setDocJson(built);
+		setDocFingerprint(JSON.stringify({ ...wizardData, generatedAt: null }));
+		editorApi.current?.setContent(built);
+		setPreviewJson((p) => (p ? built : p));
+		setDocDirty(false);
+		setDocStale(false);
+	}
+
+	function onResetConfirmed() {
+		setConfirmReset(false);
+		rebuildFromData();
+		toast.success("Belge şablondan yeniden oluşturuldu.");
+	}
 
 	async function handleConfirm() {
 		if (!property) return;
+		// The essentials panel replaced the old Detaylar step — required-field
+		// validation now happens here, at confirm time.
+		const errors = kind === "rental" ? validateRental(rentalState) : validateSales(salesState);
+		setFieldErrors(errors);
+		const firstError = Object.keys(errors)[0];
+		if (firstError) {
+			setViewMode("edit");
+			setPanelOpen(true);
+			// Let the panel expand before scrolling to the first missing field.
+			setTimeout(() => {
+				document.getElementById(firstError)?.scrollIntoView({ behavior: "smooth", block: "center" });
+			}, 80);
+			return;
+		}
+		// A stale doc would create records with the new data but a PDF with the
+		// old — never let those diverge.
+		if (docStale) {
+			toast.error("Bilgiler değişti ancak belgeye uygulanmadı — önce belgeyi yeniden oluşturun.");
+			return;
+		}
+		const finalJson = currentDocJson();
+		if (!finalJson) return;
 		setSubmitting(true);
 		setError(null);
 		try {
@@ -469,13 +629,41 @@ export function DocumentWizard() {
 				const updated = await updateProperty(property.id, { status: "occupied" });
 				upsertProperty(updated);
 				invalidateCache("tenants");
+				// Persist the editable document first (re-editable later from the
+				// property page). Best-effort: a failure must not lose the PDF.
+				const title = docTitle.trim() || "Konut Kira Sözleşmesi";
+				let contractDocId: string | null = null;
+				try {
+					const cd = await createContractDocument({
+						kind: "rental",
+						lease_id: lease.id,
+						title,
+						subtitle: docSubtitle.trim() || null,
+						content: finalJson,
+						source_data: rentalData,
+					});
+					contractDocId = cd.id;
+				} catch {
+					toast.error("Belgenin düzenlenebilir kopyası kaydedilemedi.");
+				}
 				const filename = `kira-${safeFilename(tenant.full_name)}-${safeFilename(property.address_line)}.pdf`;
-				const pdfFile = await generatePdfFile("rental", rentalData, filename, await getPdfBrandingFromStore());
+				const pdfFile = await generateEditorPdfFile(
+					{
+						kind: "rental",
+						title,
+						subtitle: docSubtitle.trim() || null,
+						doc: finalJson,
+						sourceData: rentalData,
+						branding: await getPdfBrandingFromStore(),
+					},
+					filename,
+				);
 				await downloadPdfFile(pdfFile);
 				// Keep a copy in storage for later reference. Best-effort: the
 				// user already has the download, so a failed upload only warns.
 				try {
-					await saveDocumentPdf({ table: "leases", id: lease.id }, pdfFile);
+					const path = await saveDocumentPdf({ table: "leases", id: lease.id }, pdfFile);
+					if (contractDocId) await setContractDocumentPdfPath(contractDocId, path);
 				} catch {
 					toast.error("Sözleşme indirildi ancak çevrimiçi kopya kaydedilemedi.");
 				}
@@ -511,11 +699,37 @@ export function DocumentWizard() {
 				const updated = await updateProperty(property.id, { status: "sold" });
 				upsertProperty(updated);
 				invalidateCache("tenants");
+				const title = docTitle.trim() || "Satılık Alım, Satış Sözleşmesi";
+				let contractDocId: string | null = null;
+				try {
+					const cd = await createContractDocument({
+						kind: "sales",
+						sale_id: sale.id,
+						title,
+						subtitle: docSubtitle.trim() || null,
+						content: finalJson,
+						source_data: salesData,
+					});
+					contractDocId = cd.id;
+				} catch {
+					toast.error("Belgenin düzenlenebilir kopyası kaydedilemedi.");
+				}
 				const filename = `satis-${safeFilename(buyer.full_name)}-${safeFilename(property.address_line)}.pdf`;
-				const pdfFile = await generatePdfFile("sales", salesData, filename, await getPdfBrandingFromStore());
+				const pdfFile = await generateEditorPdfFile(
+					{
+						kind: "sales",
+						title,
+						subtitle: docSubtitle.trim() || null,
+						doc: finalJson,
+						sourceData: salesData,
+						branding: await getPdfBrandingFromStore(),
+					},
+					filename,
+				);
 				await downloadPdfFile(pdfFile);
 				try {
-					await saveDocumentPdf({ table: "sales", id: sale.id }, pdfFile);
+					const path = await saveDocumentPdf({ table: "sales", id: sale.id }, pdfFile);
+					if (contractDocId) await setContractDocumentPdfPath(contractDocId, path);
 				} catch {
 					toast.error("Sözleşme indirildi ancak çevrimiçi kopya kaydedilemedi.");
 				}
@@ -531,9 +745,27 @@ export function DocumentWizard() {
 		}
 	}
 
-	const previewData: RentalPDFData | SalesPDFData | null =
-		kind === "rental" ? rentalData : salesData;
 	const previewLabel = kind === "rental" ? "Kira sözleşmesi önizleme" : "Satış sözleşmesi önizleme";
+
+	const errorCount = Object.keys(fieldErrors).length;
+
+	// Collapsed-panel summary: who + how much, once known.
+	const panelSummary = useMemo(() => {
+		if (kind === "rental") {
+			const rent = Number(rentalState.monthlyRent || 0);
+			const parts = [
+				rentalState.tenantName.trim() || null,
+				rent > 0 ? `${rent.toLocaleString("tr-TR")} ${rentalState.currency}/ay` : null,
+			].filter(Boolean);
+			return parts.length ? parts.join(" · ") : "Taraflar, tutarlar ve tarihler";
+		}
+		const price = Number(salesState.salePrice || 0);
+		const parts = [
+			salesState.buyerName.trim() || null,
+			price > 0 ? `${price.toLocaleString("tr-TR")} ${salesState.currency}` : null,
+		].filter(Boolean);
+		return parts.length ? parts.join(" · ") : "Taraflar, tutarlar ve tarihler";
+	}, [kind, rentalState.tenantName, rentalState.monthlyRent, rentalState.currency, salesState.buyerName, salesState.salePrice, salesState.currency]);
 
 	const stepIndex = STEPS.indexOf(step);
 
@@ -654,97 +886,194 @@ export function DocumentWizard() {
 					<div className="flex justify-between gap-2 pt-4">
 						<Button variant="ghost" onClick={() => setStep("property")}>← Geri</Button>
 						<div className="flex gap-2">
-							<Button variant="ghost" onClick={() => { applyClient(null); setStep("details"); }}>Atla</Button>
-							<Button onClick={() => setStep("details")}>Devam →</Button>
+							<Button variant="ghost" onClick={() => { applyClient(null); setStep("preview"); }}>Atla</Button>
+							<Button onClick={() => setStep("preview")}>Devam →</Button>
 						</div>
 					</div>
 				</div>
 			)}
 
-			{/* Step 4: details */}
-			{step === "details" && property && kind === "rental" && (
-				<div className="space-y-5">
-					<div>
-						<h2 className="font-display text-lg font-semibold text-base-content">Kira sözleşmesi detayları</h2>
-						<p className="text-sm text-base-content/60 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
-					</div>
-
-					<RentalDetailsForm state={rentalState} onChange={patchRental} errors={fieldErrors} />
-
-					{Object.keys(fieldErrors).length > 0 && (
-						<Alert>Bazı zorunlu alanlar eksik — yukarıda işaretlenen alanları kontrol edin.</Alert>
-					)}
-
-					<div className="flex justify-between gap-2 pt-4">
-						<Button variant="ghost" onClick={() => setStep("client")}>← Geri</Button>
-						<Button onClick={goToPreview}>Önizleme →</Button>
-					</div>
-				</div>
-			)}
-
-			{step === "details" && property && kind === "sales" && (
-				<div className="space-y-5">
-					<div>
-						<h2 className="font-display text-lg font-semibold text-base-content">Satış sözleşmesi detayları</h2>
-						<p className="text-sm text-base-content/60 mt-1">{property.address_line}{property.city ? `, ${property.city}` : ""}</p>
-					</div>
-
-					<SalesDetailsForm state={salesState} onChange={patchSales} errors={fieldErrors} />
-
-					{Object.keys(fieldErrors).length > 0 && (
-						<Alert>Bazı zorunlu alanlar eksik — yukarıda işaretlenen alanları kontrol edin.</Alert>
-					)}
-
-					<div className="flex justify-between gap-2 pt-4">
-						<Button variant="ghost" onClick={() => setStep("client")}>← Geri</Button>
-						<Button onClick={goToPreview}>Önizleme →</Button>
-					</div>
-				</div>
-			)}
-
-			{/* Step 4: preview */}
-			{step === "preview" && previewData && (
+			{/* Step 4: essentials panel + editor (merged stage) */}
+			{step === "preview" && wizardData && (kind === "rental" || kind === "sales") && (
 				<div className="space-y-4">
-					<h2 className="font-display text-lg font-semibold text-base-content">İncele ve oluştur</h2>
-					<div className="h-[60vh] sm:h-[72vh] bg-base-200 rounded-2xl overflow-hidden border border-base-300">
-						{!fontsLoaded ? (
-							<div className="h-full flex items-center justify-center"><Spinner /></div>
-						) : (
-						<PDFBlobProvider document={<PDFDocument kind={kind} data={previewData} branding={previewBranding} />}>
-							{({ url, loading, error: blobError }) => {
-								if (loading || !url) {
-									return (
-										<div className="h-full flex items-center justify-center"><Spinner /></div>
-									);
-								}
-								if (blobError) {
-									return (
-										<div className="h-full flex items-center justify-center text-sm text-error p-6">
-											Önizleme oluşturulamadı: {String(blobError)}
-										</div>
-									);
-								}
-								return (
-									<iframe
-										src={`${url}#toolbar=0&navpanes=0`}
-										className="w-full h-full border-0"
-										title={previewLabel}
-									/>
-								);
-							}}
-						</PDFBlobProvider>
+					<div className="flex items-center justify-between gap-3 flex-wrap">
+						<div>
+							<h2 className="font-display text-lg font-semibold text-base-content">Sözleşmeyi hazırlayın</h2>
+							<p className="text-sm text-base-content/60 mt-0.5">
+								Bilgileri doldurun — belge yazdıkça güncellenir. Metinlere tıklayarak düzenleyin, blokları sürükleyin.
+							</p>
+						</div>
+						{/* Edit / PDF preview toggle */}
+						<div className="flex gap-1 rounded-xl bg-base-200 p-1" role="tablist" aria-label="Görünüm">
+							{(["edit", "preview"] as const).map((m) => (
+								<button
+									key={m}
+									type="button"
+									role="tab"
+									aria-selected={viewMode === m}
+									onClick={() => switchMode(m)}
+									className={cn(
+										"px-3 h-9 rounded-lg text-sm font-medium transition-colors",
+										viewMode === m
+											? "bg-base-100 text-base-content shadow-sm"
+											: "text-base-content/60 hover:text-base-content",
+									)}
+								>
+									{m === "edit" ? "Düzenle" : "PDF Önizleme"}
+								</button>
+							))}
+						</div>
+					</div>
+
+					{/* Essentials panel — the fields the tenant/buyer + lease/sale
+					    records need; the document rebuilds live from them. */}
+					<div className="rounded-2xl border border-base-300 bg-base-100">
+						<button
+							type="button"
+							onClick={() => setPanelOpen((o) => !o)}
+							aria-expanded={panelOpen}
+							className="w-full flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 text-left"
+						>
+							<span className="min-w-0">
+								<span className="block font-display text-sm font-semibold text-base-content">Sözleşme bilgileri</span>
+								<span className="block text-xs text-base-content/55 truncate mt-0.5">{panelSummary}</span>
+							</span>
+							<span className="flex items-center gap-3 shrink-0">
+								{errorCount > 0 && (
+									<span className="text-xs font-semibold text-error">{errorCount} eksik alan</span>
+								)}
+								<ChevronDown
+									className={cn(
+										"w-4 h-4 text-base-content/50 transition-transform duration-200",
+										panelOpen && "rotate-180",
+									)}
+								/>
+							</span>
+						</button>
+						{panelOpen && (
+							<div className="px-4 sm:px-5 pb-5 pt-4 border-t border-base-300 space-y-5">
+								<p className="text-xs text-base-content/55">
+									Bu bilgiler {kind === "rental" ? "kiracı ve kira kaydını" : "alıcı ve satış kaydını"} oluşturur;
+									belgeyi özelleştirene kadar değişiklikler belgeye anında yansır.
+								</p>
+								{/* Cover fields — the cover page itself is generated, not block-edited. */}
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									<FormField label="Belge başlığı">
+										<Input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
+									</FormField>
+									<FormField label="Kapak alt başlığı">
+										<Input value={docSubtitle} onChange={(e) => setDocSubtitle(e.target.value)} />
+									</FormField>
+								</div>
+								{kind === "rental" ? (
+									<RentalDetailsForm state={rentalState} onChange={patchRental} errors={fieldErrors} />
+								) : (
+									<SalesDetailsForm state={salesState} onChange={patchSales} errors={fieldErrors} />
+								)}
+								{errorCount > 0 && (
+									<Alert>Bazı zorunlu alanlar eksik — yukarıda işaretlenen alanları kontrol edin.</Alert>
+								)}
+							</div>
 						)}
 					</div>
+
+					{docStale && (
+						<Alert
+							tone="warning"
+							action={<Button size="sm" onClick={rebuildFromData}>Belgeyi yeniden oluştur</Button>}
+						>
+							Bilgiler değişti ancak belgedeki özel düzenlemeleriniz korunduğu için uygulanmadı.
+							Yeniden oluşturmak belgeyi yeni bilgilerle şablondan kurar ve düzenlemelerinizi siler.
+						</Alert>
+					)}
+
+					{!fontsLoaded || !clausesReady || !docJson ? (
+						<div className="h-[50vh] flex items-center justify-center"><Spinner /></div>
+					) : viewMode === "edit" ? (
+						<div className="rounded-2xl bg-base-200 border border-base-300 px-3 sm:px-6 pt-2">
+							<ContractEditor
+								initialDoc={docJson}
+								palette={previewBranding?.palette ?? BRAND_PALETTES.kagu}
+								apiRef={editorApi}
+								onChangeJson={(json) => setDocJson(json)}
+								onDirty={() => setDocDirty(true)}
+								onReset={() => setConfirmReset(true)}
+							/>
+						</div>
+					) : (
+						<div className="h-[60vh] sm:h-[72vh] bg-base-200 rounded-2xl overflow-hidden border border-base-300">
+							{previewJson ? (
+								<PDFBlobProvider
+									document={
+										<EditorPDFDocument
+											kind={kind}
+											title={docTitle.trim() || (kind === "rental" ? "Konut Kira Sözleşmesi" : "Satılık Alım, Satış Sözleşmesi")}
+											subtitle={docSubtitle.trim() || null}
+											doc={previewJson}
+											sourceData={wizardData}
+											branding={previewBranding}
+										/>
+									}
+								>
+									{({ url, loading, error: blobError }) => {
+										if (loading || !url) {
+											return (
+												<div className="h-full flex items-center justify-center"><Spinner /></div>
+											);
+										}
+										if (blobError) {
+											return (
+												<div className="h-full flex items-center justify-center text-sm text-error p-6">
+													Önizleme oluşturulamadı: {String(blobError)}
+												</div>
+											);
+										}
+										return (
+											<iframe
+												src={`${url}#toolbar=0&navpanes=0`}
+												className="w-full h-full border-0"
+												title={previewLabel}
+											/>
+										);
+									}}
+								</PDFBlobProvider>
+							) : (
+								<div className="h-full flex items-center justify-center"><Spinner /></div>
+							)}
+						</div>
+					)}
+
 					<div className="flex justify-between gap-2 pt-2">
-						<Button variant="ghost" onClick={() => setStep("details")} disabled={submitting}>← Geri</Button>
+						<Button
+							variant="ghost"
+							disabled={submitting}
+							onClick={() => {
+								const json = currentDocJson();
+								if (json) setDocJson(json);
+								setStep("client");
+							}}
+						>
+							← Geri
+						</Button>
 						<Button
 							onClick={handleConfirm}
 							loading={submitting}
+							disabled={!docJson}
 							className="bg-success text-success-content hover:brightness-110 shadow-soft"
 						>
 							{submitting ? "Oluşturuluyor…" : "Onayla ve PDF oluştur"}
 						</Button>
 					</div>
+
+					<ConfirmDialog
+						open={confirmReset}
+						title="Belge şablona sıfırlansın mı?"
+						message="Bu adımda yaptığınız tüm metin ve blok değişiklikleri silinir; belge, girdiğiniz bilgiler ve ekip maddelerinizle yeniden oluşturulur."
+						confirmLabel="Sıfırla"
+						cancelLabel="Vazgeç"
+						onConfirm={onResetConfirmed}
+						onCancel={() => setConfirmReset(false)}
+					/>
 				</div>
 			)}
 		</div>

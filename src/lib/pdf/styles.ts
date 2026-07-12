@@ -25,6 +25,13 @@ Font.registerHyphenationCallback((word) => [word]);
 // Unicode note: built-in Helvetica is WinAnsi-only and renders Turkish glyphs
 // (ğ, İ, ş, ı, …) as fallbacks with stacked diacritics. Google Sans Flex covers
 // Latin Extended-A in full. Weights: 400 body · 500 labels · 700 headings.
+//
+// Italic note: Google Sans Flex ships NO italic face (verified against the
+// Google Fonts API — `ital@1` returns "font family not found"), and react-pdf
+// does not synthesize oblique glyphs. An italic mark in editor content
+// therefore renders as regular weight; the editor toolbar deliberately omits
+// an italic button. Do not add `fontStyle: "italic"` styles here without also
+// adding a real italic TTF to public/fonts and registering it below.
 let fontsRegistered = false;
 export function ensurePdfFonts(): void {
 	if (fontsRegistered || typeof window === "undefined") return;
@@ -83,12 +90,10 @@ export const colors = {
 	indigo500: "#6366f1",
 	indigo50:  "#eef2ff",
 	amber500: "#f59e0b",
-	// Avera brand palette — used by the sales agreement only.
-	navy_brand: "#051526",
-	gray_brand: "#9D9F9E",
-	red_brand:  "#B11211",
-	navy_brand_dark: "#020a13",
-	navy_brand_tint: "#e8ebef",
+	// Hairline used for structural rules (row separators, card borders). Kept
+	// palette-neutral: brand color is carried by chips, numerals and fills, not
+	// by every border on the page.
+	hairline: "#e4e7eb",
 } as const;
 
 export const styles = StyleSheet.create({
@@ -110,30 +115,28 @@ export const styles = StyleSheet.create({
 		backgroundColor: colors.white,
 	},
 
-	// ── Header ─────────────────────────────────────────────────────────
+	// ── Header (receipt / listing) ─────────────────────────────────────
 	headerRow: {
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "flex-end",
-		marginBottom: 10,
+		marginBottom: 12,
 	},
 	docType: {
-		fontSize: 20,
-		fontWeight: "bold",
+		fontSize: 22,
+		fontWeight: 700,
 		color: colors.slate900,
-		letterSpacing: 1.2,
+		letterSpacing: -0.3,
 		marginBottom: 2,
 	},
 	refLine: {
-		fontSize: 7.5,
+		fontSize: 8,
 		color: colors.slate500,
-		letterSpacing: 1.2,
-		textTransform: "uppercase",
-		fontWeight: "bold",
+		fontWeight: 500,
 	},
 	dividerThin: {
 		width: "100%",
-		height: 1,
+		height: 1.5,
 		backgroundColor: colors.slate900,
 		marginBottom: 22,
 	},
@@ -141,23 +144,21 @@ export const styles = StyleSheet.create({
 	// ── Hero card (property address up top) ────────────────────────────
 	hero: {
 		backgroundColor: colors.slate50,
-		borderLeftWidth: 3,
-		borderLeftColor: colors.slate900,
-		paddingVertical: 12,
+		paddingVertical: 13,
 		paddingHorizontal: 16,
 		marginBottom: 22,
 	},
 	heroLabel: {
 		fontSize: 7,
-		color: colors.slate400,
+		color: colors.slate500,
 		textTransform: "uppercase",
-		letterSpacing: 1.5,
+		letterSpacing: 1.2,
 		fontWeight: 500,
 		marginBottom: 5,
 	},
 	heroAddress: {
-		fontSize: 14,
-		fontWeight: "bold",
+		fontSize: 15,
+		fontWeight: 700,
 		color: colors.slate900,
 	},
 	heroMeta: {
@@ -176,16 +177,14 @@ export const styles = StyleSheet.create({
 		marginBottom: 10,
 	},
 	sectionTitle: {
-		fontSize: 8,
-		color: colors.slate500,
-		textTransform: "uppercase",
-		letterSpacing: 1.5,
-		fontWeight: 500,
+		fontSize: 10,
+		color: colors.slate900,
+		fontWeight: 700,
 	},
 	sectionRule: {
 		flex: 1,
 		height: 0.5,
-		backgroundColor: colors.slate200,
+		backgroundColor: colors.hairline,
 		marginLeft: 10,
 	},
 	bodyText: {
@@ -207,15 +206,15 @@ export const styles = StyleSheet.create({
 	},
 	cardTitle: {
 		fontSize: 7,
-		color: colors.slate400,
+		color: colors.slate500,
 		textTransform: "uppercase",
-		letterSpacing: 1.5,
+		letterSpacing: 1.2,
 		fontWeight: 500,
 		marginBottom: 8,
 	},
 	cardPrimary: {
 		fontSize: 12,
-		fontWeight: "bold",
+		fontWeight: 700,
 		color: colors.slate900,
 		marginBottom: 6,
 	},
@@ -228,29 +227,27 @@ export const styles = StyleSheet.create({
 	kvRow: {
 		flexDirection: "row",
 		justifyContent: "space-between",
-		paddingVertical: 5,
+		paddingVertical: 5.5,
 		borderBottomWidth: 0.5,
-		borderBottomColor: colors.slate100,
+		borderBottomColor: colors.hairline,
 	},
 	kvRowLast: {
 		flexDirection: "row",
 		justifyContent: "space-between",
-		paddingVertical: 5,
+		paddingVertical: 5.5,
 	},
 	kvLabel: {
 		fontSize: 8.5,
 		color: colors.slate500,
 		fontWeight: 500,
-		textTransform: "uppercase",
-		letterSpacing: 0.5,
 	},
 	kvValue: {
 		fontSize: 9.5,
 		color: colors.slate900,
-		fontWeight: "bold",
+		fontWeight: 700,
 	},
 
-	// ── Highlight box (rent + deposit) ─────────────────────────────────
+	// ── Highlight box (listing price / size) ───────────────────────────
 	highlightRow: {
 		flexDirection: "row",
 		gap: 12,
@@ -258,7 +255,6 @@ export const styles = StyleSheet.create({
 	},
 	highlightBox: {
 		flex: 1,
-		backgroundColor: colors.indigo50,
 		borderRadius: 4,
 		paddingVertical: 14,
 		paddingHorizontal: 16,
@@ -266,43 +262,41 @@ export const styles = StyleSheet.create({
 	},
 	highlightLabel: {
 		fontSize: 7,
-		color: colors.indigo500,
 		textTransform: "uppercase",
-		letterSpacing: 1.5,
+		letterSpacing: 1.2,
 		fontWeight: 500,
 		marginBottom: 6,
 	},
 	highlightValue: {
-		fontSize: 18,
-		fontWeight: "bold",
-		color: colors.slate900,
+		fontSize: 20,
+		fontWeight: 700,
 	},
 	highlightCurrency: {
 		fontSize: 9,
-		fontWeight: "bold",
+		fontWeight: 700,
 		color: colors.slate500,
 		marginLeft: 4,
 	},
 
 	// ── Clauses list ───────────────────────────────────────────────────
+	// Hanging-indent rows separated by hairlines; the number carries the
+	// accent color (set inline from the palette). No zebra banding.
 	clauseRow: {
 		flexDirection: "row",
 		paddingVertical: 7,
-		paddingHorizontal: 12,
 		alignItems: "flex-start",
+		borderBottomWidth: 0.5,
+		borderBottomColor: colors.hairline,
 	},
-	clauseRowAlt: {
+	clauseRowLast: {
 		flexDirection: "row",
 		paddingVertical: 7,
-		paddingHorizontal: 12,
 		alignItems: "flex-start",
-		backgroundColor: colors.slate50,
 	},
 	clauseNumber: {
-		width: 22,
+		width: 24,
 		fontSize: 9,
-		fontWeight: "bold",
-		color: colors.slate400,
+		fontWeight: 700,
 	},
 	clauseText: {
 		flex: 1,
@@ -318,7 +312,7 @@ export const styles = StyleSheet.create({
 	},
 	signatureBox: {
 		flex: 1,
-		paddingTop: 30,
+		paddingTop: 34,
 	},
 	signatureLine: {
 		borderBottomWidth: 1,
@@ -326,16 +320,19 @@ export const styles = StyleSheet.create({
 		marginBottom: 6,
 	},
 	signatureLabel: {
-		fontSize: 7.5,
-		color: colors.slate600,
-		textTransform: "uppercase",
-		letterSpacing: 1.2,
+		fontSize: 8.5,
+		color: colors.slate900,
 		fontWeight: 700,
 	},
 	signatureSubLabel: {
-		fontSize: 7,
-		color: colors.slate400,
+		fontSize: 7.5,
+		color: colors.slate500,
 		marginTop: 2,
+	},
+	signatureHint: {
+		fontSize: 6.5,
+		color: colors.slate400,
+		marginTop: 3,
 	},
 
 	// ── Footer ─────────────────────────────────────────────────────────
@@ -346,29 +343,26 @@ export const styles = StyleSheet.create({
 		right: PAGE_PADDING,
 		height: FOOTER_HEIGHT,
 		borderTopWidth: 0.5,
-		borderTopColor: colors.slate200,
+		borderTopColor: colors.hairline,
 		paddingTop: 8,
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
 	},
 	footerText: {
-		fontSize: 6.5,
-		color: colors.slate400,
-		textTransform: "uppercase",
-		letterSpacing: 1.5,
+		fontSize: 7,
+		color: colors.slate500,
 		fontWeight: 500,
 	},
 	pageNumber: {
 		fontSize: 7,
-		color: colors.slate400,
+		color: colors.slate500,
 		fontWeight: 500,
 	},
 
-	// ── Sales agreement — Avera branding ──────────────────────────────
-	// Hero title bar across the very top of page 1.
-	salesHero: {
-		backgroundColor: colors.navy_brand,
+	// ── Agreement title bar ────────────────────────────────────────────
+	// Full-bleed brand bar across the very top of the body page.
+	docHero: {
 		paddingVertical: 16,
 		paddingHorizontal: PAGE_PADDING, // align inner text with the body column
 		marginHorizontal: -PAGE_PADDING, // bleed to the page edge
@@ -378,107 +372,120 @@ export const styles = StyleSheet.create({
 		justifyContent: "space-between",
 		alignItems: "center",
 	},
-	salesHeroTitle: {
-		fontSize: 14,
-		fontWeight: "bold",
+	docHeroTitle: {
+		fontSize: 15,
+		fontWeight: 700,
 		color: colors.white,
-		letterSpacing: 1.5,
-		textTransform: "uppercase",
+		letterSpacing: 0.2,
 	},
-	salesHeroDate: {
+	docHeroDate: {
 		fontSize: 7.5,
 		fontWeight: 500,
-		color: colors.gray_brand,
-		letterSpacing: 1.5,
-		textTransform: "uppercase",
 	},
 
-	// Navy chip used as the label for sections A, B, C, D, E.
-	salesSectionChip: {
-		alignSelf: "flex-start",
-		backgroundColor: colors.navy_brand,
-		paddingVertical: 4,
-		paddingHorizontal: 10,
+	// ── Section chip ───────────────────────────────────────────────────
+	// Accent square + tracked label. Replaces the old solid navy box.
+	chipRow: {
+		flexDirection: "row",
+		alignItems: "center",
 		marginBottom: 8,
 	},
-	salesSectionChipText: {
-		fontSize: 8,
-		fontWeight: "bold",
-		color: colors.white,
-		letterSpacing: 1.5,
+	chipSquare: {
+		width: 7,
+		height: 7,
+		marginRight: 7,
+	},
+	chipText: {
+		fontSize: 8.5,
+		fontWeight: 700,
+		letterSpacing: 1.1,
 		textTransform: "uppercase",
 	},
 
-	// Sales card — replaces the default gray Card on sales pages.
-	// No `flex` here: like `propBlock`, this card sizes to its content height and
-	// gets full width from the parent column's default `alignItems: stretch`. A
-	// `flex: 1` would expand to flexBasis:0 and, under the fixed-height A4 Page,
+	// ── Party card ─────────────────────────────────────────────────────
+	// Full hairline border (no accent side-stripe). Role identity is carried
+	// by a small tinted square with the role initial, not a colored border.
+	// No `flex` here: the card sizes to its content height and gets full width
+	// from the parent column's default `alignItems: stretch`. A `flex: 1`
+	// would expand to flexBasis:0 and, under the fixed-height A4 Page,
 	// collapse the box shorter than its stacked fields (overflow + overlap).
-	salesCard: {
+	partyCard: {
 		borderWidth: 0.75,
-		borderColor: colors.gray_brand,
-		borderLeftWidth: 3,
-		borderLeftColor: colors.navy_brand,
-		paddingVertical: 10,
+		borderColor: colors.hairline,
+		borderRadius: 3,
+		paddingVertical: 11,
 		paddingHorizontal: 12,
 	},
-	// Each field is wrapped in a View with a minHeight floor (mirroring propGridCell).
-	// Defense-in-depth against the lineHeight-compounding bug fixed on `styles.page`:
-	// View minHeight is unaffected by text relayout, so a row can never collapse to
-	// zero height. Floors comfortably exceed single-line glyph heights (no clipping),
-	// and minHeight does not cap growth, so wrapping addresses still expand to fit.
-	// Spacer between logical groups (id block, contact block).
-	salesCardGroupGap: {
-		height: 6,
+	partyCardHeader: {
+		flexDirection: "row",
+		alignItems: "center",
+		marginBottom: 8,
 	},
-	salesCardFieldLabel: {
-		minHeight: 12,
+	partyInitial: {
+		width: 18,
+		height: 18,
+		borderRadius: 2,
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 8,
 	},
-	salesCardFieldValue: {
-		minHeight: 14,
-		marginBottom: 4,
+	partyInitialText: {
+		fontSize: 9,
+		fontWeight: 700,
 	},
-	salesCardFieldLine: {
-		minHeight: 12,
-		marginBottom: 2,
+	partyName: {
+		fontSize: 11,
+		fontWeight: 700,
+		color: colors.slate900,
 	},
-	salesCardLabel: {
-		fontSize: 6.5,
+	partyRole: {
+		fontSize: 7,
 		fontWeight: 500,
-		color: colors.navy_brand,
 		textTransform: "uppercase",
-		letterSpacing: 1.5,
+		letterSpacing: 1,
+		marginBottom: 1,
+	},
+	// Each field is wrapped in a View with a minHeight floor (mirroring
+	// propGridCell). Defense-in-depth against the lineHeight-compounding bug
+	// fixed on `styles.page`: View minHeight is unaffected by text relayout, so
+	// a row can never collapse to zero height. Floors comfortably exceed
+	// single-line glyph heights (no clipping), and minHeight does not cap
+	// growth, so wrapping addresses still expand to fit.
+	partyFieldRow: {
+		flexDirection: "row",
+		minHeight: 14,
 		marginBottom: 3,
 	},
-	salesCardValue: {
-		fontSize: 9.5,
-		color: colors.slate900,
-		fontWeight: "bold",
+	partyFieldLabel: {
+		width: 78,
+		fontSize: 7.5,
+		fontWeight: 500,
+		color: colors.slate500,
+		paddingTop: 1,
 	},
-	salesCardLine: {
-		fontSize: 8.5,
-		color: colors.slate700,
+	partyFieldValue: {
+		flex: 1,
+		fontSize: 9,
+		color: colors.slate800,
 	},
 
-	// Property "C" block — single full-width card with 4-col KV grid.
+	// ── Property block — single full-width card with 4-col KV grid ─────
 	propBlock: {
 		borderWidth: 0.75,
-		borderColor: colors.gray_brand,
-		borderLeftWidth: 3,
-		borderLeftColor: colors.navy_brand,
+		borderColor: colors.hairline,
+		borderRadius: 3,
 		padding: 12,
 	},
 	propAddressLabel: {
-		fontSize: 6.5,
+		fontSize: 7,
 		fontWeight: 500,
-		color: colors.navy_brand,
 		textTransform: "uppercase",
-		letterSpacing: 1.5,
+		letterSpacing: 1,
 		marginBottom: 3,
 	},
 	propAddressValue: {
-		fontSize: 10,
-		fontWeight: "bold",
+		fontSize: 11,
+		fontWeight: 700,
 		color: colors.slate900,
 		marginBottom: 10,
 	},
@@ -493,142 +500,104 @@ export const styles = StyleSheet.create({
 		minHeight: 32,
 	},
 	propGridLabel: {
-		fontSize: 6,
+		fontSize: 6.5,
 		fontWeight: 500,
-		color: colors.gray_brand,
-		textTransform: "uppercase",
-		letterSpacing: 0.5,
+		color: colors.slate500,
 		marginBottom: 2,
 	},
 	propGridValue: {
-		fontSize: 9,
+		fontSize: 9.5,
 		color: colors.slate800,
+		fontWeight: 500,
 	},
 
-	// Commission table (E).
-	commissionTable: {
+	// ── Table (utilities / inventory / commission) ─────────────────────
+	table: {
 		borderWidth: 0.5,
-		borderColor: colors.gray_brand,
+		borderColor: colors.hairline,
+		borderRadius: 3,
 	},
-	commissionHeaderRow: {
+	tableHeaderRow: {
 		flexDirection: "row",
-		backgroundColor: colors.navy_brand,
 	},
-	commissionHeaderCell: {
+	tableHeaderCell: {
 		flex: 1,
 		paddingVertical: 6,
 		paddingHorizontal: 8,
 		fontSize: 7,
-		fontWeight: "bold",
+		fontWeight: 700,
 		color: colors.white,
 		textTransform: "uppercase",
 		letterSpacing: 0.5,
-		borderRightWidth: 0.5,
-		borderRightColor: colors.navy_brand_dark,
 	},
-	commissionHeaderCellLeft: {
+	tableRow: {
+		flexDirection: "row",
+		borderTopWidth: 0.5,
+		borderTopColor: colors.hairline,
+	},
+	tableLabelCell: {
 		flex: 1.2,
 		paddingVertical: 6,
 		paddingHorizontal: 8,
-		fontSize: 7,
-		fontWeight: "bold",
-		color: colors.white,
-		textTransform: "uppercase",
-		letterSpacing: 0.5,
-		borderRightWidth: 0.5,
-		borderRightColor: colors.navy_brand_dark,
+		fontSize: 8.5,
+		fontWeight: 700,
 	},
-	commissionRow: {
-		flexDirection: "row",
-		borderTopWidth: 0.5,
-		borderTopColor: colors.gray_brand,
-	},
-	commissionRowAlt: {
-		flexDirection: "row",
-		borderTopWidth: 0.5,
-		borderTopColor: colors.gray_brand,
-		backgroundColor: colors.navy_brand_tint,
-	},
-	commissionLabelCell: {
-		flex: 1.2,
-		paddingVertical: 6,
-		paddingHorizontal: 8,
-		fontSize: 8,
-		fontWeight: "bold",
-		color: colors.navy_brand,
-		borderRightWidth: 0.5,
-		borderRightColor: colors.gray_brand,
-	},
-	commissionDataCell: {
+	tableDataCell: {
 		flex: 1,
 		paddingVertical: 6,
 		paddingHorizontal: 8,
-		fontSize: 8,
+		fontSize: 8.5,
 		color: colors.slate800,
-		borderRightWidth: 0.5,
-		borderRightColor: colors.gray_brand,
-		textAlign: "right",
 	},
 
-	// Sale price / kapora pair — replaces HighlightPair on sales.
-	salesPriceBox: {
+	// ── Money pair (rent+deposit / price+kapora) ───────────────────────
+	moneyBoxFilled: {
 		flex: 1,
-		backgroundColor: colors.navy_brand,
+		borderRadius: 3,
 		paddingVertical: 14,
 		paddingHorizontal: 16,
 	},
-	salesPriceLabel: {
-		fontSize: 7,
-		fontWeight: 500,
-		color: colors.gray_brand,
-		textTransform: "uppercase",
-		letterSpacing: 1.5,
-		marginBottom: 6,
-	},
-	salesPriceValue: {
-		fontSize: 18,
-		fontWeight: "bold",
-		color: colors.white,
-	},
-	salesDepositBox: {
+	moneyBoxOutlined: {
 		flex: 1,
 		borderWidth: 1,
-		borderColor: colors.red_brand,
+		borderRadius: 3,
 		paddingVertical: 14,
 		paddingHorizontal: 16,
 	},
-	salesDepositLabel: {
+	moneyLabel: {
 		fontSize: 7,
 		fontWeight: 500,
-		color: colors.red_brand,
 		textTransform: "uppercase",
-		letterSpacing: 1.5,
+		letterSpacing: 1.2,
 		marginBottom: 6,
 	},
-	salesDepositValue: {
-		fontSize: 18,
-		fontWeight: "bold",
-		color: colors.navy_brand,
+	moneyValue: {
+		fontSize: 20,
+		fontWeight: 700,
 	},
-	salesCurrencyTag: {
+	moneyCurrency: {
 		fontSize: 9,
-		fontWeight: "bold",
+		fontWeight: 700,
 		marginLeft: 4,
 	},
 
-	// Tax responsibility tag below the price boxes.
-	avaraLine: {
+	// ── Callout (note / warning) ───────────────────────────────────────
+	callout: {
+		borderRadius: 3,
+		paddingVertical: 9,
+		paddingHorizontal: 12,
+		marginTop: 8,
+	},
+	calloutText: {
+		fontSize: 8.5,
+	},
+
+	// Centered connective line (e.g. the "yetkilendiren MAL SAHİBİ" sentence).
+	connectiveLine: {
 		fontSize: 8,
 		color: colors.slate600,
 		textAlign: "center",
 		marginTop: 12,
 		marginBottom: 4,
-	},
-
-	// Signature accent bar (rendered below each signature label when SignatureBlock
-	// receives an accentColor prop).
-	signatureAccentBar: {
-		height: 5,
-		marginTop: 4,
 	},
 });

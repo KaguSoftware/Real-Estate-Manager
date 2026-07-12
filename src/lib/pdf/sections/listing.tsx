@@ -1,105 +1,154 @@
-import { View, Image } from "@react-pdf/renderer";
-import {
-	DocHeader,
-	HeroAddress,
-	SectionTitle,
-	KVList,
-	HighlightPair,
-	TextSection,
-	formatDate,
-} from "./common";
-import type { ListingPDFData } from "../types";
-import { styles, colors } from "../styles";
+// Client-facing property listing — photo-first, magazine-style page shared
+// with clients (e.g. over WhatsApp) instead of typing out details.
 
-const fmtMoney = (n: number) =>
-	n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+import { View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { useBranding } from "../branding";
+import { TextSection, SectionTitle, fmtMoney } from "./common";
+import type { ListingPDFData } from "../types";
+import { styles, colors, PAGE_PADDING } from "../styles";
 
 export function PropertyListing({ data }: { data: ListingPDFData }) {
 	const {
 		address_line, city, listing_type, nitelik, bedrooms, bathrooms,
-		size_sqm, list_price, currency, notes, images, generatedAt,
+		size_sqm, list_price, currency, notes, images,
 	} = data;
+	const { palette } = useBranding();
 
 	const [hero, ...rest] = images;
+	const typeLabel = listing_type === "for_rent" ? "Kiralık" : "Satılık";
+	const priceLabel = listing_type === "for_rent" ? "Aylık Kira" : "Satış Fiyatı";
 
-	const typeLabel = listing_type === "for_rent" ? "For Rent" : "For Sale";
-	const heroMeta = [city, typeLabel].filter(Boolean).join("  •  ");
-
-	const facts: { label: string; value: string }[] = [];
-	if (nitelik) facts.push({ label: "Type", value: nitelik });
-	if (bedrooms != null || bathrooms != null)
-		facts.push({ label: "Bedrooms / Baths", value: `${bedrooms ?? "—"} / ${bathrooms ?? "—"}` });
-	if (size_sqm != null) facts.push({ label: "Size", value: `${size_sqm} m²` });
-	facts.push({ label: "Listing", value: typeLabel });
+	const stats: { label: string; value: string }[] = [];
+	if (size_sqm != null) stats.push({ label: "Yüz Ölçümü", value: `${size_sqm} m²` });
+	if (nitelik) stats.push({ label: "Nitelik", value: nitelik });
+	if (bedrooms != null) stats.push({ label: "Oda", value: String(bedrooms) });
+	if (bathrooms != null) stats.push({ label: "Banyo", value: String(bathrooms) });
 
 	return (
 		<View>
-			<DocHeader
-				title="Property Listing"
-				subtitle={`Prepared ${formatDate(generatedAt)}`}
-			/>
-
-			<HeroAddress address={address_line} meta={heroMeta || undefined} />
-
-			{/* Photos first — hero, then a grid of the rest. */}
+			{/* Full-bleed hero photo, edge to edge. */}
 			{hero ? (
-				<View style={styles.section}>
-					{/* eslint-disable-next-line jsx-a11y/alt-text */}
-					<Image src={hero} style={listingStyles.heroImage} />
-					{rest.length > 0 && (
-						<View style={listingStyles.thumbGrid}>
-							{rest.map((url, i) => (
-								// eslint-disable-next-line jsx-a11y/alt-text
-								<Image key={i} src={url} style={listingStyles.thumb} />
-							))}
+				// eslint-disable-next-line jsx-a11y/alt-text
+				<Image src={hero} style={ls.heroImage} />
+			) : null}
+
+			{/* Full-bleed brand band: address + type chip left, price right. */}
+			<View style={[ls.band, { backgroundColor: palette.primary }, hero ? {} : { marginTop: -PAGE_PADDING }]}>
+				<View style={{ flex: 1, marginRight: 16 }}>
+					<View style={[ls.typeChip, { backgroundColor: palette.accent }]}>
+						<Text style={ls.typeChipText}>{typeLabel}</Text>
+					</View>
+					<Text style={ls.bandAddress}>{address_line}</Text>
+					{city ? <Text style={[ls.bandCity, { color: palette.muted }]}>{city}</Text> : null}
+				</View>
+				{list_price != null ? (
+					<View style={{ alignItems: "flex-end" }}>
+						<Text style={[styles.moneyLabel, { color: palette.muted }]}>{priceLabel}</Text>
+						<View style={{ flexDirection: "row", alignItems: "baseline" }}>
+							<Text style={[styles.moneyValue, { fontSize: 22, color: colors.white }]}>{fmtMoney(list_price)}</Text>
+							<Text style={[styles.moneyCurrency, { color: palette.muted }]}>{currency}</Text>
 						</View>
-					)}
+					</View>
+				) : null}
+			</View>
+
+			{/* Stat tiles */}
+			{stats.length > 0 ? (
+				<View style={ls.statRow} wrap={false}>
+					{stats.map((s, i) => (
+						<View key={i} style={[ls.statTile, { backgroundColor: palette.tint }]}>
+							<Text style={[ls.statValue, { color: palette.primary }]}>{s.value}</Text>
+							<Text style={ls.statLabel}>{s.label}</Text>
+						</View>
+					))}
 				</View>
 			) : null}
 
-			{/* Price highlight */}
-			{list_price != null && (
-				<View style={styles.section} wrap={false}>
-					<SectionTitle title={listing_type === "for_rent" ? "Monthly Rent" : "Price"} />
-					<HighlightPair
-						left={{
-							label: listing_type === "for_rent" ? "Monthly Rent" : "Asking Price",
-							value: fmtMoney(list_price),
-							currency,
-						}}
-						right={{
-							label: "Size",
-							value: size_sqm != null ? `${size_sqm}` : "—",
-							currency: size_sqm != null ? "m²" : "",
-						}}
-					/>
+			{/* Remaining photos */}
+			{rest.length > 0 ? (
+				<View style={styles.section}>
+					<SectionTitle title="Fotoğraflar" />
+					<View style={ls.thumbGrid}>
+						{rest.map((url, i) => (
+							// eslint-disable-next-line jsx-a11y/alt-text
+							<Image key={i} src={url} style={ls.thumb} />
+						))}
+					</View>
 				</View>
-			)}
-
-			{/* Details */}
-			<View style={styles.section} wrap={false}>
-				<SectionTitle title="Details" />
-				<KVList items={facts} />
-			</View>
+			) : null}
 
 			{/* Description */}
 			{notes && notes.trim() ? (
-				<TextSection label="Description" text={notes} />
+				<TextSection label="Açıklama" text={notes} />
 			) : null}
 		</View>
 	);
 }
 
-import { StyleSheet } from "@react-pdf/renderer";
-
-const listingStyles = StyleSheet.create({
+const ls = StyleSheet.create({
 	heroImage: {
-		width: "100%",
-		height: 240,
+		marginTop: -PAGE_PADDING,
+		marginHorizontal: -PAGE_PADDING,
+		width: PAGE_PADDING * 2 + 499, // A4 width 595pt = content 499 + 2×48 padding
+		height: 250,
 		objectFit: "cover",
-		borderRadius: 4,
-		marginBottom: 8,
 		backgroundColor: colors.slate100,
+	},
+	band: {
+		marginHorizontal: -PAGE_PADDING,
+		paddingVertical: 16,
+		paddingHorizontal: PAGE_PADDING,
+		marginBottom: 20,
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
+	},
+	typeChip: {
+		alignSelf: "flex-start",
+		paddingVertical: 2.5,
+		paddingHorizontal: 7,
+		borderRadius: 2,
+		marginBottom: 6,
+	},
+	typeChipText: {
+		fontSize: 7,
+		fontWeight: 700,
+		color: colors.white,
+		textTransform: "uppercase",
+		letterSpacing: 1,
+	},
+	bandAddress: {
+		fontSize: 14,
+		fontWeight: 700,
+		color: colors.white,
+	},
+	bandCity: {
+		fontSize: 9,
+		fontWeight: 500,
+		marginTop: 2,
+	},
+	statRow: {
+		flexDirection: "row",
+		gap: 10,
+		marginBottom: 20,
+	},
+	statTile: {
+		flex: 1,
+		borderRadius: 3,
+		paddingVertical: 10,
+		paddingHorizontal: 12,
+	},
+	statValue: {
+		fontSize: 14,
+		fontWeight: 700,
+	},
+	statLabel: {
+		fontSize: 7,
+		fontWeight: 500,
+		color: colors.slate500,
+		textTransform: "uppercase",
+		letterSpacing: 0.8,
+		marginTop: 2,
 	},
 	thumbGrid: {
 		flexDirection: "row",

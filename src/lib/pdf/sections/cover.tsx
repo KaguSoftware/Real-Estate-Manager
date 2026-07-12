@@ -1,6 +1,7 @@
-// Branded cover page — first page of every generated document. Shows the team
-// logo, the document title and a card of key facts, all tinted with the team's
-// brand palette so the cover and the body pages read as one document.
+// Branded cover page — first page of every generated document. A full-height
+// brand rail on the left edge, the team identity top-left, an oversized
+// left-aligned title and a borderless key-facts grid, all tinted with the
+// team's palette so the cover and the body pages read as one document.
 
 import { View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { colors, PAGE_PADDING, PAGE_PADDING_BOTTOM } from "../styles";
@@ -17,112 +18,117 @@ const cover = StyleSheet.create({
 		height: "100%",
 		flexDirection: "column",
 	},
-	// Full-bleed brand bands at the very top of the page.
-	bandPrimary: {
-		marginTop: -PAGE_PADDING,
-		marginHorizontal: -PAGE_PADDING,
-		height: 10,
+	// Full-height brand rail bleeding off the left page edge. Absolutely
+	// positioned with negative offsets so it spans the entire page height
+	// regardless of the padded content column (same bleed technique as the
+	// agreement title bar's negative margins).
+	rail: {
+		position: "absolute",
+		left: -PAGE_PADDING,
+		top: -PAGE_PADDING,
+		bottom: -PAGE_PADDING_BOTTOM,
+		width: 10,
 	},
-	bandAccent: {
-		marginHorizontal: -PAGE_PADDING,
-		height: 4,
+	railAccent: {
+		position: "absolute",
+		left: -PAGE_PADDING + 10,
+		top: -PAGE_PADDING,
+		bottom: -PAGE_PADDING_BOTTOM,
+		width: 3,
 	},
 	logoWrap: {
-		alignItems: "center",
-		marginTop: 8,
+		alignItems: "flex-start",
+		marginTop: 6,
 	},
 	logo: {
-		maxHeight: 72,
-		maxWidth: 220,
+		maxHeight: 64,
+		maxWidth: 200,
 		objectFit: "contain",
 	},
 	teamName: {
-		fontSize: 11,
-		fontWeight: 700,
-		letterSpacing: 2,
-		textTransform: "uppercase",
-		color: colors.slate600,
-		marginTop: 10,
-	},
-	// When there is no logo, the team name becomes the visual anchor.
-	teamNameBig: {
-		fontSize: 22,
+		fontSize: 10,
 		fontWeight: 700,
 		letterSpacing: 1.5,
 		textTransform: "uppercase",
+		color: colors.slate600,
+		marginTop: 8,
+	},
+	// When there is no logo, the team name becomes the visual anchor.
+	teamNameBig: {
+		fontSize: 20,
+		fontWeight: 700,
+		letterSpacing: 1,
+		textTransform: "uppercase",
 	},
 	titleBlock: {
-		alignItems: "center",
+		alignItems: "flex-start",
 	},
 	titleLabel: {
 		fontSize: 8,
 		fontWeight: 500,
-		letterSpacing: 2.5,
+		letterSpacing: 2,
 		textTransform: "uppercase",
-		color: colors.slate400,
-		marginBottom: 10,
+		color: colors.slate500,
+		marginBottom: 12,
 	},
 	title: {
-		fontSize: 26,
+		fontSize: 34,
 		fontWeight: 700,
-		textAlign: "center",
-		letterSpacing: 0.5,
+		letterSpacing: -0.5,
+		// Keep long titles ("Satılık Alım, Satış Sözleşmesi") to a tight
+		// two-line stack instead of running edge to edge.
+		maxWidth: 400,
 	},
 	subtitle: {
-		fontSize: 10,
+		fontSize: 11,
 		fontWeight: 500,
-		color: colors.slate500,
-		letterSpacing: 1.2,
-		textTransform: "uppercase",
-		marginTop: 6,
+		color: colors.slate600,
+		marginTop: 8,
 	},
 	titleRule: {
-		width: 56,
+		width: 64,
 		height: 3,
-		marginTop: 16,
+		marginTop: 18,
 	},
-	infoCard: {
-		marginTop: 32,
-		borderWidth: 0.75,
-		borderLeftWidth: 3,
-		paddingVertical: 14,
-		paddingHorizontal: 18,
+	// Borderless facts grid: hairline row rules only.
+	infoBlock: {
+		marginTop: 36,
 	},
 	infoRow: {
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "flex-start",
-		paddingVertical: 6,
+		paddingVertical: 8,
 		borderBottomWidth: 0.5,
-		borderBottomColor: colors.slate100,
+		borderBottomColor: colors.hairline,
 	},
 	infoRowLast: {
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "flex-start",
-		paddingVertical: 6,
+		paddingVertical: 8,
 	},
 	infoLabel: {
-		fontSize: 8,
+		fontSize: 8.5,
 		fontWeight: 500,
-		textTransform: "uppercase",
-		letterSpacing: 1,
 		color: colors.slate500,
 		marginRight: 16,
 	},
 	infoValue: {
 		flex: 1,
-		fontSize: 10,
+		fontSize: 10.5,
 		fontWeight: 700,
 		color: colors.slate900,
 		textAlign: "right",
 	},
-	// Full-bleed footer band pinned to the bottom of the cover.
+	// Full-bleed footer band pinned to the bottom of the cover, with a thin
+	// accent border on top.
 	footerBand: {
 		marginHorizontal: -PAGE_PADDING,
 		marginBottom: -PAGE_PADDING_BOTTOM,
 		paddingVertical: 16,
 		paddingHorizontal: PAGE_PADDING,
+		borderTopWidth: 3,
 		flexDirection: "row",
 		justifyContent: "space-between",
 		alignItems: "center",
@@ -131,7 +137,7 @@ const cover = StyleSheet.create({
 		fontSize: 7.5,
 		fontWeight: 500,
 		color: colors.white,
-		letterSpacing: 1.5,
+		letterSpacing: 1.2,
 		textTransform: "uppercase",
 	},
 });
@@ -152,10 +158,8 @@ export function CoverPage({
 
 	return (
 		<View style={cover.root}>
-			<View style={[cover.bandPrimary, { backgroundColor: palette.primary }]} />
-			<View style={[cover.bandAccent, { backgroundColor: palette.accent }]} />
-
-			<View style={{ flexGrow: 1.2 }} />
+			<View style={[cover.rail, { backgroundColor: palette.primary }]} />
+			<View style={[cover.railAccent, { backgroundColor: palette.accent }]} />
 
 			<View style={cover.logoWrap}>
 				{logoDataUrl ? (
@@ -169,17 +173,17 @@ export function CoverPage({
 				)}
 			</View>
 
-			<View style={{ flexGrow: 1 }} />
+			<View style={{ flexGrow: 1.4 }} />
 
 			<View style={cover.titleBlock}>
-				<Text style={cover.titleLabel}>Belge / Document</Text>
+				<Text style={cover.titleLabel}>Belge</Text>
 				<Text style={[cover.title, { color: palette.primary }]}>{title}</Text>
 				{subtitle ? <Text style={cover.subtitle}>{subtitle}</Text> : null}
 				<View style={[cover.titleRule, { backgroundColor: palette.accent }]} />
 			</View>
 
 			{items.length > 0 ? (
-				<View style={[cover.infoCard, { borderColor: palette.muted, borderLeftColor: palette.primary }]}>
+				<View style={cover.infoBlock}>
 					{items.map((it, i) => (
 						<View key={i} style={i === items.length - 1 ? cover.infoRowLast : cover.infoRow}>
 							<Text style={cover.infoLabel}>{it.label}</Text>
@@ -191,7 +195,7 @@ export function CoverPage({
 
 			<View style={{ flexGrow: 2 }} />
 
-			<View style={[cover.footerBand, { backgroundColor: palette.primary }]}>
+			<View style={[cover.footerBand, { backgroundColor: palette.primary, borderTopColor: palette.accent }]}>
 				<Text style={cover.footerText}>{teamName}</Text>
 				<Text style={cover.footerText}>{formatDate(generatedAt)}</Text>
 			</View>

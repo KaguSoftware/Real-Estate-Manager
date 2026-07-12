@@ -9,11 +9,9 @@ export const SectionHeader = ({
 	icon: LucideIcon;
 }) => {
 	return (
-		<div className="flex items-center gap-3 mb-6 border-b border-base-300 pb-4">
-			<div className="p-2 bg-primary/10 rounded-lg text-primary">
-				<Icon size={18} />
-			</div>
-			<h2 className="text-sm font-black uppercase tracking-[0.2em] text-base-content">
+		<div className="flex items-center gap-2.5 mb-6 border-b border-base-300 pb-4">
+			<Icon size={18} strokeWidth={2} className="text-base-content/40" aria-hidden />
+			<h2 className="font-display text-lg font-bold text-base-content">
 				{title}
 			</h2>
 		</div>

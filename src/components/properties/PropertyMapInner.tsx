@@ -190,7 +190,7 @@ function ClusterPopover({
 				style={{ left, top, width: CARD_W, maxHeight: Math.min(280, containerSize.h - 16) }}
 				onClick={(e) => e.stopPropagation()}
 			>
-				<p className="px-3.5 pt-3 pb-2 text-xs font-bold uppercase tracking-wider text-base-content/50 border-b border-base-300">
+				<p className="px-3.5 pt-3 pb-2 text-sm font-semibold text-base-content/60 border-b border-base-300">
 					Burada {cell.items.length} taşınmaz var
 				</p>
 				<ul className="overflow-y-auto" style={{ maxHeight: 224 }}>

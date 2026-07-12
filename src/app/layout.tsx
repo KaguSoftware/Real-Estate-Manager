@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Playfair_Display, Noto_Sans_Arabic } from "next/font/google";
+import { Schibsted_Grotesk, IBM_Plex_Mono, Noto_Sans_Arabic } from "next/font/google";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import { AuthProvider } from "@/src/components/auth/AuthProvider";
@@ -7,9 +7,11 @@ import { ToastHost } from "@/src/components/ui/Toast";
 import { OfflineBanner } from "@/src/components/ui/OfflineBanner";
 import { TrialBanner } from "@/src/components/billing/TrialBanner";
 
-const jakarta = Plus_Jakarta_Sans({ subsets: ["latin", "latin-ext"], variable: "--font-latin" });
-// Serif display face for headings — the luxury signature (.font-display).
-const playfair = Playfair_Display({ subsets: ["latin", "latin-ext"], variable: "--font-display-face" });
+// One grotesque family, weight-driven hierarchy: body and display share
+// Schibsted Grotesk (.font-display adds tracking, see globals.css).
+const schibsted = Schibsted_Grotesk({ subsets: ["latin", "latin-ext"], variable: "--font-latin" });
+// Tabular numerals for money/data columns (rent, payments, analytics).
+const plexMono = IBM_Plex_Mono({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], variable: "--font-mono-face" });
 const notoArabic = Noto_Sans_Arabic({ subsets: ["arabic"], weight: ["400", "500", "600", "700", "900"], variable: "--font-arabic" });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://kagu.app";
@@ -37,8 +39,8 @@ export const viewport: Viewport = {
 	initialScale: 1,
 	viewportFit: "cover",
 	// Light is the default; the boot script swaps this for explicit dark
-	// users before paint.
-	themeColor: "#f4f1ea",
+	// users before paint. Matches --color-base-200 (cool silver-grey).
+	themeColor: "#f4f5f6",
 };
 
 // Light is the default (no attribute needed). Only an explicit "dark" choice
@@ -56,7 +58,7 @@ export default function RootLayout({
 				<script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
 			</head>
 			<body
-				className={`${jakarta.variable} ${playfair.variable} ${notoArabic.variable} bg-base-200 text-base-content antialiased overflow-x-hidden`}
+				className={`${schibsted.variable} ${plexMono.variable} ${notoArabic.variable} bg-base-200 text-base-content antialiased overflow-x-hidden`}
 				style={{ fontFamily: "var(--font-latin), var(--font-arabic), sans-serif" }}
 			>
 				<AuthProvider>

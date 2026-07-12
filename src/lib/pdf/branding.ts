@@ -21,9 +21,15 @@ export interface BrandPalette {
 	tint: string;
 }
 
-// `avera` mirrors the historical hardcoded palette in styles.ts so existing
-// documents can be reproduced; `slate` matches the app's neutral default.
+// `kagu` matches the app's brand (graphite + kagu red-orange) and is the
+// default; `avera` mirrors the historical hardcoded palette in styles.ts so
+// existing documents can be reproduced.
 export const BRAND_PALETTES: Record<string, BrandPalette> = {
+	kagu: {
+		id: "kagu", label: "Kagu",
+		primary: "#1e242e", primaryDark: "#12161d", accent: "#b74427",
+		muted: "#8b929e", tint: "#f2f4f6",
+	},
 	slate: {
 		id: "slate", label: "Slate",
 		primary: "#0f172a", primaryDark: "#020617", accent: "#6366f1",
@@ -62,7 +68,7 @@ export interface PdfBranding {
 export const DEFAULT_BRANDING: PdfBranding = {
 	teamName: "Kagu Real Estate",
 	logoDataUrl: null,
-	palette: BRAND_PALETTES.slate,
+	palette: BRAND_PALETTES.kagu,
 };
 
 export const BrandingContext = createContext<PdfBranding>(DEFAULT_BRANDING);
@@ -96,6 +102,6 @@ export async function getPdfBrandingFromStore(): Promise<PdfBranding> {
 	return {
 		teamName: team.name || DEFAULT_BRANDING.teamName,
 		logoDataUrl: logoUrl ? await fetchAsDataUrl(logoUrl) : null,
-		palette: BRAND_PALETTES[team.brand_palette] ?? BRAND_PALETTES.slate,
+		palette: BRAND_PALETTES[team.brand_palette] ?? BRAND_PALETTES.kagu,
 	};
 }

@@ -65,7 +65,7 @@ export function AdminPanel() {
 		);
 	}
 
-	const headerCls = "text-left px-4 py-3 text-xs font-bold uppercase tracking-wider text-base-content/50";
+	const headerCls = "text-left px-4 py-3 text-xs font-semibold text-base-content/50";
 
 	return (
 		<AppShell title="Yönetim · Kullanıcılar" subtitle="Tüm kullanıcıların rollerini değiştirin">

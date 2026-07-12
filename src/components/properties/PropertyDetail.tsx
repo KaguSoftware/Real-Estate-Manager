@@ -8,6 +8,7 @@ import { getProperty, updateProperty } from "@/src/lib/db/properties";
 import { endLease, listLeasesForProperty } from "@/src/lib/db/leases";
 import { listPaymentsForLease, recordPayment } from "@/src/lib/db/payments";
 import { getDocumentUrl } from "@/src/lib/db/documents";
+import { getContractDocumentByRecord, type ContractDocument } from "@/src/lib/db/contractDocuments";
 import { cancelSale, closeSale, getActiveSaleForProperty, listSalesForProperty } from "@/src/lib/db/sales";
 import { listPropertyImages } from "@/src/lib/db/propertyImages";
 import { invalidateCache } from "@/src/lib/useCachedResource";
@@ -25,7 +26,7 @@ import { LeaseEditSheet } from "./LeaseEditSheet";
 import { RenewLeaseSheet } from "./RenewLeaseSheet";
 import { MatchingLeads } from "./MatchingLeads";
 import { LocationPicker } from "./LocationPicker";
-import { Pencil, Plus, RefreshCw, Share2, ChevronDown, CheckCircle2, XCircle, History, ExternalLink } from "lucide-react";
+import { Pencil, Plus, RefreshCw, Share2, ChevronDown, CheckCircle2, XCircle, History, ExternalLink, Lock, PenLine } from "lucide-react";
 
 /** Current calendar month as ISO period bounds (first → last day). */
 function currentMonthPeriod(): { start: string; end: string } {
@@ -355,6 +356,8 @@ export function PropertyDetail({ propertyId }: Props) {
 								{sale.document_pdf_path && (
 									<ContractPdfLink path={sale.document_pdf_path} />
 								)}
+								<ContractDocLink kind="sales" recordId={sale.id} />
+
 
 								{sale.status === "active" && (
 									<div className="flex flex-col sm:flex-row gap-2 pt-1">
@@ -419,6 +422,7 @@ export function PropertyDetail({ propertyId }: Props) {
 							{data.active_lease.document_pdf_path && (
 								<ContractPdfLink path={data.active_lease.document_pdf_path} />
 							)}
+							<ContractDocLink kind="rental" recordId={data.active_lease.id} />
 
 							{/* Balance — 3 columns on sm+, stacked on phones */}
 							<div className="border-t border-base-300 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
@@ -720,10 +724,43 @@ function ContractPdfLink({ path }: { path: string }) {
 	);
 }
 
+/** Link to the editable contract document (migration 0017) for a lease/sale.
+ *  Renders nothing for records created before the editor existed. */
+function ContractDocLink({ kind, recordId }: { kind: "rental" | "sales"; recordId: string }) {
+	const router = useRouter();
+	const [doc, setDoc] = useState<ContractDocument | null>(null);
+	useEffect(() => {
+		let cancelled = false;
+		getContractDocumentByRecord(kind, recordId)
+			.then((d) => { if (!cancelled) setDoc(d); })
+			.catch(() => { /* older record or fetch hiccup — just hide the link */ });
+		return () => { cancelled = true; };
+	}, [kind, recordId]);
+	if (!doc) return null;
+	if (doc.status === "finalized") {
+		return (
+			<span className="inline-flex items-center gap-1.5 text-sm font-semibold text-base-content/50">
+				<Lock className="w-3.5 h-3.5" />
+				Sözleşme sonlandırıldı
+			</span>
+		);
+	}
+	return (
+		<button
+			type="button"
+			onClick={() => router.push(`/documents/${doc.id}`)}
+			className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline underline-offset-2"
+		>
+			<PenLine className="w-3.5 h-3.5" />
+			Sözleşmeyi düzenle
+		</button>
+	);
+}
+
 function Field({ label, value, wide, multiline }: { label: string; value: string; wide?: boolean; multiline?: boolean }) {
 	return (
 		<div className={wide ? "sm:col-span-2" : ""}>
-			<dt className="text-xs font-semibold uppercase tracking-wide text-base-content/50 mb-0.5">{label}</dt>
+			<dt className="text-xs font-semibold text-base-content/55 mb-0.5">{label}</dt>
 			<dd className={`text-base-content ${multiline ? "whitespace-pre-wrap" : ""}`}>{value}</dd>
 		</div>
 	);
@@ -732,7 +769,7 @@ function Field({ label, value, wide, multiline }: { label: string; value: string
 function Highlight({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="bg-primary/5 rounded-xl px-4 py-3">
-			<p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1">{label}</p>
+			<p className="text-xs font-semibold text-base-content/55 mb-1">{label}</p>
 			<p className="text-base font-bold text-base-content">{value}</p>
 		</div>
 	);
@@ -741,7 +778,7 @@ function Highlight({ label, value }: { label: string; value: string }) {
 function BalanceCell({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
 	return (
 		<div className="bg-base-200 rounded-xl px-4 py-3">
-			<p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">{label}</p>
+			<p className="text-xs font-semibold text-base-content/55">{label}</p>
 			<p className={`font-semibold mt-0.5 ${danger ? "text-error" : "text-base-content"}`}>{value}</p>
 		</div>
 	);
