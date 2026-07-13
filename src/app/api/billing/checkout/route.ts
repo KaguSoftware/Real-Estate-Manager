@@ -1,8 +1,9 @@
-/** POST /api/billing/checkout { plan_id } — owner-only; returns { url }. */
+/** POST /api/billing/checkout { plan_id, months } — owner-only; returns { url }. */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/src/lib/supabase/server";
 import { getPaymentProvider } from "@/src/lib/billing";
+import { BILLING_PERIODS, type BillingPeriodMonths } from "@/src/lib/billing/provider";
 import { isRateLimited } from "@/src/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
@@ -10,8 +11,12 @@ export async function POST(request: NextRequest) {
 	const { data: { user } } = await supabase.auth.getUser();
 	if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-	const body = (await request.json().catch(() => null)) as { plan_id?: string } | null;
+	const body = (await request.json().catch(() => null)) as { plan_id?: string; months?: number } | null;
 	if (!body?.plan_id) return NextResponse.json({ error: "plan_id required" }, { status: 400 });
+	const months = (body.months ?? 1) as BillingPeriodMonths;
+	if (!BILLING_PERIODS.includes(months)) {
+		return NextResponse.json({ error: "Invalid billing period" }, { status: 400 });
+	}
 
 	const { data: teamId } = await supabase.rpc("user_team_id");
 	if (!teamId) return NextResponse.json({ error: "No team" }, { status: 403 });
@@ -32,7 +37,7 @@ export async function POST(request: NextRequest) {
 		process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? request.nextUrl.origin;
 
 	try {
-		const { url } = await getPaymentProvider().createCheckout(teamId, plan.id, {
+		const { url } = await getPaymentProvider().createCheckout(teamId, plan.id, months, {
 			returnUrl: `${siteUrl}/settings/billing?paid=1`,
 		});
 		return NextResponse.json({ url });

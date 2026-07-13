@@ -11,6 +11,7 @@ import { NavDrawer } from "./NavDrawer";
 import { Sidebar } from "./Sidebar";
 import { Button } from "./Button";
 import { AddMenu } from "./AddMenu";
+import { AccountMenu } from "./AccountMenu";
 import { cn } from "./cn";
 
 interface AppShellProps {
@@ -73,6 +74,7 @@ export function AppShell({ title, subtitle, actions, children, width = "5xl" }: 
 						{actions}
 						{user && team && <NotificationBell />}
 						{user && <AddMenu />}
+						{user && <AccountMenu />}
 						{user ? (
 							<button
 								onClick={() => setDrawerOpen(true)}

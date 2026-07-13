@@ -13,7 +13,8 @@ export const iyzicoProvider: PaymentProvider = {
 
 	async createCheckout() {
 		// TODO(iyzico): POST /v2/subscription/checkoutform/initialize with the
-		// plan's iyzico pricingPlanReferenceCode and callbackUrl=returnUrl;
+		// iyzico pricingPlanReferenceCode for this plan+months (one pricing plan
+		// per period, priced via PERIOD_DISCOUNTS) and callbackUrl=returnUrl;
 		// return { url: checkoutFormContentUrl }.
 		throw new Error("Iyzico is not configured yet — set BILLING_PROVIDER=mock for testing");
 	},

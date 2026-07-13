@@ -20,6 +20,7 @@ import { createContractDocument, setContractDocumentPdfPath } from "@/src/lib/db
 import type { ContractEditorHandle } from "./editor/ContractEditor";
 import type { Property, Lead } from "@/src/lib/db/types";
 import { PropertyPickerCardList } from "./PropertyPickerCardList";
+import { PaperPileLoader } from "./PaperPileLoader";
 import { ReceiptWizard } from "./ReceiptWizard";
 import { ClientPickerCardList } from "./ClientPickerCardList";
 import { Button, cn, Alert, Spinner, toast, Input, FormField, ConfirmDialog } from "@/src/components/ui";
@@ -1207,11 +1208,16 @@ export function DocumentWizard() {
 						</Button>
 						<Button
 							onClick={handleConfirm}
-							loading={submitting}
-							disabled={!docJson}
+							disabled={!docJson || submitting}
 							className="bg-success text-success-content hover:brightness-110 shadow-soft"
 						>
-							{submitting ? "Oluşturuluyor…" : "Onayla ve PDF oluştur"}
+							{submitting ? (
+								<span className="inline-flex items-center gap-2">
+									<PaperPileLoader /> Oluşturuluyor…
+								</span>
+							) : (
+								"Onayla ve PDF oluştur"
+							)}
 						</Button>
 					</div>
 

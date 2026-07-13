@@ -43,6 +43,7 @@ async function applyEvent(event: NormalizedEvent, providerName: string): Promise
 			patch.status = "active";
 			patch.current_period_end = event.periodEnd ?? null;
 			if (event.planId) patch.plan_id = event.planId;
+			if (event.periodMonths) patch.period_months = event.periodMonths;
 			if (event.providerSubscriptionId) {
 				patch.provider_subscription_id = event.providerSubscriptionId;
 			}

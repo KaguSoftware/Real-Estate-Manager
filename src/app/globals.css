@@ -220,6 +220,14 @@
 	}
 }
 
+/* Tailwind v4 only generates variants (hover:, group-hover:, …) for
+   utilities registered via @utility — a plain .class{} rule inside
+   @layer utilities is not enough, so the looping bell jiggle needs its
+   own @utility to actually respond to group-hover:. */
+@utility animate-wiggle-loop {
+	animation: wiggle 0.6s ease-in-out infinite;
+}
+
 /* Reduced motion: collapse every animation/transition to a near-instant
    crossfade. Individual components may layer richer fallbacks on top. */
 @media (prefers-reduced-motion: reduce) {

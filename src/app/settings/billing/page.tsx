@@ -8,12 +8,21 @@
  */
 
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2 } from "lucide-react";
 import { useAppStore } from "@/src/store";
 import { createClient } from "@/src/lib/supabase/client";
 import { fetchTeamContext, listTeamMembers } from "@/src/lib/db/teams";
-import { AppShell, Card, CardLabel, Badge, Button, Alert, SpinnerBlock, ConfirmDialog, toast } from "@/src/components/ui";
+import { AppShell, Card, CardLabel, Badge, Button, Alert, SpinnerBlock, ConfirmDialog, toast, cn } from "@/src/components/ui";
 import { humanizeError } from "@/src/lib/errors";
+import { BILLING_PERIODS, PERIOD_DISCOUNTS, type BillingPeriodMonths } from "@/src/lib/billing/provider";
+
+const PERIOD_LABEL: Record<BillingPeriodMonths, string> = {
+	1: "Aylık",
+	3: "3 Ay",
+	6: "6 Ay",
+	12: "12 Ay",
+};
 
 interface Plan {
 	id: string;
@@ -54,6 +63,7 @@ export default function BillingPage() {
 	const [plans, setPlans] = useState<Plan[] | null>(null);
 	const [seatCount, setSeatCount] = useState<number | null>(null);
 	const [busyPlan, setBusyPlan] = useState<string | null>(null);
+	const [months, setMonths] = useState<BillingPeriodMonths>(1);
 	const [confirmCancel, setConfirmCancel] = useState(false);
 	const [canceling, setCanceling] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -87,7 +97,7 @@ export default function BillingPage() {
 			const res = await fetch("/api/billing/checkout", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ plan_id: planId }),
+				body: JSON.stringify({ plan_id: planId, months }),
 			});
 			const json = (await res.json()) as { url?: string; error?: string };
 			if (!res.ok || !json.url) throw new Error(json.error || "Ödeme sayfası açılamadı");
@@ -172,19 +182,74 @@ export default function BillingPage() {
 				{plans === null ? (
 					<SpinnerBlock />
 				) : (
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<>
+						<div
+							role="radiogroup"
+							aria-label="Ödeme dönemi"
+							className="flex rounded-lg border border-base-300 bg-base-200 p-0.5 max-w-md"
+						>
+							{BILLING_PERIODS.map((m) => (
+								<button
+									key={m}
+									type="button"
+									role="radio"
+									aria-checked={months === m}
+									onClick={() => setMonths(m)}
+									className={cn(
+										"relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors min-h-11",
+										months === m
+											? "text-primary"
+											: "text-base-content/60 hover:text-base-content",
+									)}
+								>
+									{months === m && (
+										<motion.span
+											layoutId="period-pill"
+											className="absolute inset-0 rounded-md bg-base-100 shadow-soft"
+											transition={{ type: "spring", stiffness: 500, damping: 35 }}
+										/>
+									)}
+									<span className="relative">{PERIOD_LABEL[m]}</span>
+									{PERIOD_DISCOUNTS[m] > 0 && (
+										<span className="relative text-[10px] font-semibold text-success">
+											%{Math.round(PERIOD_DISCOUNTS[m] * 100)} indirim
+										</span>
+									)}
+								</button>
+							))}
+						</div>
+
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						{plans.map((p) => {
 							const current = team?.plan_id === p.id && status === "active";
+							const discount = PERIOD_DISCOUNTS[months];
+							const total = Number(p.price_monthly) * months * (1 - discount);
+							const effectiveMonthly = total / months;
 							return (
 								<Card key={p.id} className={current ? "ring-2 ring-primary/40" : undefined}>
 									<div className="flex items-baseline justify-between">
 										<h3 className="text-lg font-bold text-base-content">{p.name}</h3>
 										{current && <Badge tone="emerald">Mevcut plan</Badge>}
 									</div>
-									<p className="mt-2 text-3xl font-bold text-base-content">
-										{Number(p.price_monthly).toLocaleString("tr-TR")} TL
-										<span className="text-sm font-normal text-base-content/50"> / ay</span>
-									</p>
+									<AnimatePresence mode="wait" initial={false}>
+										<motion.div
+											key={months}
+											initial={{ opacity: 0, y: -6 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: 6 }}
+											transition={{ duration: 0.18, ease: "easeOut" }}
+										>
+											<p className="mt-2 text-3xl font-bold text-base-content">
+												{total.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL
+												<span className="text-sm font-normal text-base-content/50"> / {PERIOD_LABEL[months].toLowerCase()}</span>
+											</p>
+											{months > 1 && (
+												<p className="mt-0.5 text-xs text-base-content/50">
+													Aylık {effectiveMonthly.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL · %{Math.round(discount * 100)} indirim
+												</p>
+											)}
+										</motion.div>
+									</AnimatePresence>
 									<ul className="mt-3 space-y-1.5 text-sm text-base-content/70">
 										{(PLAN_FEATURES[p.id] ?? [
 											p.max_seats ? `En fazla ${p.max_seats} danışman` : "Sınırsız danışman",
@@ -215,7 +280,8 @@ export default function BillingPage() {
 								</Card>
 							);
 						})}
-					</div>
+						</div>
+					</>
 				)}
 			</div>
 

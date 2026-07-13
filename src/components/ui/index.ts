@@ -16,6 +16,7 @@ export { NumberInput } from "./NumberInput";
 export { EmailInput } from "./EmailInput";
 export { PhoneInput } from "./PhoneInput";
 export { AddMenu } from "./AddMenu";
+export { AccountMenu } from "./AccountMenu";
 export { AppShell } from "./AppShell";
 export { NavDrawer } from "./NavDrawer";
 export {
