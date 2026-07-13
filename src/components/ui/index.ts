@@ -1,5 +1,5 @@
 export { cn } from "./cn";
-export { ThemeToggle } from "./ThemeToggle";
+export { ThemeToggle, ThemeToggleButton } from "./ThemeToggle";
 export { Button, type ButtonProps } from "./Button";
 export { Card, CardLabel } from "./Card";
 export { Badge, type BadgeTone } from "./Badge";
