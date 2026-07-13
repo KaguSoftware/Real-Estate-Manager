@@ -148,12 +148,10 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 							<Trash2 className="w-4 h-4" />
 						</Button>
 					)}
-					<div className="flex-1 flex items-center gap-3">
-						<Button variant="ghost" block onClick={onClose}>Vazgeç</Button>
-						<Button block onClick={() => handleSubmit()} loading={busy}>
-							{mode === "create" ? "Müşteri ekle" : "Kaydet"}
-						</Button>
-					</div>
+					<Button variant="outline" block onClick={onClose}>Vazgeç</Button>
+					<Button block onClick={() => handleSubmit()} loading={busy}>
+						{mode === "create" ? "Müşteri ekle" : "Kaydet"}
+					</Button>
 				</div>
 			}
 		>

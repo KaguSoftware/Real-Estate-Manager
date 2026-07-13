@@ -104,6 +104,23 @@
 	--font-mono: var(--font-mono-face), ui-monospace, "SFMono-Regular", monospace;
 	/* Exponential ease-out for entrances/slides (no bounce, no elastic). */
 	--ease-fluid: cubic-bezier(0.22, 1, 0.36, 1);
+	/* Bell hover: a short back-and-forth jiggle. Registered here (not in a raw
+	   @layer utilities block) so Tailwind generates the `animate-wiggle`
+	   utility and its variants — e.g. `group-hover:animate-wiggle`. */
+	--animate-wiggle: wiggle 0.4s ease-in-out;
+	@keyframes wiggle {
+		0%, 100% { transform: rotate(0deg); }
+		20% { transform: rotate(-12deg); }
+		40% { transform: rotate(10deg); }
+		60% { transform: rotate(-6deg); }
+		80% { transform: rotate(3deg); }
+	}
+	/* Theme toggle: the sun/moon icon spins in when the theme flips. */
+	--animate-theme-swap: theme-swap 0.4s var(--ease-fluid);
+	@keyframes theme-swap {
+		0%   { transform: rotate(-90deg) scale(0.4); opacity: 0; }
+		100% { transform: rotate(0deg) scale(1); opacity: 1; }
+	}
 }
 :root {
 	/* Cool slate-tinted shadows (light theme) */
@@ -196,16 +213,6 @@
 		transform-origin: top;
 		animation: dropdownIn 0.15s ease-out both;
 	}
-
-	/* Bell hover: a short back-and-forth jiggle. */
-	@keyframes wiggle {
-		0%, 100% { transform: rotate(0deg); }
-		20% { transform: rotate(-12deg); }
-		40% { transform: rotate(10deg); }
-		60% { transform: rotate(-6deg); }
-		80% { transform: rotate(3deg); }
-	}
-	.animate-wiggle { animation: wiggle 0.4s ease-in-out; }
 
 	/* Scroll reveal: progressive enhancement only — content is fully visible
 	   wherever scroll-driven animations are unsupported (SEO/headless safe). */

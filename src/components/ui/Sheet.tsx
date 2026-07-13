@@ -62,7 +62,7 @@ export function Sheet({ open, onClose, title, footer, children, size = "md" }: S
 				onClick={(e) => e.stopPropagation()}
 				className={cn(
 					// Mobile: fill the screen. Desktop: centered card.
-					"flex flex-col bg-base-100 w-full h-full",
+					"flex flex-col bg-base-100 w-full h-full overflow-hidden",
 					"sm:h-auto sm:max-h-[88vh] sm:rounded-2xl sm:shadow-pop",
 					"animate-[sheetIn_.18s_ease-out]",
 					maxW,
@@ -85,7 +85,7 @@ export function Sheet({ open, onClose, title, footer, children, size = "md" }: S
 
 				{/* Sticky footer */}
 				{footer && (
-					<div className="safe-bottom shrink-0 border-t border-base-300 px-4 sm:px-6 py-3 bg-base-100">
+					<div className="shrink-0 border-t border-base-300 px-4 sm:px-6 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] bg-base-100">
 						{footer}
 					</div>
 				)}

@@ -105,7 +105,7 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 			onClose={onClose}
 			title={mode === "create" ? "Kiracı ekle" : "Kiracıyı düzenle"}
 			footer={
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-3">
 					{mode === "edit" && (
 						<Button
 							variant="danger"
@@ -118,7 +118,7 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 							<Trash2 className="w-4 h-4" />
 						</Button>
 					)}
-					<Button variant="ghost" block onClick={onClose}>Vazgeç</Button>
+					<Button variant="outline" block onClick={onClose}>Vazgeç</Button>
 					<Button block onClick={() => handleSubmit()} loading={busy}>
 						{mode === "create" ? "Kiracı ekle" : "Kaydet"}
 					</Button>

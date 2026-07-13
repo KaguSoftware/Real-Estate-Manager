@@ -19,7 +19,7 @@ import { getTeamLogoUrl } from "@/src/lib/db/teams";
 import { getAvatarUrl } from "@/src/lib/db/profiles";
 import { useAppStore } from "@/src/store";
 import { NAV_GROUPS, activeNavHref } from "@/src/lib/nav";
-import { ThemeToggle } from "./ThemeToggle";
+import { ThemeToggleButton } from "./ThemeToggle";
 import { cn } from "./cn";
 import { LogOut } from "lucide-react";
 
@@ -94,12 +94,13 @@ export function Sidebar() {
 							{(team?.name ?? "Kagu").charAt(0).toUpperCase()}
 						</span>
 					)}
-					<div className="min-w-0">
+					<div className="min-w-0 flex-1">
 						<p className="font-display text-[15px] font-semibold text-white leading-tight truncate">
 							{team?.name ?? "Kagu Emlak"}
 						</p>
 						<p className="text-[11px] text-white/40 truncate">{team ? "Çalışma alanı" : "Yönetici"}</p>
 					</div>
+					<ThemeToggleButton className="-mr-1.5" />
 				</div>
 			</div>
 
@@ -161,11 +162,8 @@ export function Sidebar() {
 				))}
 			</nav>
 
-			{/* Footer: theme + identity */}
+			{/* Footer: identity (theme toggle lives next to the workspace name) */}
 			<div className="px-3 pb-4 pt-3 border-t border-white/10 space-y-2">
-				<div className="px-2">
-					<ThemeToggle />
-				</div>
 				<div className="flex items-center gap-2.5 rounded-xl bg-white/5 px-2.5 py-2">
 					<span className="h-8 w-8 shrink-0 rounded-full bg-primary text-primary-content flex items-center justify-center text-xs font-bold uppercase select-none overflow-hidden">
 						{avatarUrl ? (
