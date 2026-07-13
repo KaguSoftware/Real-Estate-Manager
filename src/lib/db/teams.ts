@@ -22,6 +22,8 @@ export interface TeamContext {
 	brand_color_main: string;
 	brand_color_accent1: string;
 	brand_color_accent2: string;
+	/** How many people the team said they are (onboarding); informational only. */
+	size_bracket: TeamSizeBracket | null;
 }
 
 export interface TeamMember {
@@ -93,7 +95,7 @@ async function fetchTeamContextUncached(): Promise<TeamContext | null> {
 	// rows") the moment the team has 2+ members.
 	const { data, error } = await supabase
 		.from("team_members")
-		.select("role, teams(id, name, trial_ends_at, logo_path, brand_color_main, brand_color_accent1, brand_color_accent2, subscriptions(status, plan_id, current_period_end))")
+		.select("role, teams(id, name, trial_ends_at, size_bracket, logo_path, brand_color_main, brand_color_accent1, brand_color_accent2, subscriptions(status, plan_id, current_period_end))")
 		.eq("user_id", user.id)
 		.maybeSingle();
 	if (error) throw error;
@@ -105,6 +107,7 @@ async function fetchTeamContextUncached(): Promise<TeamContext | null> {
 		id: string;
 		name: string;
 		trial_ends_at: string;
+		size_bracket: TeamSizeBracket | null;
 		logo_path: string | null;
 		brand_color_main: string | null;
 		brand_color_accent1: string | null;
@@ -130,6 +133,7 @@ async function fetchTeamContextUncached(): Promise<TeamContext | null> {
 		brand_color_main: team.brand_color_main ?? "#1e242e",
 		brand_color_accent1: team.brand_color_accent1 ?? "#b74427",
 		brand_color_accent2: team.brand_color_accent2 ?? "#8b929e",
+		size_bracket: team.size_bracket ?? null,
 	};
 }
 
@@ -280,6 +284,15 @@ export async function deleteTeam(): Promise<void> {
 		const json = (await res.json().catch(() => null)) as { error?: string } | null;
 		throw new Error(json?.error || "Ekip silinemedi");
 	}
+}
+
+/** Owner-only (RLS + guard trigger allow non-sensitive team fields). Updates the
+ *  informational group-size bracket set at onboarding. */
+export async function updateTeamSize(sizeBracket: TeamSizeBracket): Promise<void> {
+	const { supabase } = await requireUser();
+	const teamId = requireTeamId();
+	const { error } = await supabase.from("teams").update({ size_bracket: sizeBracket }).eq("id", teamId);
+	if (error) throw error;
 }
 
 export async function renameTeam(name: string): Promise<void> {

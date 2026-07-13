@@ -28,6 +28,7 @@ import { humanizeError } from "@/src/lib/errors";
 import { getSiteUrl } from "@/src/lib/siteUrl";
 import { BrandingCard } from "@/src/components/team/BrandingCard";
 import { ClauseTemplatesCard } from "@/src/components/team/ClauseTemplatesCard";
+import { TeamSizeCard } from "@/src/components/team/TeamSizeCard";
 import { TeamDangerZone } from "@/src/components/team/TeamDangerZone";
 
 export default function TeamPage() {
@@ -182,6 +183,8 @@ export default function TeamPage() {
 
 				{isOwner && (
 					<>
+						<TeamSizeCard />
+
 						<BrandingCard />
 
 						<ClauseTemplatesCard />
