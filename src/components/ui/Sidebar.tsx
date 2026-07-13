@@ -39,12 +39,12 @@ function PendingHint() {
 const LINE_X = 27;
 
 /**
- * Last marker Y, kept at module scope so it survives this component's remount
- * on every navigation (AppShell renders the Sidebar per page). On mount we seed
- * the marker at this position and then glide it to the new route's item, so the
- * bill appears to travel from the previously-active item instead of teleporting.
+ * The marker's Y is stashed in sessionStorage so it survives this component's
+ * remount on every navigation — AppShell renders the Sidebar per page. On mount
+ * we seed the marker at the stored position and then glide it to the new route's
+ * item, so the bill travels from the previously-active item instead of teleporting.
  */
-let lastMarkerY: number | null = null;
+const MARKER_Y_KEY = "kagu:nav-marker-y";
 
 export function Sidebar() {
 	const user = useAppStore((s) => s.user);
@@ -74,11 +74,13 @@ export function Sidebar() {
 		const el = activeHref ? itemRefs.current.get(activeHref) : null;
 		if (el) {
 			const y = el.offsetTop + el.offsetHeight / 2 - 3.5;
-			if (firstPaint.current && lastMarkerY !== null && lastMarkerY !== y) {
+			const stored = sessionStorage.getItem(MARKER_Y_KEY);
+			const prevY = stored !== null ? Number(stored) : null;
+			if (firstPaint.current && prevY !== null && prevY !== y) {
 				// Seed at the previously-active position (persisted across the
 				// remount), then glide to this route's item on the next frame.
 				marker.style.transition = "none";
-				marker.style.transform = `translateY(${lastMarkerY}px)`;
+				marker.style.transform = `translateY(${prevY}px)`;
 				marker.style.opacity = "1";
 				void marker.offsetHeight; // flush the seed before re-enabling the glide
 				marker.style.transition = "";
@@ -94,7 +96,7 @@ export function Sidebar() {
 				marker.style.transform = `translateY(${y}px)`;
 				marker.style.opacity = "1";
 			}
-			lastMarkerY = y;
+			sessionStorage.setItem(MARKER_Y_KEY, String(y));
 		} else {
 			marker.style.opacity = "0";
 		}

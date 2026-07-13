@@ -225,7 +225,6 @@ export default function BillingPage() {
 							const discount = PERIOD_DISCOUNTS[months];
 							const fullTotal = Number(p.price_monthly) * months;
 							const total = fullTotal * (1 - discount);
-							const effectiveMonthly = total / months;
 							const fmt = (n: number) => n.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 							return (
 								<Card key={p.id} className={current ? "ring-2 ring-primary/40" : undefined}>
