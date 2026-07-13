@@ -210,12 +210,11 @@ export default function BillingPage() {
 										/>
 									)}
 									<span className="relative">{PERIOD_LABEL[m]}</span>
-									<span
-										className="relative text-[10px] font-semibold text-success"
-										aria-hidden={PERIOD_DISCOUNTS[m] === 0}
-									>
-										{PERIOD_DISCOUNTS[m] > 0 ? `%${Math.round(PERIOD_DISCOUNTS[m] * 100)} indirim` : " "}
-									</span>
+									{PERIOD_DISCOUNTS[m] > 0 && (
+										<span className="relative text-[10px] font-semibold text-success">
+											%{Math.round(PERIOD_DISCOUNTS[m] * 100)} indirim
+										</span>
+									)}
 								</button>
 							))}
 						</div>
@@ -244,11 +243,11 @@ export default function BillingPage() {
 												{total.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL
 												<span className="text-sm font-normal text-base-content/50"> / {PERIOD_LABEL[months].toLowerCase()}</span>
 											</p>
-											{months > 1 && (
-												<p className="mt-0.5 text-xs text-base-content/50">
-													Aylık {effectiveMonthly.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL · %{Math.round(discount * 100)} indirim
-												</p>
-											)}
+											<p className={cn("mt-0.5 text-xs text-base-content/50", months === 1 && "invisible")} aria-hidden={months === 1}>
+												{months > 1
+													? `Aylık ${effectiveMonthly.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL · %${Math.round(discount * 100)} indirim`
+													: " "}
+											</p>
 										</motion.div>
 									</AnimatePresence>
 									<ul className="mt-3 space-y-1.5 text-sm text-base-content/70">
