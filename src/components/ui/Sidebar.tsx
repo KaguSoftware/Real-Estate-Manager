@@ -47,6 +47,10 @@ export function Sidebar() {
 	const navRef = useRef<HTMLElement>(null);
 	const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
 	const markerRef = useRef<HTMLSpanElement>(null);
+	// AppShell (and this Sidebar) remounts on every navigation, so the marker
+	// would otherwise animate from translateY(0) — sliding down from the top —
+	// on each arrival. Snap it into place on first paint; only glide on updates.
+	const firstPaint = useRef(true);
 
 	const isAdmin = user?.app_role === "admin";
 	const groups = NAV_GROUPS.map((g) => ({
@@ -64,11 +68,21 @@ export function Sidebar() {
 		if (!marker) return;
 		const el = activeHref ? itemRefs.current.get(activeHref) : null;
 		if (el) {
+			const y = el.offsetTop + el.offsetHeight / 2 - 3.5;
+			if (firstPaint.current) {
+				// Position without animating in from the top on mount.
+				marker.style.transition = "none";
+				marker.style.transform = `translateY(${y}px)`;
+				void marker.offsetHeight; // flush so subsequent changes transition
+				marker.style.transition = "";
+			} else {
+				marker.style.transform = `translateY(${y}px)`;
+			}
 			marker.style.opacity = "1";
-			marker.style.transform = `translateY(${el.offsetTop + el.offsetHeight / 2 - 3.5}px)`;
 		} else {
 			marker.style.opacity = "0";
 		}
+		firstPaint.current = false;
 	}, [activeHref, isAdmin]);
 
 	if (!user) return null;

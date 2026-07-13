@@ -223,8 +223,10 @@ export default function BillingPage() {
 						{plans.map((p) => {
 							const current = team?.plan_id === p.id && status === "active";
 							const discount = PERIOD_DISCOUNTS[months];
-							const total = Number(p.price_monthly) * months * (1 - discount);
+							const fullTotal = Number(p.price_monthly) * months;
+							const total = fullTotal * (1 - discount);
 							const effectiveMonthly = total / months;
+							const fmt = (n: number) => n.toLocaleString("tr-TR", { maximumFractionDigits: 0 });
 							return (
 								<Card key={p.id} className={current ? "ring-2 ring-primary/40" : undefined}>
 									<div className="flex items-baseline justify-between">
@@ -239,14 +241,22 @@ export default function BillingPage() {
 											exit={{ opacity: 0, y: 6 }}
 											transition={{ duration: 0.18, ease: "easeOut" }}
 										>
-											<p className="mt-2 text-3xl font-bold text-base-content">
-												{total.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL
+											<p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-3xl font-bold text-base-content">
+												<span>{fmt(total)} TL</span>
+												{months > 1 && (
+													<span className="text-base font-normal text-base-content/40 line-through">{fmt(fullTotal)} TL</span>
+												)}
 												<span className="text-sm font-normal text-base-content/50"> / {PERIOD_LABEL[months].toLowerCase()}</span>
 											</p>
-											<p className={cn("mt-0.5 text-xs text-base-content/50", months === 1 && "invisible")} aria-hidden={months === 1}>
-												{months > 1
-													? `Aylık ${effectiveMonthly.toLocaleString("tr-TR", { maximumFractionDigits: 0 })} TL · %${Math.round(discount * 100)} indirim`
-													: " "}
+											<p className={cn("mt-1 text-xs", months === 1 && "invisible")} aria-hidden={months === 1}>
+												{months > 1 ? (
+													<>
+														<span className="font-semibold text-success">%{Math.round(discount * 100)} indirim</span>
+														<span className="text-base-content/50"> · aylık {fmt(effectiveMonthly)} TL</span>
+													</>
+												) : (
+													" "
+												)}
 											</p>
 										</motion.div>
 									</AnimatePresence>
