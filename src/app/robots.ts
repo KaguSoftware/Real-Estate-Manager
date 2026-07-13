@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { getSiteUrl } from "@/src/lib/siteUrl";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://kagu.app";
+const SITE = getSiteUrl();
 
 // Public marketing/legal pages are indexable; the app itself is auth-gated
 // and has no business being crawled.

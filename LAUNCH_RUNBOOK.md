@@ -47,12 +47,15 @@ Confirmation emails currently redirect to `http://localhost:3000` because the
 Supabase **Site URL** was never changed.
 
 Supabase Dashboard → Authentication → URL Configuration:
-- **Site URL** → `https://re-demo-amber.vercel.app` (or your final domain)
-- **Redirect URLs** → add BOTH:
-  - `https://re-demo-amber.vercel.app/auth/callback`
-  - `http://localhost:3000/auth/callback`
+- **Site URL** → `https://kagu-realestate.com`
+- **Redirect URLs** → add ALL:
+  - `https://kagu-realestate.com/auth/callback`
+  - `https://kagu-realestate.com/join/*` (team invite links)
+  - `http://localhost:3000/auth/callback` (keeps local dev working)
 
-And on Vercel set `NEXT_PUBLIC_SITE_URL=https://re-demo-amber.vercel.app`.
+And on Vercel set `NEXT_PUBLIC_SITE_URL=https://kagu-realestate.com` for **both
+Production and Preview**, then **redeploy** — `NEXT_PUBLIC_*` is inlined at build
+time, so changing it without a rebuild has no effect.
 
 ## 5. Custom SMTP (30 min, CRITICAL before real signups)
 

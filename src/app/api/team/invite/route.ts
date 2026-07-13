@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/src/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { getSiteUrl } from "@/src/lib/siteUrl";
 import { isRateLimited } from "@/src/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
@@ -45,8 +46,7 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
-	const siteUrl =
-		process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? request.nextUrl.origin;
+	const siteUrl = getSiteUrl(request.nextUrl.origin);
 	const joinUrl = `${siteUrl}/join/${invite.code}`;
 
 	const service = createServiceClient(

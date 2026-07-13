@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { humanizeError } from "@/src/lib/errors";
 import { createClient } from "@/src/lib/supabase/client";
+import { getSiteUrl } from "@/src/lib/siteUrl";
 import { fetchTeamContext } from "@/src/lib/db/teams";
 import { useAppStore } from "@/src/store";
 import { toast, Button, FormField, Input, EmailInput, Alert } from "@/src/components/ui";
@@ -33,8 +34,7 @@ export function readPendingInvite(): string | null {
 // Email links should always point at the deployed app, even when the sign-up
 // happens from a dev session; falls back to the current origin locally.
 function authCallbackUrl() {
-	const base = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-	return `${base.replace(/\/$/, "")}/auth/callback`;
+	return `${getSiteUrl(window.location.origin)}/auth/callback`;
 }
 
 interface AuthFormProps {

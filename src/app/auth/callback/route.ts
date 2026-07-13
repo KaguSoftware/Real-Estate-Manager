@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/src/lib/supabase/server";
+import { getSiteUrl } from "@/src/lib/siteUrl";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -22,15 +23,17 @@ export async function GET(request: NextRequest) {
 
   // Use NEXT_PUBLIC_SITE_URL if set (production), otherwise fall back to request origin.
   // This avoids http:// vs https:// mismatches on Vercel.
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-    request.nextUrl.origin;
+  const siteUrl = getSiteUrl(request.nextUrl.origin);
 
   const supabase = await createClient();
 
   // Team-less users (fresh signups confirming their email) go straight to the
   // onboarding wizard instead of bouncing through / and the middleware.
   async function destination() {
+    // An explicit destination (e.g. ?next=/reset-password from the recovery
+    // flow) wins — otherwise a team-less user resetting their password would be
+    // hijacked to /onboarding and never reach the reset screen.
+    if (next !== "/") return next;
     const { data } = await supabase
       .from("team_members")
       .select("team_id")

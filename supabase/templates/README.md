@@ -25,13 +25,15 @@ All templates use `{{ .ConfirmationURL }}`; `change-email.html` additionally use
 
 Dashboard → **Authentication → URL Configuration**:
 
-1. **Site URL** → your production domain (e.g. `https://your-domain.com`).
+1. **Site URL** → your production domain: `https://kagu-realestate.com`.
    This is what `{{ .ConfirmationURL }}` builds links from — while it is
    `http://localhost:3000`, every email links to localhost.
-2. **Redirect URLs** → add both:
-   - `https://your-domain.com/auth/callback`
+2. **Redirect URLs** → add all:
+   - `https://kagu-realestate.com/auth/callback`
+   - `https://kagu-realestate.com/join/*` (team invite links)
    - `http://localhost:3000/auth/callback` (keeps local dev working)
-3. Set `NEXT_PUBLIC_SITE_URL` in the app's env (see `.env.example`) to the same domain.
+3. Set `NEXT_PUBLIC_SITE_URL=https://kagu-realestate.com` in the app's env (see
+   `.env.example`) and on Vercel (Production + Preview), then redeploy.
 
 ## Custom SMTP / verified sender (recommended)
 

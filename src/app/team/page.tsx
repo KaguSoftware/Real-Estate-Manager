@@ -25,6 +25,7 @@ import {
 } from "@/src/components/ui";
 import { validEmail } from "@/src/lib/validation";
 import { humanizeError } from "@/src/lib/errors";
+import { getSiteUrl } from "@/src/lib/siteUrl";
 import { BrandingCard } from "@/src/components/team/BrandingCard";
 import { ClauseTemplatesCard } from "@/src/components/team/ClauseTemplatesCard";
 import { TeamDangerZone } from "@/src/components/team/TeamDangerZone";
@@ -59,7 +60,7 @@ export default function TeamPage() {
 	}, [team, reload]);
 
 	const joinUrl = linkInvite
-		? `${typeof window !== "undefined" ? window.location.origin : ""}/join/${linkInvite.code}`
+		? `${getSiteUrl(typeof window !== "undefined" ? window.location.origin : undefined)}/join/${linkInvite.code}`
 		: null;
 
 	async function onInvite(e: React.FormEvent) {

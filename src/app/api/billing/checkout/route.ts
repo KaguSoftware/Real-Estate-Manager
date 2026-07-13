@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/src/lib/supabase/server";
 import { getPaymentProvider } from "@/src/lib/billing";
 import { BILLING_PERIODS, type BillingPeriodMonths } from "@/src/lib/billing/provider";
+import { getSiteUrl } from "@/src/lib/siteUrl";
 import { isRateLimited } from "@/src/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
@@ -33,8 +34,7 @@ export async function POST(request: NextRequest) {
 		.from("plans").select("id").eq("id", body.plan_id).eq("is_active", true).maybeSingle();
 	if (!plan) return NextResponse.json({ error: "Unknown plan" }, { status: 400 });
 
-	const siteUrl =
-		process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? request.nextUrl.origin;
+	const siteUrl = getSiteUrl(request.nextUrl.origin);
 
 	try {
 		const { url } = await getPaymentProvider().createCheckout(teamId, plan.id, months, {

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { getSiteUrl } from "@/src/lib/siteUrl";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://kagu.app";
+const SITE = getSiteUrl();
 
 export default function sitemap(): MetadataRoute.Sitemap {
 	return [

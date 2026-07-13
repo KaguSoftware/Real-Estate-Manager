@@ -66,8 +66,16 @@ In the Supabase Dashboard:
 1. Go to **Authentication** → **Providers**.
 2. Ensure **Email** is enabled.
 3. Under **Email** settings, turn on **Enable magic link** (passwordless sign-in).
-4. Set your **Site URL** to `http://localhost:3000` for local dev.
-5. Add any production URLs to **Additional redirect URLs** before deploying.
+4. Go to **Authentication → URL Configuration** and set **Site URL** to your
+   production domain: `https://kagu-realestate.com`. This is what confirmation /
+   magic-link / reset emails build their links from — if it is left at
+   `http://localhost:3000`, **every email links to localhost**.
+5. Under **Redirect URLs**, add all of:
+   - `https://kagu-realestate.com/auth/callback`
+   - `https://kagu-realestate.com/join/*` (team invite links)
+   - `http://localhost:3000/auth/callback` (keeps local dev working)
+6. Set `NEXT_PUBLIC_SITE_URL=https://kagu-realestate.com` in the app env (and on
+   Vercel, Production + Preview) so redirects match the allowlist.
 
 ## 5. Verify
 

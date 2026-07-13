@@ -7,6 +7,7 @@ import { ToastHost } from "@/src/components/ui/Toast";
 import { OfflineBanner } from "@/src/components/ui/OfflineBanner";
 import { BrandTheme } from "@/src/components/ui/BrandTheme";
 import { TrialBanner } from "@/src/components/billing/TrialBanner";
+import { getSiteUrl } from "@/src/lib/siteUrl";
 
 // One grotesque family, weight-driven hierarchy: body and display share
 // Schibsted Grotesk (.font-display adds tracking, see globals.css).
@@ -15,7 +16,7 @@ const schibsted = Schibsted_Grotesk({ subsets: ["latin", "latin-ext"], variable:
 const plexMono = IBM_Plex_Mono({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], variable: "--font-mono-face" });
 const notoArabic = Noto_Sans_Arabic({ subsets: ["arabic"], weight: ["400", "500", "600", "700", "900"], variable: "--font-arabic" });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://kagu.app";
+const SITE_URL = getSiteUrl();
 
 export const metadata: Metadata = {
 	metadataBase: new URL(SITE_URL),
