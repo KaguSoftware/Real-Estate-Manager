@@ -16,13 +16,14 @@ import { clearCache } from "@/src/lib/useCachedResource";
 import { fetchTeamContext } from "@/src/lib/db/teams";
 import { checkTrialNotifications } from "@/src/lib/db/notifications";
 
+
 // Team context + trial-notification sweep. The RPC is idempotent server-side;
 // failures are non-fatal (TrialBanner still reflects trial state).
 function loadTeam(setTeam: (t: Awaited<ReturnType<typeof fetchTeamContext>>) => void) {
   fetchTeamContext()
     .then((team) => {
       setTeam(team);
-      if (team) checkTrialNotifications().catch(() => {});
+      if (team) checkTrialNotifications().catch(() => { });
     })
     .catch(() => setTeam(null));
 }
