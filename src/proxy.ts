@@ -44,10 +44,13 @@ export async function proxy(request: NextRequest) {
 
   const allowedWithoutTeam = NO_TEAM_ALLOWED.some((re) => re.test(pathname))
 
-  // Single indexed PK lookup; RLS-safe (user can always read their own row).
+  // Must filter by user_id: the team_members RLS policy exposes the whole team
+  // roster, so an unfiltered .maybeSingle() returns null on a 2+ member team and
+  // would bounce every member to /onboarding.
   const { data: membership } = await supabase
     .from('team_members')
     .select('team_id')
+    .eq('user_id', user.id)
     .maybeSingle()
 
   if (!membership && !allowedWithoutTeam) {

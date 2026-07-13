@@ -87,10 +87,14 @@ export function fetchTeamContext(): Promise<TeamContext | null> {
 }
 
 async function fetchTeamContextUncached(): Promise<TeamContext | null> {
-	const { supabase } = await requireUser();
+	const { supabase, user } = await requireUser();
+	// MUST filter by user_id: the team_members RLS policy lets a member read the
+	// WHOLE roster, so an unfiltered .maybeSingle() throws PGRST116 ("multiple
+	// rows") the moment the team has 2+ members.
 	const { data, error } = await supabase
 		.from("team_members")
 		.select("role, teams(id, name, trial_ends_at, logo_path, brand_color_main, brand_color_accent1, brand_color_accent2, subscriptions(status, plan_id, current_period_end))")
+		.eq("user_id", user.id)
 		.maybeSingle();
 	if (error) throw error;
 	if (!data) return null;
@@ -152,9 +156,28 @@ export async function createTeam(input: CreateTeamInput): Promise<string> {
 	return data as string;
 }
 
+/** Accept either a bare invite code or a full join link. Invite codes are
+ *  base64url ([A-Za-z0-9_-], never '/'), so anything containing '/join/' or
+ *  parsing as a URL is a pasted link — pull the code out of it. */
+export function normalizeInviteCode(input: string): string {
+	const trimmed = input.trim();
+	const marker = "/join/";
+	const at = trimmed.indexOf(marker);
+	if (at !== -1) {
+		return trimmed.slice(at + marker.length).split(/[?#/]/)[0];
+	}
+	try {
+		const segments = new URL(trimmed).pathname.split("/").filter(Boolean);
+		if (segments.length > 0) return segments[segments.length - 1];
+	} catch {
+		// Not a URL — treat as a bare code.
+	}
+	return trimmed;
+}
+
 export async function acceptInvite(code: string): Promise<string> {
 	const { supabase } = await requireUser();
-	const { data, error } = await supabase.rpc("accept_invite", { invite_code: code.trim() });
+	const { data, error } = await supabase.rpc("accept_invite", { invite_code: normalizeInviteCode(code) });
 	if (error) throw error;
 	return data as string;
 }

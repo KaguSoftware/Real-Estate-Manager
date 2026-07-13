@@ -12,6 +12,7 @@ import { createClient } from "@/src/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { getSiteUrl } from "@/src/lib/siteUrl";
 import { isRateLimited } from "@/src/lib/rateLimit";
+import { sendTeamInviteEmail } from "@/src/lib/email";
 
 export async function POST(request: NextRequest) {
 	const supabase = await createClient();
@@ -90,9 +91,14 @@ export async function POST(request: NextRequest) {
 		href: joinUrl,
 	});
 
+	// Existing accounts can't get a Supabase auth invite, so send them a branded
+	// Resend email carrying the plain join link. No-ops (emailed:false) when
+	// RESEND_API_KEY is unset — the in-app notification above is the fallback.
+	const emailResult = await sendTeamInviteEmail({ to: email, teamName, inviterName, joinUrl });
+
 	return NextResponse.json({
 		ok: true,
-		emailed: false,
+		emailed: emailResult.sent,
 		notified: !notifErr,
 		joinUrl,
 	});

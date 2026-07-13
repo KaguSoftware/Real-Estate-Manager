@@ -55,9 +55,16 @@ export async function GET(request: NextRequest) {
     // flow) wins — otherwise a team-less user resetting their password would be
     // hijacked to /onboarding and never reach the reset screen.
     if (next !== "/") return next;
+    // The session is live after the exchange above; scope to this user's own
+    // membership row. Without .eq the RLS roster view returns multiple rows on a
+    // 2+ member team, .maybeSingle() nulls, and the member is wrongly sent to
+    // onboarding.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return "/onboarding";
     const { data } = await supabase
       .from("team_members")
       .select("team_id")
+      .eq("user_id", user.id)
       .maybeSingle();
     return data ? next : "/onboarding";
   }
