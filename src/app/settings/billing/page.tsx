@@ -241,18 +241,15 @@ export default function BillingPage() {
 											exit={{ opacity: 0, y: 6 }}
 											transition={{ duration: 0.18, ease: "easeOut" }}
 										>
-											<p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-3xl font-bold text-base-content">
-												<span>{fmt(total)} TL</span>
-												{months > 1 && (
-													<span className="text-base font-normal text-base-content/40 line-through">{fmt(fullTotal)} TL</span>
-												)}
+											<p className="mt-2 text-3xl font-bold text-base-content">
+												{fmt(total)} TL
 												<span className="text-sm font-normal text-base-content/50"> / {PERIOD_LABEL[months].toLowerCase()}</span>
 											</p>
 											<p className={cn("mt-1 text-xs", months === 1 && "invisible")} aria-hidden={months === 1}>
 												{months > 1 ? (
 													<>
-														<span className="font-semibold text-success">%{Math.round(discount * 100)} indirim</span>
-														<span className="text-base-content/50"> · aylık {fmt(effectiveMonthly)} TL</span>
+														<span className="text-base-content/40 line-through">{fmt(fullTotal)} TL</span>
+														<span className="ml-1.5 font-semibold text-success">%{Math.round(discount * 100)} indirim</span>
 													</>
 												) : (
 													" "

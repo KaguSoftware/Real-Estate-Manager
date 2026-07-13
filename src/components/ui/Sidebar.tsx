@@ -38,6 +38,14 @@ function PendingHint() {
 /** x-center of the flight line inside the <nav>, in px (matches left-[27px] + w-px). */
 const LINE_X = 27;
 
+/**
+ * Last marker Y, kept at module scope so it survives this component's remount
+ * on every navigation (AppShell renders the Sidebar per page). On mount we seed
+ * the marker at this position and then glide it to the new route's item, so the
+ * bill appears to travel from the previously-active item instead of teleporting.
+ */
+let lastMarkerY: number | null = null;
+
 export function Sidebar() {
 	const user = useAppStore((s) => s.user);
 	const team = useAppStore((s) => s.team);
@@ -47,9 +55,6 @@ export function Sidebar() {
 	const navRef = useRef<HTMLElement>(null);
 	const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
 	const markerRef = useRef<HTMLSpanElement>(null);
-	// AppShell (and this Sidebar) remounts on every navigation, so the marker
-	// would otherwise animate from translateY(0) — sliding down from the top —
-	// on each arrival. Snap it into place on first paint; only glide on updates.
 	const firstPaint = useRef(true);
 
 	const isAdmin = user?.app_role === "admin";
@@ -69,16 +74,27 @@ export function Sidebar() {
 		const el = activeHref ? itemRefs.current.get(activeHref) : null;
 		if (el) {
 			const y = el.offsetTop + el.offsetHeight / 2 - 3.5;
-			if (firstPaint.current) {
-				// Position without animating in from the top on mount.
+			if (firstPaint.current && lastMarkerY !== null && lastMarkerY !== y) {
+				// Seed at the previously-active position (persisted across the
+				// remount), then glide to this route's item on the next frame.
+				marker.style.transition = "none";
+				marker.style.transform = `translateY(${lastMarkerY}px)`;
+				marker.style.opacity = "1";
+				void marker.offsetHeight; // flush the seed before re-enabling the glide
+				marker.style.transition = "";
+				marker.style.transform = `translateY(${y}px)`;
+			} else if (firstPaint.current) {
+				// First ever paint (no prior position): appear in place, no slide.
 				marker.style.transition = "none";
 				marker.style.transform = `translateY(${y}px)`;
-				void marker.offsetHeight; // flush so subsequent changes transition
+				marker.style.opacity = "1";
+				void marker.offsetHeight;
 				marker.style.transition = "";
 			} else {
 				marker.style.transform = `translateY(${y}px)`;
+				marker.style.opacity = "1";
 			}
-			marker.style.opacity = "1";
+			lastMarkerY = y;
 		} else {
 			marker.style.opacity = "0";
 		}
