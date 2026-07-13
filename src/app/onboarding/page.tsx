@@ -103,9 +103,12 @@ export default function OnboardingPage() {
 		if (!user) return;
 		const pending = readPendingInvite()?.trim();
 		if (!pending) return;
-		setBusy("auto");
+		let cancelled = false;
+		// Flag the auto-accept without a synchronous setState in the effect body.
+		queueMicrotask(() => { if (!cancelled) setBusy("auto"); });
 		acceptInvite(pending)
 			.then(async (teamId) => {
+				if (cancelled) return;
 				clearPendingInvite();
 				void teamId;
 				const team = await fetchTeamContext();
@@ -114,10 +117,12 @@ export default function OnboardingPage() {
 				router.replace("/");
 			})
 			.catch((e: unknown) => {
+				if (cancelled) return;
 				clearPendingInvite();
 				setBusy(null);
 				setError(humanizeError(e));
 			});
+		return () => { cancelled = true; };
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [user?.id]);
 

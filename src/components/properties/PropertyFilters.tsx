@@ -39,7 +39,12 @@ export function PropertyFilters() {
 
 	// Keep local input in sync when filters are set externally
 	// (e.g. a lead's "Find matches" pre-fills them before navigation).
-	useEffect(() => { setQ(filters.q); }, [filters.q]);
+	useEffect(() => {
+		let cancelled = false;
+		// Sync the local copy without a synchronous setState in the effect body.
+		queueMicrotask(() => { if (!cancelled) setQ(filters.q); });
+		return () => { cancelled = true; };
+	}, [filters.q]);
 
 	useEffect(() => {
 		const id = setTimeout(() => { if (q !== filters.q) setFilter("q", q); }, 250);

@@ -114,7 +114,12 @@ export function PropertyDetail({ propertyId }: Props) {
 		finally { setLoading(false); }
 	}, [propertyId]);
 
-	useEffect(() => { reload(); }, [reload]);
+	useEffect(() => {
+		let cancelled = false;
+		// Kick off the reload without a synchronous setState in the effect body.
+		queueMicrotask(() => { if (!cancelled) reload(); });
+		return () => { cancelled = true; };
+	}, [reload]);
 
 	async function handleShare() {
 		if (!data) return;

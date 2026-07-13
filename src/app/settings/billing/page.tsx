@@ -7,7 +7,7 @@
  * The database (team_is_writable in RLS) is the enforcement; this page is UX.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { CheckCircle2 } from "lucide-react";
 import { useAppStore } from "@/src/store";
@@ -67,6 +67,13 @@ export default function BillingPage() {
 	const [confirmCancel, setConfirmCancel] = useState(false);
 	const [canceling, setCanceling] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	// Navigating away is a side effect, not a render-time mutation of `window` —
+	// stash the destination and let an effect perform the redirect.
+	const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (redirectUrl) window.location.href = redirectUrl;
+	}, [redirectUrl]);
 
 	useEffect(() => {
 		const supabase = createClient();
@@ -101,7 +108,7 @@ export default function BillingPage() {
 			});
 			const json = (await res.json()) as { url?: string; error?: string };
 			if (!res.ok || !json.url) throw new Error(json.error || "Ödeme sayfası açılamadı");
-			window.location.href = json.url;
+			setRedirectUrl(json.url);
 		} catch (e) {
 			setError(humanizeError(e));
 			setBusyPlan(null);
@@ -117,7 +124,7 @@ export default function BillingPage() {
 			if (!res.ok) throw new Error(json.error || "İptal işlemi başarısız oldu");
 			if (json.url) {
 				// Mock flow (dev): the webhook applies the change and redirects back.
-				window.location.href = json.url;
+				setRedirectUrl(json.url);
 				return;
 			}
 			toast.success("İptal talebiniz alındı. Ödenen dönemin sonuna kadar erişiminiz sürer.");
@@ -131,8 +138,18 @@ export default function BillingPage() {
 		}
 	}
 
+	// Minute-granular clock via useSyncExternalStore: render stays pure and the
+	// server snapshot (0) is fine here since trialDaysLeft floors to 0 anyway.
+	const now = useSyncExternalStore(
+		(onTick) => {
+			const t = setInterval(onTick, 60_000);
+			return () => clearInterval(t);
+		},
+		() => Math.floor(Date.now() / 60_000) * 60_000,
+		() => 0,
+	);
 	const trialDaysLeft = team
-		? Math.max(0, Math.ceil((new Date(team.trial_ends_at).getTime() - Date.now()) / 86_400_000))
+		? Math.max(0, Math.ceil((new Date(team.trial_ends_at).getTime() - now) / 86_400_000))
 		: 0;
 	const status = team?.subscription_status ?? "trialing";
 	const meta = STATUS_LABEL[status] ?? STATUS_LABEL.trialing;

@@ -55,7 +55,11 @@ export default function TeamPage() {
 	}, [isOwner]);
 
 	useEffect(() => {
-		if (team) void reload();
+		if (!team) return;
+		let cancelled = false;
+		// Kick off the reload without a synchronous setState in the effect body.
+		queueMicrotask(() => { if (!cancelled) void reload(); });
+		return () => { cancelled = true; };
 	}, [team, reload]);
 
 	const joinUrl = linkInvite

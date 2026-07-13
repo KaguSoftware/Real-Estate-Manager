@@ -165,11 +165,17 @@ export function BrandingCard() {
 	});
 	useEffect(() => {
 		if (!team) return;
-		setColors({
-			main: team.brand_color_main,
-			accent1: team.brand_color_accent1,
-			accent2: team.brand_color_accent2,
+		let cancelled = false;
+		// Sync the draft colors without a synchronous setState in the effect body.
+		queueMicrotask(() => {
+			if (cancelled) return;
+			setColors({
+				main: team.brand_color_main,
+				accent1: team.brand_color_accent1,
+				accent2: team.brand_color_accent2,
+			});
 		});
+		return () => { cancelled = true; };
 	}, [team?.brand_color_main, team?.brand_color_accent1, team?.brand_color_accent2]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	if (!team) return null;

@@ -124,9 +124,11 @@ export function ReceiptWizard({ onExit }: Props) {
 
 	// Single-lease properties skip the picker straight to payments.
 	useEffect(() => {
-		if (step === "lease" && !loadingLeases && leases.length === 1 && leaseId) {
-			goToPayments(leaseId);
-		}
+		if (!(step === "lease" && !loadingLeases && leases.length === 1 && leaseId)) return;
+		let cancelled = false;
+		// Kick off the transition without a synchronous setState in the effect body.
+		queueMicrotask(() => { if (!cancelled) void goToPayments(leaseId); });
+		return () => { cancelled = true; };
 	}, [step, loadingLeases, leases.length, leaseId, goToPayments]);
 
 	async function handleGenerate() {

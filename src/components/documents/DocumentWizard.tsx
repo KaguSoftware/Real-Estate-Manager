@@ -447,7 +447,11 @@ export function DocumentWizard() {
 	// user can still choose "Devam et"). The choice window ends when they start
 	// a new flow — keep the banner only on the first step.
 	useEffect(() => {
-		if (pendingDraft && step !== "type") setPendingDraft(null);
+		if (!(pendingDraft && step !== "type")) return;
+		let cancelled = false;
+		// Clear the banner without a synchronous setState in the effect body.
+		queueMicrotask(() => { if (!cancelled) setPendingDraft(null); });
+		return () => { cancelled = true; };
 	}, [pendingDraft, step]);
 
 	// Work done in the final stage is lost on a refresh/close — warn first.
@@ -468,7 +472,8 @@ export function DocumentWizard() {
 	useEffect(() => {
 		if (step !== "preview" || fontsLoaded) return;
 		let cancelled = false;
-		setAssetError(null);
+		// Clear a previous error without a synchronous setState in the effect body.
+		queueMicrotask(() => { if (!cancelled) setAssetError(null); });
 		// Team branding (name/logo/palette) is resolved with the fonts so the
 		// preview matches the downloaded document. A failure must surface with
 		// a retry — an uncaught rejection here means a spinner forever.
@@ -510,8 +515,12 @@ export function DocumentWizard() {
 		// Already loaded: picking a card only changes propertyId and must not refetch.
 		if (step === "property" && propertiesLoaded) return;
 		let cancelled = false;
-		setLoadingProperties(true);
-		setError(null);
+		// Flag the fetch without a synchronous setState in the effect body.
+		queueMicrotask(() => {
+			if (cancelled) return;
+			setLoadingProperties(true);
+			setError(null);
+		});
 		listEligiblePropertiesForDocType(kind)
 			.then((p) => { if (!cancelled) { setProperties(p); setPropertiesLoaded(true); } })
 			.catch((e) => { if (!cancelled) setError(humanizeError(e)); })
@@ -523,8 +532,12 @@ export function DocumentWizard() {
 	useEffect(() => {
 		if (step !== "client") return;
 		let cancelled = false;
-		setLoadingClients(true);
-		setError(null);
+		// Flag the fetch without a synchronous setState in the effect body.
+		queueMicrotask(() => {
+			if (cancelled) return;
+			setLoadingClients(true);
+			setError(null);
+		});
 		listLeads()
 			.then((c) => { if (!cancelled) setClients(c); })
 			.catch((e) => { if (!cancelled) setError(humanizeError(e)); })
@@ -575,44 +588,50 @@ export function DocumentWizard() {
 		}
 		if (seededKey.current === key) return;
 		seededKey.current = key;
-		if (kind === "rental") {
-			// Re-seed the rental form from the picked property, preserving any
-			// tenant/guarantor/clause edits if the user bounces back+forward.
-			setRentalState((prev) => ({
-				...initialRentalFormState(property),
-				tenantName: prev.tenantName,
-				tenantAddress: prev.tenantAddress,
-				tenantPhone: prev.tenantPhone,
-				tenantEmail: prev.tenantEmail,
-				tenantNationalId: prev.tenantNationalId,
-				tenantTaxNo: prev.tenantTaxNo,
-				tenantTaxOffice: prev.tenantTaxOffice,
-				guarantorEnabled: prev.guarantorEnabled,
-				guarantorName: prev.guarantorName,
-				guarantorAddress: prev.guarantorAddress,
-				guarantorNationalId: prev.guarantorNationalId,
-				guarantorPhone: prev.guarantorPhone,
-				guarantorEmail: prev.guarantorEmail,
-				inventory: prev.inventory,
-				conditionNotes: prev.conditionNotes,
-				specialConditions: prev.specialConditions,
-				rentIncreaseNote: prev.rentIncreaseNote,
-			}));
-		} else if (kind === "sales") {
-			// Re-seed sales form whenever the picked property changes.
-			setSalesState((prev) => ({
-				...initialSalesFormState(property),
-				// Preserve any user edits to buyer fields if they bounce back+forward.
-				buyerName: prev.buyerName,
-				buyerAddress: prev.buyerAddress,
-				buyerPhone: prev.buyerPhone,
-				buyerEmail: prev.buyerEmail,
-				buyerNationalId: prev.buyerNationalId,
-				buyerTaxNo: prev.buyerTaxNo,
-				buyerTaxOffice: prev.buyerTaxOffice,
-				specialConditions: prev.specialConditions,
-			}));
-		}
+		let cancelled = false;
+		// Re-seed the form without a synchronous setState in the effect body.
+		queueMicrotask(() => {
+			if (cancelled) return;
+			if (kind === "rental") {
+				// Re-seed the rental form from the picked property, preserving any
+				// tenant/guarantor/clause edits if the user bounces back+forward.
+				setRentalState((prev) => ({
+					...initialRentalFormState(property),
+					tenantName: prev.tenantName,
+					tenantAddress: prev.tenantAddress,
+					tenantPhone: prev.tenantPhone,
+					tenantEmail: prev.tenantEmail,
+					tenantNationalId: prev.tenantNationalId,
+					tenantTaxNo: prev.tenantTaxNo,
+					tenantTaxOffice: prev.tenantTaxOffice,
+					guarantorEnabled: prev.guarantorEnabled,
+					guarantorName: prev.guarantorName,
+					guarantorAddress: prev.guarantorAddress,
+					guarantorNationalId: prev.guarantorNationalId,
+					guarantorPhone: prev.guarantorPhone,
+					guarantorEmail: prev.guarantorEmail,
+					inventory: prev.inventory,
+					conditionNotes: prev.conditionNotes,
+					specialConditions: prev.specialConditions,
+					rentIncreaseNote: prev.rentIncreaseNote,
+				}));
+			} else if (kind === "sales") {
+				// Re-seed sales form whenever the picked property changes.
+				setSalesState((prev) => ({
+					...initialSalesFormState(property),
+					// Preserve any user edits to buyer fields if they bounce back+forward.
+					buyerName: prev.buyerName,
+					buyerAddress: prev.buyerAddress,
+					buyerPhone: prev.buyerPhone,
+					buyerEmail: prev.buyerEmail,
+					buyerNationalId: prev.buyerNationalId,
+					buyerTaxNo: prev.buyerTaxNo,
+					buyerTaxOffice: prev.buyerTaxOffice,
+					specialConditions: prev.specialConditions,
+				}));
+			}
+		});
+		return () => { cancelled = true; };
 	}, [property, kind]);
 
 	const rentalData = useMemo<RentalPDFData | null>(() => {
@@ -633,14 +652,19 @@ export function DocumentWizard() {
 		if (kind !== "rental" && kind !== "sales") return;
 		const fingerprint = JSON.stringify({ ...wizardData, generatedAt: null });
 		if (docJson && fingerprint === docFingerprint) {
-			if (docStale) setDocStale(false); // data reverted to match the doc
-			return;
+			if (!docStale) return;
+			let cancelled = false;
+			// Clear the stale flag without a synchronous setState in the effect body.
+			queueMicrotask(() => { if (!cancelled) setDocStale(false); }); // data reverted to match the doc
+			return () => { cancelled = true; };
 		}
 		// The user customized the document — never clobber it silently; the
 		// stale banner offers an explicit rebuild instead.
 		if (docJson && docDirty) {
-			if (!docStale) setDocStale(true);
-			return;
+			if (docStale) return;
+			let cancelled = false;
+			queueMicrotask(() => { if (!cancelled) setDocStale(true); });
+			return () => { cancelled = true; };
 		}
 		// Debounced: wizardData changes identity on every panel keystroke, and
 		// each run clears the previous timer — the doc rebuilds 500 ms after

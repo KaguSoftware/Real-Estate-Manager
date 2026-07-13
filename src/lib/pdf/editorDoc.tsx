@@ -225,101 +225,110 @@ const HEADING_STYLES: Record<number, { fontSize: number }> = {
 	3: { fontSize: 11 },
 };
 
+// plainText() walks node content directly (not JSX) and is the one call in this
+// module that can actually throw on malformed data — isolate that risk here so
+// the switch below never needs a try/catch around JSX construction (JSX itself
+// never throws synchronously; React defers rendering, so a try/catch around it
+// can't catch child-render errors anyway — use an error boundary for that).
+function safePlainText(node: DocNode): string {
+	try {
+		return plainText(node);
+	} catch {
+		warnDev("plainText failed", node);
+		return "";
+	}
+}
+
 function BlockNode({ node }: { node: DocNode }) {
 	const { palette } = useBranding();
-	try {
-		switch (node.type) {
-			case BLOCK.paragraph: {
-				if (!node.content?.length) return <View style={{ height: 8 }} />;
-				return (
-					<Text style={[styles.bodyText, { marginBottom: 8 }]}>
-						<InlineRuns nodes={node.content} />
-					</Text>
-				);
-			}
-			case BLOCK.heading: {
-				const level = Number((node.attrs as { level?: number } | undefined)?.level ?? 2);
-				const size = HEADING_STYLES[level] ?? HEADING_STYLES[2];
-				return (
-					<View minPresenceAhead={40} style={{ marginBottom: 8, marginTop: 4 }}>
-						<Text style={{ fontSize: size.fontSize, fontWeight: 700, color: palette.primary }}>
-							<InlineRuns nodes={node.content ?? []} />
-						</Text>
-					</View>
-				);
-			}
-			case BLOCK.bulletList:
-				return <ListBlock node={node} ordered={false} />;
-			case BLOCK.orderedList:
-				return <ListBlock node={node} ordered={true} />;
-			case BLOCK.table:
-				return <TableBlock node={node} />;
-			case BLOCK.image:
-				return <ImageBlock node={node} />;
-			case BLOCK.sectionChip: {
-				const a = node.attrs as SectionChipAttrs | undefined;
-				if (!a?.title) { warnDev("sectionChip without title skipped", node); return null; }
-				return <SectionChip letter={a.letter ?? undefined} title={a.title} />;
-			}
-			case BLOCK.partyCard: {
-				const a = node.attrs as PartyCardAttrs | undefined;
-				if (!a?.party) { warnDev("partyCard without party skipped", node); return <FaultyBlock />; }
-				return (
-					<View style={{ marginBottom: 12 }}>
-						<PartyCard party={a.party} roleLabel={a.role || "Taraf"} />
-					</View>
-				);
-			}
-			case BLOCK.kvCard: {
-				const a = node.attrs as KVCardAttrs | undefined;
-				if (!Array.isArray(a?.items)) { warnDev("kvCard without items skipped", node); return <FaultyBlock />; }
-				return (
-					<View style={{ marginBottom: 12 }}>
-						<KVCard title={a.title} items={a.items} />
-					</View>
-				);
-			}
-			case BLOCK.moneyPair: {
-				const a = node.attrs as MoneyPairAttrs | undefined;
-				if (!a?.left || !a?.right) { warnDev("moneyPair missing sides skipped", node); return <FaultyBlock />; }
-				return (
-					<View style={{ marginBottom: 12 }}>
-						<MoneyPair left={a.left} right={a.right} />
-					</View>
-				);
-			}
-			case BLOCK.clauseList:
-				return <RichClausesList node={node} />;
-			case BLOCK.signatureBlock: {
-				const a = node.attrs as SignatureBlockAttrs | undefined;
-				if (!Array.isArray(a?.signers) || a.signers.length === 0) {
-					warnDev("signatureBlock without signers skipped", node);
-					return <FaultyBlock />;
-				}
-				return <SignatureBlock label="İmzalar" signers={a.signers} date={a.date ?? undefined} />;
-			}
-			case BLOCK.callout: {
-				const tone = ((node.attrs as CalloutAttrs | undefined)?.tone === "warning" ? "warning" : "note") as
-					| "warning"
-					| "note";
-				return (
-					<View style={{ marginBottom: 12 }}>
-						<Callout tone={tone}>{plainText(node)}</Callout>
-					</View>
-				);
-			}
-			case BLOCK.pageBreak:
-				return <View break />;
-			default: {
-				// Unknown node: degrade to its text content, never crash the render.
-				warnDev("unknown node rendered as plain text", node);
-				const t = plainText(node);
-				return t ? <Text style={[styles.bodyText, { marginBottom: 8 }]}>{t}</Text> : null;
-			}
+	switch (node.type) {
+		case BLOCK.paragraph: {
+			if (!node.content?.length) return <View style={{ height: 8 }} />;
+			return (
+				<Text style={[styles.bodyText, { marginBottom: 8 }]}>
+					<InlineRuns nodes={node.content} />
+				</Text>
+			);
 		}
-	} catch {
-		warnDev("node failed to render", node);
-		return <FaultyBlock />;
+		case BLOCK.heading: {
+			const level = Number((node.attrs as { level?: number } | undefined)?.level ?? 2);
+			const size = HEADING_STYLES[level] ?? HEADING_STYLES[2];
+			return (
+				<View minPresenceAhead={40} style={{ marginBottom: 8, marginTop: 4 }}>
+					<Text style={{ fontSize: size.fontSize, fontWeight: 700, color: palette.primary }}>
+						<InlineRuns nodes={node.content ?? []} />
+					</Text>
+				</View>
+			);
+		}
+		case BLOCK.bulletList:
+			return <ListBlock node={node} ordered={false} />;
+		case BLOCK.orderedList:
+			return <ListBlock node={node} ordered={true} />;
+		case BLOCK.table:
+			return <TableBlock node={node} />;
+		case BLOCK.image:
+			return <ImageBlock node={node} />;
+		case BLOCK.sectionChip: {
+			const a = node.attrs as SectionChipAttrs | undefined;
+			if (!a?.title) { warnDev("sectionChip without title skipped", node); return null; }
+			return <SectionChip letter={a.letter ?? undefined} title={a.title} />;
+		}
+		case BLOCK.partyCard: {
+			const a = node.attrs as PartyCardAttrs | undefined;
+			if (!a?.party) { warnDev("partyCard without party skipped", node); return <FaultyBlock />; }
+			return (
+				<View style={{ marginBottom: 12 }}>
+					<PartyCard party={a.party} roleLabel={a.role || "Taraf"} />
+				</View>
+			);
+		}
+		case BLOCK.kvCard: {
+			const a = node.attrs as KVCardAttrs | undefined;
+			if (!Array.isArray(a?.items)) { warnDev("kvCard without items skipped", node); return <FaultyBlock />; }
+			return (
+				<View style={{ marginBottom: 12 }}>
+					<KVCard title={a.title} items={a.items} />
+				</View>
+			);
+		}
+		case BLOCK.moneyPair: {
+			const a = node.attrs as MoneyPairAttrs | undefined;
+			if (!a?.left || !a?.right) { warnDev("moneyPair missing sides skipped", node); return <FaultyBlock />; }
+			return (
+				<View style={{ marginBottom: 12 }}>
+					<MoneyPair left={a.left} right={a.right} />
+				</View>
+			);
+		}
+		case BLOCK.clauseList:
+			return <RichClausesList node={node} />;
+		case BLOCK.signatureBlock: {
+			const a = node.attrs as SignatureBlockAttrs | undefined;
+			if (!Array.isArray(a?.signers) || a.signers.length === 0) {
+				warnDev("signatureBlock without signers skipped", node);
+				return <FaultyBlock />;
+			}
+			return <SignatureBlock label="İmzalar" signers={a.signers} date={a.date ?? undefined} />;
+		}
+		case BLOCK.callout: {
+			const tone = ((node.attrs as CalloutAttrs | undefined)?.tone === "warning" ? "warning" : "note") as
+				| "warning"
+				| "note";
+			return (
+				<View style={{ marginBottom: 12 }}>
+					<Callout tone={tone}>{safePlainText(node)}</Callout>
+				</View>
+			);
+		}
+		case BLOCK.pageBreak:
+			return <View break />;
+		default: {
+			// Unknown node: degrade to its text content, never crash the render.
+			warnDev("unknown node rendered as plain text", node);
+			const t = safePlainText(node);
+			return t ? <Text style={[styles.bodyText, { marginBottom: 8 }]}>{t}</Text> : null;
+		}
 	}
 }
 
