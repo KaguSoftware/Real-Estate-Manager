@@ -73,6 +73,7 @@ export function ToastHost() {
 						key={id}
 						className={cn(
 							"pointer-events-auto flex items-start gap-2.5 w-full sm:w-auto sm:max-w-sm",
+							"bg-base-100",
 							"px-4 py-3 rounded-xl border shadow-pop text-sm font-medium",
 							leaving ? "animate-[toastOut_.18s_ease-in_forwards]" : "animate-[toastIn_.18s_ease-out]",
 							box,

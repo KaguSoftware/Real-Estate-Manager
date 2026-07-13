@@ -11,7 +11,7 @@
  * otherwise restrained product UI.
  */
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/src/lib/supabase/client";
@@ -46,7 +46,7 @@ export function Sidebar() {
 
 	const navRef = useRef<HTMLElement>(null);
 	const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
-	const [markerY, setMarkerY] = useState<number | null>(null);
+	const markerRef = useRef<HTMLSpanElement>(null);
 
 	const isAdmin = user?.app_role === "admin";
 	const groups = NAV_GROUPS.map((g) => ({
@@ -60,12 +60,15 @@ export function Sidebar() {
 	// is measured against the <nav> (its offsetParent, via `relative`), so the
 	// marker scrolls together with the items.
 	useLayoutEffect(() => {
-		if (!activeHref) {
-			setMarkerY(null);
-			return;
+		const marker = markerRef.current;
+		if (!marker) return;
+		const el = activeHref ? itemRefs.current.get(activeHref) : null;
+		if (el) {
+			marker.style.opacity = "1";
+			marker.style.transform = `translateY(${el.offsetTop + el.offsetHeight / 2 - 3.5}px)`;
+		} else {
+			marker.style.opacity = "0";
 		}
-		const el = itemRefs.current.get(activeHref);
-		setMarkerY(el ? el.offsetTop + el.offsetHeight / 2 : null);
 	}, [activeHref, isAdmin]);
 
 	if (!user) return null;
@@ -113,13 +116,12 @@ export function Sidebar() {
 					style={{ left: LINE_X }}
 				/>
 				{/* The kagu's bill: one marker for the whole nav, gliding to the active item. */}
-				{markerY !== null && (
-					<span
-						aria-hidden
-						className="pointer-events-none absolute z-10 h-1.75 w-1.75 rounded-full bg-primary shadow-[0_0_10px_2px_--theme(--color-primary/45%)] transition-transform duration-200 ease-out motion-reduce:transition-none"
-						style={{ left: LINE_X - 3, top: 0, transform: `translateY(${markerY - 3.5}px)` }}
-					/>
-				)}
+				<span
+					ref={markerRef}
+					aria-hidden
+					className="pointer-events-none absolute z-10 h-1.75 w-1.75 rounded-full bg-primary shadow-[0_0_10px_2px_--theme(--color-primary/45%)] transition-transform duration-200 ease-out motion-reduce:transition-none"
+					style={{ left: LINE_X - 3, top: 0, opacity: 0 }}
+				/>
 
 				{groups.map((g, gi) => (
 					<div key={g.label ?? gi} className="pt-6 first:pt-0">
