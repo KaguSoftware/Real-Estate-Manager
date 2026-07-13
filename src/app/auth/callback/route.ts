@@ -27,6 +27,27 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
 
+  // Guard against the "my team disappeared" incident: opening an invite/signup
+  // action link while ALREADY signed in as someone else would make verifyOtp
+  // silently REPLACE the current session with the invited identity. The original
+  // account (e.g. a team owner testing their own invite) is then a team-less
+  // session, so proxy.ts bounces it to /onboarding — the team looks deleted but
+  // nothing was. Never auto-consume such a link over a live session; hand the
+  // user an explicit choice at /auth/switch (the token is left unconsumed, so
+  // "continue as the invited account" can replay it). Magic-link / recovery /
+  // email-confirm are left alone — those target the same person, not a new one.
+  const isOnboardingLink = !!token_hash && (type === "invite" || type === "signup");
+  if (isOnboardingLink) {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser) {
+      const to = new URL(`${siteUrl}/auth/switch`);
+      to.searchParams.set("token_hash", token_hash!);
+      to.searchParams.set("type", type!);
+      if (next !== "/") to.searchParams.set("next", next);
+      return NextResponse.redirect(to);
+    }
+  }
+
   // Team-less users (fresh signups confirming their email) go straight to the
   // onboarding wizard instead of bouncing through / and the middleware.
   async function destination() {
