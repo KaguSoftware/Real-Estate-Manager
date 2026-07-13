@@ -210,11 +210,12 @@ export default function BillingPage() {
 										/>
 									)}
 									<span className="relative">{PERIOD_LABEL[m]}</span>
-									{PERIOD_DISCOUNTS[m] > 0 && (
-										<span className="relative text-[10px] font-semibold text-success">
-											%{Math.round(PERIOD_DISCOUNTS[m] * 100)} indirim
-										</span>
-									)}
+									<span
+										className="relative text-[10px] font-semibold text-success"
+										aria-hidden={PERIOD_DISCOUNTS[m] === 0}
+									>
+										{PERIOD_DISCOUNTS[m] > 0 ? `%${Math.round(PERIOD_DISCOUNTS[m] * 100)} indirim` : " "}
+									</span>
 								</button>
 							))}
 						</div>
