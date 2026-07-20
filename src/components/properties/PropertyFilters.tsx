@@ -43,7 +43,7 @@ const CURRENCY_OPTIONS: DropdownOption<string>[] = [
 export function PropertyFilters() {
 	const router = useRouter();
 	const filters = useAppStore((s) => s.filters);
-	const properties = useAppStore((s) => s.properties);
+	const properties = useAppStore((s) => s.allProperties);
 	const setFilter = useAppStore((s) => s.setFilter);
 	const resetFilters = useAppStore((s) => s.resetFilters);
 
@@ -55,9 +55,11 @@ export function PropertyFilters() {
 	// (e.g. a lead's "Find matches" pre-fills them before navigation).
 	useEffect(() => { setQ(filters.q); }, [filters.q]);
 
+	// The 250ms debounce that used to live here existed only to avoid a network
+	// round-trip per keystroke. Filtering is now client-side (clientFilters.ts),
+	// so the store is written immediately and the table narrows as you type.
 	useEffect(() => {
-		const id = setTimeout(() => { if (q !== filters.q) setFilter("q", q); }, 250);
-		return () => clearTimeout(id);
+		if (q !== filters.q) setFilter("q", q);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [q]);
 

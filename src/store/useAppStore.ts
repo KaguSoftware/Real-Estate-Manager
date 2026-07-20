@@ -59,8 +59,16 @@ interface AppState {
 	teamLoaded: boolean;
 	setTeam: (t: TeamContext | null) => void;
 
+	/** The rows currently VISIBLE — i.e. after the active filters are applied.
+	 *  This is what the table and map render. */
 	properties: Property[];
 	setProperties: (p: Property[]) => void;
+	/** Every property the team has, unfiltered. The filter bar builds its
+	 *  dropdown options from this: deriving them from `properties` would make the
+	 *  options collapse as you narrow, so picking one value would delete the
+	 *  others from the list and you could never widen the selection again. */
+	allProperties: Property[];
+	setAllProperties: (p: Property[]) => void;
 	upsertProperty: (p: Property) => void;
 	removeProperty: (id: string) => void;
 	isLoadingProperties: boolean;
@@ -101,6 +109,8 @@ export const useAppStore = create<AppState>((set) => ({
 
 	properties: [],
 	setProperties: (properties) => set({ properties }),
+	allProperties: [],
+	setAllProperties: (allProperties) => set({ allProperties }),
 	upsertProperty: (p) =>
 		set((s) => {
 			// A create/update may change which filtered queries this row belongs to,
@@ -108,20 +118,24 @@ export const useAppStore = create<AppState>((set) => ({
 			invalidateCache("properties");
 			invalidateCache("stats");
 			invalidateCache("attention");
-			const idx = s.properties.findIndex((x) => x.id === p.id);
-			return {
-				properties:
-					idx === -1
-						? [p, ...s.properties]
-						: s.properties.map((x) => (x.id === p.id ? p : x)),
-			};
+			// Both lists are updated optimistically: `properties` so the visible
+			// table reacts immediately, `allProperties` so the filter bar's options
+			// include a brand-new property's city/nitelik right away.
+			const upsert = (list: Property[]) =>
+				list.some((x) => x.id === p.id)
+					? list.map((x) => (x.id === p.id ? p : x))
+					: [p, ...list];
+			return { properties: upsert(s.properties), allProperties: upsert(s.allProperties) };
 		}),
 	removeProperty: (id) =>
 		set((s) => {
 			invalidateCache("properties");
 			invalidateCache("stats");
 			invalidateCache("attention");
-			return { properties: s.properties.filter((p) => p.id !== id) };
+			return {
+				properties: s.properties.filter((p) => p.id !== id),
+				allProperties: s.allProperties.filter((p) => p.id !== id),
+			};
 		}),
 	isLoadingProperties: false,
 	setIsLoadingProperties: (v) => set({ isLoadingProperties: v }),

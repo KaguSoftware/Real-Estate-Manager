@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, useTeamReady } from "@/src/store";
-import { listProperties, type PropertyFilter } from "@/src/lib/db/properties";
+import { listProperties } from "@/src/lib/db/properties";
+import { filterProperties, type PropertyClientFilter } from "@/src/lib/clientFilters";
+import type { Property } from "@/src/lib/db/types";
 import { useCachedResource } from "@/src/lib/useCachedResource";
 import { AppShell, Card, Alert, Button } from "@/src/components/ui";
 import { PropertyFilters } from "./PropertyFilters";
@@ -51,6 +53,7 @@ export function PropertyDashboard() {
 	const filters = useAppStore((s) => s.filters);
 	const setFilters = useAppStore((s) => s.setFilters);
 	const setProperties = useAppStore((s) => s.setProperties);
+	const setAllProperties = useAppStore((s) => s.setAllProperties);
 	const setIsLoadingProperties = useAppStore((s) => s.setIsLoadingProperties);
 
 	// One-time hydration: an arriving URL with filter params wins over the store,
@@ -95,10 +98,28 @@ export function PropertyDashboard() {
 		if (qs !== current) router.replace(qs ? `/properties?${qs}` : "/properties", { scroll: false });
 	}, [filters, router, searchParams]);
 
-	// Normalize filters into a query object + a stable cache key. Navigating back
-	// to the same filters serves the cached list instantly and revalidates in the
-	// background (stale-while-revalidate); only real filter changes refetch eagerly.
-	const query: PropertyFilter = {
+	// Filtering happens IN THE BROWSER, not on the server.
+	//
+	// This used to fold every filter value into the SWR cache key, so each
+	// dropdown pick — and each debounced keystroke in the search box — minted a
+	// new key and paid a fresh ~330ms round-trip to show rows the client already
+	// had. The whole team's portfolio is hundreds of rows, so it is fetched once
+	// under ONE stable key and narrowed locally at zero network cost. Filtering
+	// is now instant and works offline over the cached list.
+	//
+	// The predicate in filterProperties() mirrors listProperties()'s WHERE clause
+	// and is unit-tested against it (clientFilters.test.ts) — if the server
+	// query changes, change both.
+	const cacheKey = user && teamReady ? "properties:all" : null;
+
+	const { data: allProperties, loading, error, refetch } = useCachedResource(
+		cacheKey,
+		() => listProperties({}),
+		undefined,
+		{ enabled: !!user && teamReady },
+	);
+
+	const clientFilter: PropertyClientFilter = useMemo(() => ({
 		listing_type: filters.listing_type === "all" ? undefined : filters.listing_type,
 		status: filters.status === "all" ? undefined : filters.status,
 		q: filters.q || undefined,
@@ -112,15 +133,35 @@ export function PropertyDashboard() {
 		currency:
 			filters.min_price != null || filters.max_price != null ? filters.currency : undefined,
 		is_new_build: filters.new_build === "all" ? undefined : filters.new_build === "yes",
-	};
-	const cacheKey = user && teamReady ? `properties:${JSON.stringify(query)}` : null;
+	}), [filters]);
 
-	const { loading, error, refetch } = useCachedResource(
-		cacheKey,
-		() => listProperties(query),
-		setProperties,
-		{ enabled: !!user && teamReady },
+	const visible = useMemo(
+		() => (allProperties ? filterProperties(allProperties, clientFilter) : null),
+		[allProperties, clientFilter],
 	);
+
+	// Publish the filtered view to the store, which is what PropertyTable and the
+	// map read.
+	//
+	// Adjusted DURING RENDER rather than in an effect: an effect would let React
+	// commit and paint the previous filter's rows first, so every filter change
+	// would flash stale results for a frame. Comparing state to the value we just
+	// derived lets React throw the stale pass away before it reaches the screen —
+	// the same pattern useCachedResource uses, and what `react-hooks/
+	// set-state-in-effect` is pointing at when it flags the effect version.
+	const [publishedRows, setPublishedRows] = useState<Property[] | null>(null);
+	if (visible && publishedRows !== visible) {
+		setPublishedRows(visible);
+		setProperties(visible);
+	}
+
+	// The filter bar builds its dropdown options from the UNFILTERED list, so
+	// choosing "Mesken" doesn't erase every other nitelik from the menu.
+	const [publishedAll, setPublishedAll] = useState<Property[] | null>(null);
+	if (allProperties && publishedAll !== allProperties) {
+		setPublishedAll(allProperties);
+		setAllProperties(allProperties);
+	}
 
 	// Mirror the initial-load flag into the store so PropertyTable can show its
 	// spinner. Background revalidation (loading === false) never shows a spinner.

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, useTeamReady } from "@/src/store";
 import { listLeads, type LeadFilter } from "@/src/lib/db/leads";
 import { listTenants } from "@/src/lib/db/tenants";
 import { useCachedResource } from "@/src/lib/useCachedResource";
+import { filterLeads, filterTenants } from "@/src/lib/clientFilters";
 import { AppShell, Card, Alert, Button, Input, Dropdown, type DropdownOption } from "@/src/components/ui";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "@/src/components/leads/leadStatus";
 import { LeadForm } from "@/src/components/leads/LeadForm";
@@ -68,34 +69,54 @@ export function ContactDashboard() {
 		if (newFlag) router.replace("/leads");
 	}, [newFlag, router]);
 
-	// One search box drives both queries; debounced so we don't refetch per keystroke.
+	// One search box drives both lists. The 300ms debounce that used to sit here
+	// existed only to avoid a network call per keystroke; filtering is now local,
+	// so the store is written synchronously and results update as you type.
 	const [q, setQ] = useState(leadFilters.q);
-	const debounceTimer = useRef<number | undefined>(undefined);
 	function onSearchChange(value: string) {
 		setQ(value);
-		window.clearTimeout(debounceTimer.current);
-		debounceTimer.current = window.setTimeout(() => setLeadFilter("q", value), 300);
+		setLeadFilter("q", value);
 	}
 
-	// Leads: stale-while-revalidate through the global store (DocumentWizard
-	// and the matching panel read the same slice).
-	const leadQuery: LeadFilter = {
+	// Leads and tenants are fetched ONCE, unfiltered, then narrowed in the
+	// browser (see clientFilters.ts). Previously the search text and status pick
+	// were folded into both cache keys, so every debounced keystroke fired two
+	// fresh ~330ms round-trips — and switching the type tab could too. Both lists
+	// are small and team-scoped, so the whole set lives in the cache and the tabs
+	// and search are now pure client state.
+	const leadQuery: LeadFilter = useMemo(() => ({
 		status: leadFilters.status === "all" ? undefined : leadFilters.status,
 		q: leadFilters.q || undefined,
-	};
-	const leadCacheKey = user && teamReady ? `leads:${JSON.stringify(leadQuery)}` : null;
+	}), [leadFilters.status, leadFilters.q]);
+	const leadCacheKey = user && teamReady ? "leads:all" : null;
 	const {
+		data: allLeads,
 		loading: loadingLeads,
 		error: leadError,
 		refetch: refetchLeads,
-	} = useCachedResource(leadCacheKey, () => listLeads(leadQuery), setLeads, { enabled: !!user && teamReady });
+	} = useCachedResource(leadCacheKey, () => listLeads(), undefined, { enabled: !!user && teamReady });
+
+	const visibleLeads = useMemo(
+		() => (allLeads ? filterLeads(allLeads, leadQuery) : null),
+		[allLeads, leadQuery],
+	);
+
+	// Publish to the store during render (not in an effect) so the list never
+	// paints a frame of the previous filter's rows. DocumentWizard and the
+	// matching panel read this same slice.
+	const [publishedLeads, setPublishedLeads] = useState<Lead[] | null>(null);
+	if (visibleLeads && publishedLeads !== visibleLeads) {
+		setPublishedLeads(visibleLeads);
+		setLeads(visibleLeads);
+	}
 
 	useEffect(() => {
 		setIsLoadingLeads(loadingLeads);
 	}, [loadingLeads, setIsLoadingLeads]);
 
-	// Tenants: same cached-resource pattern, held locally (no store slice needed).
-	const tenantCacheKey = user && teamReady ? `tenants:${JSON.stringify({ q: leadFilters.q })}` : null;
+	// Tenants: same one-fetch-then-filter-locally pattern, held locally (no store
+	// slice needed).
+	const tenantCacheKey = user && teamReady ? "tenants:all" : null;
 	const {
 		data: tenantData,
 		loading: loadingTenants,
@@ -103,11 +124,14 @@ export function ContactDashboard() {
 		refetch: refetchTenants,
 	} = useCachedResource(
 		tenantCacheKey,
-		() => listTenants({ q: leadFilters.q || undefined }),
+		() => listTenants(),
 		undefined,
 		{ enabled: !!user && teamReady },
 	);
-	const tenants = useMemo(() => tenantData ?? [], [tenantData]);
+	const tenants = useMemo(
+		() => (tenantData ? filterTenants(tenantData, { q: leadFilters.q }) : []),
+		[tenantData, leadFilters.q],
+	);
 
 	const rows = useMemo<ContactRow[]>(() => {
 		const merged: ContactRow[] = [];
