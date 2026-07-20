@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Property, TaxResponsibility } from "@/src/lib/db/types";
-import { FormField, Input, NumberInput, EmailInput, PhoneInput, Textarea, Dropdown, type DropdownOption } from "@/src/components/ui";
+import { FormField, Input, NumberInput, DatePicker, EmailInput, PhoneInput, Textarea, Dropdown, type DropdownOption } from "@/src/components/ui";
 
 /**
  * State container for the sales wizard step 3.
@@ -121,6 +121,10 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 		(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
 			onChange(k, e.target.value as SalesFormState[K]);
 
+	/** DatePicker emits the ISO value directly rather than a change event. */
+	const setDate = <K extends keyof SalesFormState>(k: K) =>
+		(v: string) => onChange(k, v as SalesFormState[K]);
+
 	// SalesFormState keeps numbers as strings (the wizard/PDF layer consumes
 	// them with Number()); these adapt string-state ↔ NumberInput's number|null.
 	const numValue = (k: keyof SalesFormState) => {
@@ -210,7 +214,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Dropdown options={[{ value: "TRY", label: "TL" }]} value="TRY" onChange={() => {}} disabled />
 					</FormField>
 					<FormField label="Sözleşme Tarihi" id="saleDate" error={errors.saleDate}>
-						<Input required type="date" value={state.saleDate} onChange={set("saleDate")} />
+						<DatePicker required value={state.saleDate} onChange={setDate("saleDate")} />
 					</FormField>
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -221,7 +225,7 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 						<NumberInput mode="decimal" format="money" min={0} value={numValue("penaltyAmount")} onChange={setNum("penaltyAmount")} />
 					</FormField>
 					<FormField label="Tapu Devir Tarihi">
-						<Input type="date" value={state.targetCloseDate} onChange={set("targetCloseDate")} />
+						<DatePicker value={state.targetCloseDate} onChange={setDate("targetCloseDate")} min={state.saleDate || undefined} />
 					</FormField>
 				</div>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

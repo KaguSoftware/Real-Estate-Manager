@@ -13,6 +13,7 @@ export { useFocusTrap } from "./useFocusTrap";
 export { MultiSelect } from "./MultiSelect";
 export { Dropdown, type DropdownOption } from "./Dropdown";
 export { NumberInput } from "./NumberInput";
+export { DatePicker } from "./DatePicker";
 export { EmailInput } from "./EmailInput";
 export { PhoneInput } from "./PhoneInput";
 export { AddMenu } from "./AddMenu";

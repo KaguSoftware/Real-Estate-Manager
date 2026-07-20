@@ -71,7 +71,10 @@ export function MultiSelect({ label, options, selected, onChange, className }: M
 
 			{open && (
 				<div
-					className="absolute z-40 mt-1.5 w-full min-w-44 max-h-64 overflow-y-auto rounded-xl border border-base-300 bg-base-100 shadow-pop p-1"
+					// Right-anchored and viewport-capped for the same reason as Dropdown:
+					// a menu wider than a narrow trigger must grow leftward, not push
+					// its container wide.
+					className="absolute right-0 z-40 mt-1.5 min-w-full w-max max-w-[min(18rem,calc(100vw-2rem))] max-h-64 overflow-y-auto overflow-x-hidden rounded-xl border border-base-300 bg-base-100 shadow-pop p-1"
 					role="listbox"
 				>
 					{options.length === 0 ? (

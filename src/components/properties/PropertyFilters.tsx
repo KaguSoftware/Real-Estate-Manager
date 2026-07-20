@@ -168,7 +168,7 @@ export function PropertyFilters() {
 							options={CURRENCY_OPTIONS}
 							value={filters.currency}
 							onChange={(v) => setFilter("currency", v)}
-							className="shrink-0 basis-28"
+							className="shrink-0 basis-32"
 							aria-label="Para birimi"
 						/>
 					)}

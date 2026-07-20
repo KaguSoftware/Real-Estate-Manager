@@ -11,7 +11,7 @@ import {
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import type { Payment } from "@/src/lib/db/types";
 import {
-	Button, FormField, Input, NumberInput, Alert, Spinner, ConfirmDialog, EmptyState, toast,
+	Button, FormField, Input, NumberInput, DatePicker, Alert, Spinner, ConfirmDialog, EmptyState, toast,
 } from "@/src/components/ui";
 import { positiveNumberValue, compactErrors } from "@/src/lib/validation";
 import { downloadCsv } from "@/src/lib/csv";
@@ -187,15 +187,14 @@ export function PaymentList({ leaseId, currency, monthlyRent, onChanged, onRecei
 					)}
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<FormField label="Dönem başlangıcı">
-							<Input
-								type="date"
+							<DatePicker
 								value={periodStart}
-								onChange={(e) => { setPeriodStart(e.target.value); setPeriodEnd(plusOneMonth(e.target.value)); }}
+								onChange={(v) => { setPeriodStart(v); setPeriodEnd(plusOneMonth(v)); }}
 								required
 							/>
 						</FormField>
 						<FormField label="Dönem bitişi" error={fieldErrors.periodEnd}>
-							<Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} required />
+							<DatePicker value={periodEnd} onChange={setPeriodEnd} required min={periodStart || undefined} />
 						</FormField>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

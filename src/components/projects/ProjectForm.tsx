@@ -6,7 +6,7 @@ import { useAppStore } from "@/src/store";
 import { createProject, updateProject, deleteProject, type ProjectInput } from "@/src/lib/db/projects";
 import type { Project } from "@/src/lib/db/types";
 import {
-	Sheet, Button, FormField, Input, NumberInput, Textarea, Dropdown,
+	Sheet, Button, FormField, Input, NumberInput, Textarea, Dropdown, DatePicker,
 	Alert, ConfirmDialog, toast, type DropdownOption,
 } from "@/src/components/ui";
 import { compactErrors } from "@/src/lib/validation";
@@ -183,14 +183,14 @@ export function ProjectForm({ mode, initial, onClose, onDone }: Props) {
 							options={CURRENCY_OPTIONS}
 							value={price_currency}
 							onChange={setPriceCurrency}
-							className="shrink-0 basis-28"
+							className="shrink-0 basis-32"
 							aria-label="Para birimi"
 						/>
 					</div>
 				</FormField>
 
 				<FormField label="Teslim tarihi">
-					<Input type="date" value={delivery_date} onChange={(e) => setDeliveryDate(e.target.value)} />
+					<DatePicker value={delivery_date} onChange={setDeliveryDate} />
 				</FormField>
 
 				<FormField label="Notlar">

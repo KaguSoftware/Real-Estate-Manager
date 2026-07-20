@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import { createLead, updateLead, deleteLead, type LeadInput } from "@/src/lib/db/leads";
 import type { Lead, LeadStatus, ListingType } from "@/src/lib/db/types";
-import { Sheet, Button, FormField, Input, NumberInput, EmailInput, PhoneInput, Textarea, Dropdown, Alert, ConfirmDialog, toast, type DropdownOption } from "@/src/components/ui";
+import { Sheet, Button, FormField, Input, NumberInput, DatePicker, EmailInput, PhoneInput, Textarea, Dropdown, Alert, ConfirmDialog, toast, type DropdownOption } from "@/src/components/ui";
 import { validEmail, compactErrors } from "@/src/lib/validation";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "./leadStatus";
 import { AssigneeSelect } from "@/src/components/team/AssigneeSelect";
@@ -241,7 +241,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 								options={PREF_CURRENCY_OPTIONS}
 								value={pref_currency}
 								onChange={setPrefCurrency}
-								className="shrink-0 basis-28"
+								className="shrink-0 basis-32"
 								aria-label="Para birimi"
 							/>
 						</div>
@@ -273,7 +273,7 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 						<Dropdown options={STATUS_OPTIONS} value={status} onChange={setStatus} />
 					</FormField>
 					<FormField label="Son arama">
-						<Input type="date" value={last_call_at ?? ""} onChange={(e) => setLastCallAt(e.target.value)} />
+						<DatePicker value={last_call_at ?? ""} onChange={setLastCallAt} />
 					</FormField>
 				</div>
 

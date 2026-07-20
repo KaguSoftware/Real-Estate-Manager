@@ -213,7 +213,12 @@ export function Dropdown<T extends string = string>({
 					ref={listRef}
 					id={listboxId}
 					role="listbox"
-					className="absolute z-40 mt-1.5 w-full min-w-44 max-h-64 overflow-y-auto rounded-xl border border-base-300 bg-base-100 shadow-pop p-1 animate-dropdown-in"
+					// Anchored to the trigger's right edge: on a narrow trigger (e.g. a
+					// currency picker) the menu is wider than its button, and growing
+					// leftward keeps it inside the dialog instead of pushing the sheet
+					// wide and creating a horizontal scrollbar. min-w is in ch so the
+					// menu tracks translated label lengths rather than a fixed 176px.
+					className="absolute right-0 z-40 mt-1.5 min-w-full w-max max-w-[min(16rem,calc(100vw-2rem))] max-h-64 overflow-y-auto overflow-x-hidden rounded-xl border border-base-300 bg-base-100 shadow-pop p-1 animate-dropdown-in"
 				>
 					{options.length === 0 ? (
 						<p className="px-3 py-2 text-xs text-base-content/50">Henüz seçenek yok</p>
