@@ -47,6 +47,78 @@ daisyUI 5 · Supabase (Postgres + RLS on every table, magic-link auth, Storage) 
 
 ## Current status
 
+### ⚡ PERF PASS (2026-07-20) — SHIPPED on `main`, no migration, not yet driven in a browser
+Four commits: `bfe9cdf` (auth) · `2e354ad` (client-side filtering) · `29ce06e`
+(query chains + batching) · `57865aa` (route cache). Green: `typecheck`, `lint`
+(zero warnings), `npm test` (**156 passed**, 17 files — 16 new), `npm run build`.
+Every number below was **measured against production**, warm connection, median of 8.
+
+| | before | after |
+|---|---|---|
+| Auth checks per page load (×3) | 994ms | ~0ms |
+| Property detail query | 1339ms | 337ms |
+| Detail page waves | 662ms | 331ms |
+| Applying a filter / a keystroke | 329ms | **0 (no network)** |
+| Bulk delete, 20 rows | 6598ms | 332ms |
+
+**⚠️ THE ONE RULE: a round-trip costs ~330ms; a query added to an EXISTING wave
+costs ~12ms.** Verified here, not inherited: 1 query = 327ms · 6 queries in one
+`Promise.all` = 339ms · the same 6 serially = **1961ms**. Count *waves*, never
+queries. A new stat belongs inside a page's existing `Promise.all`.
+
+1. **`getUser()` → `getClaims()`.** `getUser()` is a network call to the auth
+   server (**measured 331ms**); the project signs JWTs with **ES256**, so
+   `getClaims()` verifies locally via WebCrypto (~0.1ms) and still refreshes an
+   expiring session. It was called **37 times**: proxy, every page, AuthProvider,
+   and each db helper — so a page paid it three times before requesting a row.
+   Auth cost more than the data did. Shared helpers: **`getUserId(supabase)`**
+   (`lib/supabase/server.ts`) server-side, **`requireUser()`**
+   (`lib/db/requireUser.ts`) client-side — the latter replaced **13 copy-pasted
+   copies that had already drifted** (6 local, 7 paying the round-trip).
+   ⚠️ **`auth/callback/route.ts` deliberately keeps `getUser()`** — it straddles
+   the token exchange where the session is mid-transition, and runs once per
+   sign-in. Don't "finish the job" there.
+2. **Filtering moved into the browser** (`lib/clientFilters.ts`, 16 tests).
+   Every filter value used to be folded into the SWR cache key, so each dropdown
+   pick and each debounced keystroke minted a new key and refetched. Lists are
+   now fetched once under one stable key and narrowed locally. **The 250ms/300ms
+   search debounces are gone** — they only existed to rate-limit the network.
+   ⚠️ Two traps this hit, both now pinned by tests: **`Number(null)` is 0**, so a
+   NULL `list_price` passed every max-price filter and read as free; and Turkish
+   casing needs **`toLocaleLowerCase("tr")`** or searching "istanbul" misses
+   "İstanbul". ⚠️ Filter dropdowns read a separate **`allProperties`** store slice
+   — building options from the *visible* rows makes them collapse as you narrow,
+   and you can never widen again.
+3. **Serial chains collapsed.** `getProperty()` walked property → lease → tenant
+   → payments (**1339ms**) and is now one embedded select (**337ms**).
+   ⚠️ It must name **`tenants!leases_tenant_id_fkey`**: `leases` references
+   `tenants` twice (tenant + guarantor), so the plain form is ambiguous
+   (PGRST201). `getActiveSaleForProperty` had the same shape. `PropertyDetail`
+   awaited the property *then* decided whether to fetch the sale — both only need
+   the URL id, so they now share one wave.
+4. **Bulk deletes batch** (`deleteProperties`/`deleteLeads`/`deleteTenants`) —
+   was one round-trip **per row**.
+5. **Hover warms the data, not just the route.** `router.prefetch` only fetched
+   the bundle, leaving the detail page to wait a full round-trip on arrival.
+   `warmProperty()` starts the query on hover; `takeWarmProperty()` **consumes**
+   it, so a post-mutation reload can never serve a stale warm copy.
+6. **`staleTimes: {dynamic: 30, static: 180}`** — Next 15+ defaults `dynamic` to
+   **0**, so even Back re-ran the server component. Confirmed honoured in
+   `.next/required-server-files.json`, not silently dropped.
+7. **Duplicate cache keys folded together.** `leads:recent`, `leads:for-matching`
+   and `properties:for-matching` were the same unfiltered queries under different
+   names; the dashboard and list pages now hydrate each other.
+
+⚠️ **DO NOT add a Vercel `regions` setting.** The KaguOs handoff's single biggest
+win (~30%) was moving compute to the DB's region — **it does not apply here**.
+Measured: `CF-RAY …-IST`, connect **38ms** — Supabase already fronts through
+Cloudflare in Istanbul. Copying `hnd1` from that doc would make this app slower.
+
+**Not yet driven in a real browser** (no session available here): the honest
+remaining test is sign-in / sign-out / token refresh and the team-less →
+`/onboarding` bounce, in a **fresh incognito window**. Auth is the area most able
+to break, which is why it shipped as its own commit.
+
 **All three phases are COMPLETE in code; NONE are live in the database.**
 Verified 2026-07-20: `npm run typecheck`, `npm run lint`, `npm test`
 (**98 passed**, 12 files) and `npm run build` all pass.
