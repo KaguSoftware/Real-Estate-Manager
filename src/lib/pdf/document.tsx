@@ -3,7 +3,7 @@ import { styles, ensurePdfFonts } from "./styles";
 import { EditorDocBody } from "./editorDoc";
 import type { EditorDocJSON } from "@/src/lib/documents/blocks";
 import { BrandingContext, DEFAULT_BRANDING, type PdfBranding } from "./branding";
-import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData } from "./types";
+import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData, BrochurePDFData } from "./types";
 import { RentalAgreement } from "./sections/rental";
 import { SalesAgreement } from "./sections/sales";
 import { RentReceipt } from "./sections/receipt";
@@ -11,7 +11,7 @@ import { PropertyListing } from "./sections/listing";
 import { CoverPage, type CoverInfoItem } from "./sections/cover";
 import { PageFooter, formatDate, fmtMoney } from "./sections/common";
 
-type AnyPDFData = RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData;
+type AnyPDFData = RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData | BrochurePDFData;
 
 /** Title/subtitle and the key facts shown on the branded cover page. */
 function coverMeta(kind: DocKind, data: AnyPDFData): { title: string; subtitle?: string; info: CoverInfoItem[] } {
@@ -55,6 +55,24 @@ function coverMeta(kind: DocKind, data: AnyPDFData): { title: string; subtitle?:
 				],
 			};
 		}
+		case "brochure": {
+			const d = data as BrochurePDFData;
+			const count = d.properties.length;
+			// Only label the brochure by type when the whole selection agrees.
+			const allRent = count > 0 && d.properties.every((p) => p.listing_type === "for_rent");
+			const allSale = count > 0 && d.properties.every((p) => p.listing_type === "for_sale");
+			return {
+				title: "Portföy Seçkisi",
+				subtitle: `${count} taşınmaz`,
+				info: [
+					{
+						label: "İlan türü",
+						value: allRent ? "Kiralık" : allSale ? "Satılık" : "Kiralık / Satılık",
+					},
+					{ label: "Taşınmaz sayısı", value: String(count) },
+				],
+			};
+		}
 		case "listing": {
 			const d = data as ListingPDFData;
 			return {
@@ -92,16 +110,31 @@ export function PDFDocument({
 				<Page size="A4" style={styles.page}>
 					<CoverPage title={title} subtitle={subtitle} info={info} generatedAt={data.generatedAt} />
 				</Page>
-				<Page size="A4" style={styles.page} wrap>
-					{kind === "rental"  && <RentalAgreement data={data as RentalPDFData} />}
-					{kind === "sales"   && <SalesAgreement data={data as SalesPDFData} />}
-					{kind === "receipt" && <RentReceipt data={data as ReceiptPDFData} />}
-					{kind === "listing" && <PropertyListing data={data as ListingPDFData} />}
-					{/* Direct child of Page so its absolute position is page-relative on
-					    every page — inside a section View it would track the content
-					    fragment and float mid-page on the last page. */}
-					<PageFooter />
-				</Page>
+				{/* A brochure is one page per property; every other kind is a single
+				    content page. Both go through the same Page shape below so the
+				    footer and wrap behaviour stay identical. */}
+				{kind === "brochure" ? (
+					(data as BrochurePDFData).properties.map((p, i) => (
+						<Page key={i} size="A4" style={styles.page} wrap>
+							{/* PropertyListing's full-bleed hero uses a negative top
+							    margin, which is only correct as a Page's first child —
+							    one property per page keeps that invariant. */}
+							<PropertyListing data={p} />
+							<PageFooter />
+						</Page>
+					))
+				) : (
+					<Page size="A4" style={styles.page} wrap>
+						{kind === "rental"  && <RentalAgreement data={data as RentalPDFData} />}
+						{kind === "sales"   && <SalesAgreement data={data as SalesPDFData} />}
+						{kind === "receipt" && <RentReceipt data={data as ReceiptPDFData} />}
+						{kind === "listing" && <PropertyListing data={data as ListingPDFData} />}
+						{/* Direct child of Page so its absolute position is page-relative on
+						    every page — inside a section View it would track the content
+						    fragment and float mid-page on the last page. */}
+						<PageFooter />
+					</Page>
+				)}
 			</Document>
 		</BrandingContext.Provider>
 	);

@@ -25,6 +25,14 @@ const PREF_LISTING_TYPE_OPTIONS: DropdownOption<ListingType | "">[] = [
 	{ value: "for_sale", label: "Satın almak" },
 ];
 
+// Rentals are quoted in TRY, sales commonly in USD. A budget is only ever
+// compared against prices in the same currency — nothing is FX-converted.
+const PREF_CURRENCY_OPTIONS: DropdownOption<string>[] = [
+	{ value: "TRY", label: "₺ TRY" },
+	{ value: "USD", label: "$ USD" },
+	{ value: "EUR", label: "€ EUR" },
+];
+
 const STATUS_OPTIONS: DropdownOption<LeadStatus>[] = LEAD_STATUS_ORDER.map((s) => ({
 	value: s,
 	label: LEAD_STATUS_META[s].label,
@@ -56,6 +64,9 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 	const [pref_nitelik, setPrefNitelik]   = useState(initial?.pref_nitelik ?? "");
 	const [pref_min_bedrooms, setPrefMinBedrooms] = useState<number | null>(initial?.pref_min_bedrooms ?? null);
 	const [pref_location, setPrefLocation] = useState(initial?.pref_location ?? "");
+	const [pref_min_price, setPrefMinPrice] = useState<number | null>(initial?.pref_min_price ?? null);
+	const [pref_max_price, setPrefMaxPrice] = useState<number | null>(initial?.pref_max_price ?? null);
+	const [pref_currency, setPrefCurrency] = useState(initial?.pref_currency ?? "TRY");
 
 	const [assignedTo, setAssignedTo] = useState<string | null>(initial?.assigned_to ?? null);
 	const [busy, setBusy] = useState(false);
@@ -73,6 +84,9 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 			pref_nitelik: pref_nitelik.trim() || null,
 			pref_min_bedrooms,
 			pref_location: pref_location.trim() || null,
+			pref_min_price,
+			pref_max_price,
+			pref_currency,
 			status,
 			notes: notes.trim() || null,
 			last_call_at: last_call_at || null,
@@ -85,6 +99,10 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 		const errors = compactErrors({
 			full_name: full_name.trim() ? undefined : "Ad zorunludur.",
 			email: validEmail(email),
+			pref_max_price:
+				pref_min_price !== null && pref_max_price !== null && pref_max_price < pref_min_price
+					? "En çok bütçe, en az bütçeden küçük olamaz."
+					: undefined,
 		});
 		setFieldErrors(errors);
 		if (Object.keys(errors).length > 0) return;
@@ -129,12 +147,16 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 			location: pref_location.trim() ? [pref_location.trim()] : [],
 			status: "all",
 			q: "",
+			min_price: pref_min_price,
+			max_price: pref_max_price,
+			currency: pref_currency,
 		});
 		router.push("/properties");
 	}
 
 	const hasPrefs =
-		!!pref_listing_type || !!pref_nitelik.trim() || pref_min_bedrooms !== null || !!pref_location.trim();
+		!!pref_listing_type || !!pref_nitelik.trim() || pref_min_bedrooms !== null ||
+		!!pref_location.trim() || pref_min_price !== null || pref_max_price !== null;
 
 	return (
 		<Sheet
@@ -185,6 +207,45 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 
 				<div className="rounded-2xl bg-base-200 border border-base-300 p-4 space-y-4">
 					<p className="text-sm font-semibold text-base-content/60">Arama tercihleri (isteğe bağlı)</p>
+					{/* Budget leads the block: it's the first thing asked on a call and
+					    the strongest signal when matching against the portfolio. */}
+					<FormField label="Bütçe" error={fieldErrors.pref_max_price}>
+						{/* Wraps on narrow phones: two money inputs stay paired on the
+						    first line, the currency drops beneath rather than crushing
+						    them to ~50px (too narrow for "12.500.000"). */}
+						<div className="flex flex-wrap items-center gap-2">
+							<NumberInput
+								mode="decimal"
+								format="money"
+								min={0}
+								value={pref_min_price}
+								onChange={setPrefMinPrice}
+								placeholder="En az"
+								aria-label="En az bütçe"
+								aria-invalid={!!fieldErrors.pref_max_price}
+								className="flex-1 min-w-28"
+							/>
+							<span className="text-base-content/40 shrink-0" aria-hidden>–</span>
+							<NumberInput
+								mode="decimal"
+								format="money"
+								min={0}
+								value={pref_max_price}
+								onChange={setPrefMaxPrice}
+								placeholder="En çok"
+								aria-label="En çok bütçe"
+								aria-invalid={!!fieldErrors.pref_max_price}
+								className="flex-1 min-w-28"
+							/>
+							<Dropdown
+								options={PREF_CURRENCY_OPTIONS}
+								value={pref_currency}
+								onChange={setPrefCurrency}
+								className="shrink-0 basis-28"
+								aria-label="Para birimi"
+							/>
+						</div>
+					</FormField>
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<FormField label="Amaç">
 							<Dropdown options={PREF_LISTING_TYPE_OPTIONS} value={pref_listing_type} onChange={setPrefListingType} />

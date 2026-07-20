@@ -44,22 +44,81 @@ export const propertyInputSchema = z.object({
 	latitude: z.number().min(-90).max(90).nullish(),
 	longitude: z.number().min(-180).max(180).nullish(),
 	assigned_to: z.string().uuid().nullish(),
+	project_id: z.string().uuid().nullish(),
+	is_new_build: z.boolean().optional(),
 });
 
-export const leadInputSchema = z.object({
-	full_name: trimmedName,
-	phone: z.string().nullish(),
-	email: optionalEmail,
-	interested_in: z.string().nullish(),
-	pref_listing_type: listingTypeSchema.nullish(),
-	pref_nitelik: z.string().nullish(),
-	pref_min_bedrooms: z.number().int().min(0).nullish(),
-	pref_location: z.string().nullish(),
-	status: leadStatusSchema.optional(),
+// Budget bounds are cross-field validated, so the schema is a refined object.
+// `.partial()` is not available on a refined schema, so updateLead() builds its
+// patch schema from this unrefined base and re-applies the same rule below.
+const leadInputObject = z
+	.object({
+		full_name: trimmedName,
+		phone: z.string().nullish(),
+		email: optionalEmail,
+		interested_in: z.string().nullish(),
+		pref_listing_type: listingTypeSchema.nullish(),
+		pref_nitelik: z.string().nullish(),
+		pref_min_bedrooms: z.number().int().min(0).nullish(),
+		pref_location: z.string().nullish(),
+		pref_min_price: money.nullish(),
+		pref_max_price: money.nullish(),
+		pref_currency: z.string().length(3).optional(),
+		status: leadStatusSchema.optional(),
+		notes: z.string().nullish(),
+		last_call_at: z.string().nullish(),
+		assigned_to: z.string().uuid().nullish(),
+	});
+
+// Mirrors the leads_budget_range_check constraint in 0026. Either bound may be
+// omitted (open-ended); only an inverted stated range is rejected.
+const budgetRangeRule = (l: {
+	pref_min_price?: number | null;
+	pref_max_price?: number | null;
+}) =>
+	l.pref_min_price == null ||
+	l.pref_max_price == null ||
+	l.pref_max_price >= l.pref_min_price;
+
+const budgetRangeError = {
+	message: "maximum budget must not be below the minimum",
+	path: ["pref_max_price"],
+};
+
+export const leadInputSchema = leadInputObject.refine(budgetRangeRule, budgetRangeError);
+
+/** Patch schema for updateLead() — same budget rule, all fields optional. */
+export const leadPatchSchema = leadInputObject.partial().refine(budgetRangeRule, budgetRangeError);
+
+// Construction-company project. `drive_url` is rendered as an outbound link, so
+// it is restricted to https — an unchecked value would let a stored
+// `javascript:` URL run when an agent clicks it.
+const httpsUrl = z
+	.string()
+	.trim()
+	.refine((v) => {
+		try {
+			return new URL(v).protocol === "https:";
+		} catch {
+			return false;
+		}
+	}, "must be a valid https:// URL");
+
+const projectInputObject = z.object({
+	name: trimmedName,
+	developer_name: z.string().nullish(),
+	drive_url: z.union([httpsUrl, z.literal(""), z.null()]).optional(),
+	city: z.string().nullish(),
+	mahalle: z.string().nullish(),
+	delivery_date: z.union([isoDate, z.literal(""), z.null()]).optional(),
+	price_from: money.nullish(),
+	price_currency: z.string().length(3).optional(),
 	notes: z.string().nullish(),
-	last_call_at: z.string().nullish(),
-	assigned_to: z.string().uuid().nullish(),
 });
+
+export const projectInputSchema = projectInputObject;
+/** Patch schema for updateProject() — every field optional. */
+export const projectPatchSchema = projectInputObject.partial();
 
 export const tenantInputSchema = z.object({
 	full_name: trimmedName,

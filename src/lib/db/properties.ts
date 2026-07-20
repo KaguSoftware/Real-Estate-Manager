@@ -26,6 +26,17 @@ export interface PropertyFilter {
 	furnished?: boolean;
 	/** Locations — each matches city, mahalle, or mevkii. OR-combined across all values. */
 	location?: string[];
+	/** Budget floor. Properties with no list_price are excluded when either bound is set. */
+	min_price?: number;
+	/** Budget ceiling. */
+	max_price?: number;
+	/** Restricts a price range to one currency — there is no FX conversion, so a
+	 *  range is only meaningful against prices quoted in the same currency. */
+	currency?: string;
+	/** New-build only (true) / second-hand only (false) / any (undefined). */
+	is_new_build?: boolean;
+	/** Units belonging to a specific construction project. */
+	project_id?: string;
 }
 
 export interface PropertyInput {
@@ -50,6 +61,8 @@ export interface PropertyInput {
 	latitude?: number | null;
 	longitude?: number | null;
 	assigned_to?: string | null;
+	project_id?: string | null;
+	is_new_build?: boolean;
 }
 
 async function requireUser() {
@@ -82,6 +95,14 @@ export async function listProperties(filter: PropertyFilter = {}): Promise<Prope
 	if (filter.furnished != null) {
 		q = q.eq("furnished", filter.furnished);
 	}
+	if (filter.min_price != null) q = q.gte("list_price", filter.min_price);
+	if (filter.max_price != null) q = q.lte("list_price", filter.max_price);
+	// A price range means nothing across currencies (no FX conversion), so scope
+	// it explicitly whenever one is given.
+	if (filter.currency) q = q.eq("currency", filter.currency);
+	if (filter.is_new_build != null) q = q.eq("is_new_build", filter.is_new_build);
+	if (filter.project_id) q = q.eq("project_id", filter.project_id);
+
 	const locations = (filter.location ?? []).map((l) => l.trim()).filter(Boolean);
 	if (locations.length > 0) {
 		// Each location may match city / mahalle / mevkii; all values are OR-combined.

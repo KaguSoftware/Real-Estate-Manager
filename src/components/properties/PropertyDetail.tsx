@@ -13,6 +13,7 @@ import { cancelSale, closeSale, getActiveSaleForProperty, listSalesForProperty }
 import { listPropertyImages } from "@/src/lib/db/propertyImages";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import { exportToPDF, downloadUrl, getPdfBrandingFromStore, type ListingPDFData } from "@/src/lib/pdf";
+import { toDataUrl } from "@/src/lib/pdf/imageData";
 import { buildReceiptPDFData, receiptFilename } from "@/src/lib/pdf/receiptData";
 import { fmtMoney } from "@/src/lib/format";
 import type { Lease, Payment, PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
@@ -42,23 +43,6 @@ function currentMonthPeriod(): { start: string; end: string } {
 	};
 }
 
-/** Fetch a public image URL and return it as a data URL so @react-pdf embeds
- *  it reliably (avoids intermittent remote-fetch/CORS failures during render). */
-async function toDataUrl(url: string): Promise<string | null> {
-	try {
-		const res = await fetch(url);
-		if (!res.ok) return null;
-		const blob = await res.blob();
-		return await new Promise((resolve) => {
-			const reader = new FileReader();
-			reader.onloadend = () => resolve(reader.result as string);
-			reader.onerror = () => resolve(null);
-			reader.readAsDataURL(blob);
-		});
-	} catch {
-		return null;
-	}
-}
 
 
 // Display labels for DB enum values (values themselves stay in English).

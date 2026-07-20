@@ -2,7 +2,7 @@
 // NavDrawer and the desktop Sidebar so the two can never drift apart.
 
 import type { ComponentType } from "react";
-import { LayoutDashboard, Home, Users, Files, FilePlus2, Shield, UsersRound, CreditCard, UserCog } from "lucide-react";
+import { LayoutDashboard, Home, Users, Files, FilePlus2, Shield, UsersRound, CreditCard, UserCog, Building2 } from "lucide-react";
 
 export interface NavItem {
 	href: string;
@@ -26,6 +26,7 @@ export const NAV_GROUPS: NavGroup[] = [
 		label: "Çalışma",
 		items: [
 			{ href: "/properties", label: "Portföy", icon: Home },
+			{ href: "/projects", label: "Projeler", icon: Building2 },
 			{ href: "/leads", label: "Müşteriler", icon: Users },
 			{ href: "/documents", label: "Belgeler", icon: Files },
 			{ href: "/documents/new", label: "Yeni belge", icon: FilePlus2 },

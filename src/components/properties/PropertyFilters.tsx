@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAppStore, type FurnishedFilter } from "@/src/store";
-import { Input, Dropdown, Button, Sheet, FormField, MultiSelect, cn, type DropdownOption } from "@/src/components/ui";
+import { useAppStore, type FurnishedFilter, type NewBuildFilter } from "@/src/store";
+import { Input, Dropdown, Button, Sheet, FormField, MultiSelect, NumberInput, cn, type DropdownOption } from "@/src/components/ui";
 import type { ListingType, PropertyStatus } from "@/src/lib/db/types";
 import { SlidersHorizontal, Search, Plus } from "lucide-react";
 
@@ -24,6 +24,20 @@ const STATUS_OPTIONS: DropdownOption<PropertyStatus | "all">[] = [
 	{ value: "vacant", label: "Boş" },
 	{ value: "occupied", label: "Kirada" },
 	{ value: "sold", label: "Satıldı" },
+];
+
+const NEW_BUILD_OPTIONS: DropdownOption<NewBuildFilter>[] = [
+	{ value: "all", label: "Tümü" },
+	{ value: "yes", label: "Sıfır" },
+	{ value: "no", label: "İkinci el" },
+];
+
+// Rentals are quoted in TRY, sales commonly in USD. Prices are never
+// FX-converted, so a budget range always applies to exactly one currency.
+const CURRENCY_OPTIONS: DropdownOption<string>[] = [
+	{ value: "TRY", label: "₺ TRY" },
+	{ value: "USD", label: "$ USD" },
+	{ value: "EUR", label: "€ EUR" },
 ];
 
 export function PropertyFilters() {
@@ -58,12 +72,17 @@ export function PropertyFilters() {
 		[properties],
 	);
 
+	const hasBudget = filters.min_price != null || filters.max_price != null;
+
 	const activeCount =
 		(filters.listing_type !== "all" ? 1 : 0) +
 		(filters.status !== "all" ? 1 : 0) +
 		(filters.nitelik.length > 0 ? 1 : 0) +
 		(filters.furnished !== "all" ? 1 : 0) +
-		(filters.location.length > 0 ? 1 : 0);
+		(filters.location.length > 0 ? 1 : 0) +
+		(filters.new_build !== "all" ? 1 : 0) +
+		// A budget range counts once regardless of how many bounds are set.
+		(hasBudget ? 1 : 0);
 	const hasActiveFilter = activeCount > 0 || filters.q !== "";
 
 	function clearAll() {
@@ -110,6 +129,50 @@ export function PropertyFilters() {
 					value={filters.status}
 					onChange={(v) => setFilter("status", v)}
 					className={stacked ? "" : "sm:w-auto"} />
+			</FieldWrap>
+			<FieldWrap stacked={stacked} label="Yapı durumu">
+				<Dropdown options={NEW_BUILD_OPTIONS}
+					value={filters.new_build}
+					onChange={(v) => setFilter("new_build", v)}
+					className={stacked ? "" : "sm:w-auto"} />
+			</FieldWrap>
+			<FieldWrap stacked={stacked} label="Bütçe">
+				{/* Kept as one unit so the range reads as a range. shrink-0 stops the
+				    pair from being squeezed below legibility when the row wraps. */}
+				<div className={cn("flex flex-wrap items-center gap-2", !stacked && "shrink-0")}>
+					<NumberInput
+						mode="decimal"
+						format="money"
+						min={0}
+						value={filters.min_price}
+						onChange={(v) => setFilter("min_price", v)}
+						placeholder="En az"
+						aria-label="En az fiyat"
+						className={stacked ? "flex-1 min-w-28" : "sm:w-28"}
+					/>
+					<span className="text-base-content/40 shrink-0" aria-hidden>–</span>
+					<NumberInput
+						mode="decimal"
+						format="money"
+						min={0}
+						value={filters.max_price}
+						onChange={(v) => setFilter("max_price", v)}
+						placeholder="En çok"
+						aria-label="En çok fiyat"
+						className={stacked ? "flex-1 min-w-28" : "sm:w-28"}
+					/>
+					{/* Currency is meaningless without a bound, so it stays out of the
+					    row until one is set — the filter bar is already dense. */}
+					{hasBudget && (
+						<Dropdown
+							options={CURRENCY_OPTIONS}
+							value={filters.currency}
+							onChange={(v) => setFilter("currency", v)}
+							className="shrink-0 basis-28"
+							aria-label="Para birimi"
+						/>
+					)}
+				</div>
 			</FieldWrap>
 		</div>
 	);

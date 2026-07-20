@@ -4,7 +4,7 @@
 import { createClient } from "@/src/lib/supabase/client";
 import type { Lead, LeadStatus, ListingType } from "./types";
 import { orIlikeAnyColumn } from "./filterString";
-import { leadInputSchema, parseInput } from "@/src/lib/schemas/inputs";
+import { leadInputSchema, leadPatchSchema, parseInput } from "@/src/lib/schemas/inputs";
 import { requireTeamId } from "./teams";
 
 export interface LeadFilter {
@@ -21,6 +21,9 @@ export interface LeadInput {
 	pref_nitelik?: string | null;
 	pref_min_bedrooms?: number | null;
 	pref_location?: string | null;
+	pref_min_price?: number | null;
+	pref_max_price?: number | null;
+	pref_currency?: string;
 	status?: LeadStatus;
 	notes?: string | null;
 	last_call_at?: string | null;
@@ -76,7 +79,7 @@ export async function updateLead(
 	id: string,
 	patch: Partial<LeadInput>,
 ): Promise<Lead> {
-	const parsed = parseInput(leadInputSchema.partial(), patch);
+	const parsed = parseInput(leadPatchSchema, patch);
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
 		.from("leads")

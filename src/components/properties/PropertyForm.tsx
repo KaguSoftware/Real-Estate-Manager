@@ -1,7 +1,7 @@
 "use client";
 
 import { humanizeError } from "@/src/lib/errors";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
 import {
@@ -16,6 +16,7 @@ import type { ReverseAddress } from "@/src/lib/geocode";
 import { splitPlaceName, type ResolveResult } from "@/src/lib/maps-url";
 import { LocationPicker, type LatLon } from "./LocationPicker";
 import { AssigneeSelect } from "@/src/components/team/AssigneeSelect";
+import { listProjects } from "@/src/lib/db/projects";
 import { Trash2 } from "lucide-react";
 
 interface Props {
@@ -23,11 +24,20 @@ interface Props {
 	initial?: Property;
 	onDone?: () => void;
 	onCancel?: () => void;
+	/** Preselect a construction project (arriving from a project's page). */
+	defaultProjectId?: string | null;
 }
 
 const LISTING_TYPE_OPTIONS: DropdownOption<ListingType>[] = [
 	{ value: "for_rent", label: "Kiralık" },
 	{ value: "for_sale", label: "Satılık" },
+];
+
+// "Sıfır" (new build) vs "İkinci el" (second-hand) — the meeting note
+// "new or old/second hand building".
+const NEW_BUILD_OPTIONS: DropdownOption<"yes" | "no">[] = [
+	{ value: "no", label: "İkinci el" },
+	{ value: "yes", label: "Sıfır" },
 ];
 
 const FURNISHED_OPTIONS: DropdownOption<"yes" | "no" | "">[] = [
@@ -112,10 +122,12 @@ function mapsToFormFields(result: ResolveResult): MapsFields {
 	return out;
 }
 
-export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
+export function PropertyForm({ mode, initial, onDone, onCancel, defaultProjectId }: Props) {
 	const router = useRouter();
 	const upsertProperty = useAppStore((s) => s.upsertProperty);
 	const removeProperty = useAppStore((s) => s.removeProperty);
+	const projects = useAppStore((s) => s.projects);
+	const setProjects = useAppStore((s) => s.setProjects);
 
 	const [homeowner_name, setHomeownerName] = useState(initial?.homeowner_name ?? "");
 
@@ -149,6 +161,30 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 	const [mevkii,    setMevkii]    = useState(initial?.mevkii    ?? "");
 
 	const [assignedTo, setAssignedTo] = useState<string | null>(initial?.assigned_to ?? null);
+
+	// Construction project this unit belongs to ("" = standalone/second-hand).
+	const [projectId, setProjectId] = useState<string>(initial?.project_id ?? defaultProjectId ?? "");
+	const [isNewBuild, setIsNewBuild] = useState<boolean>(initial?.is_new_build ?? !!defaultProjectId);
+
+	// The project dropdown reads from the store, which is only populated once
+	// /projects has been visited — fetch on demand so a deep link still works.
+	useEffect(() => {
+		if (projects.length > 0) return;
+		let cancelled = false;
+		listProjects()
+			.then((rows) => { if (!cancelled) setProjects(rows); })
+			.catch(() => { /* non-fatal: the field simply stays empty */ });
+		return () => { cancelled = true; };
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	const projectOptions: DropdownOption<string>[] = [
+		{ value: "", label: "Proje yok" },
+		...projects.map((p) => ({
+			value: p.id,
+			label: p.developer_name ? `${p.name} — ${p.developer_name}` : p.name,
+		})),
+	];
 
 	const [busy, setBusy] = useState(false);
 	const [locating, setLocating] = useState(false);
@@ -232,6 +268,8 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 			mahalle:   tapuMahalle.trim()  || null,
 			mevkii:    mevkii.trim()       || null,
 			assigned_to: assignedTo,
+			project_id: projectId || null,
+			is_new_build: isNewBuild,
 		};
 
 		// Coordinates: prefer the pin (maps link / map tap — precise and
@@ -388,6 +426,28 @@ export function PropertyForm({ mode, initial, onDone, onCancel }: Props) {
 				</FormField>
 				<FormField label="Para birimi">
 					<Dropdown options={[{ value: "TRY", label: "TL" }]} value="TRY" onChange={() => {}} disabled />
+				</FormField>
+			</div>
+
+			{/* Project link: how a unit joins the inventory that never reaches
+			    public portals. Selecting a project implies a new build. */}
+			<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				<FormField label="Proje" hint="Müteahhit firma projesine bağlayın.">
+					<Dropdown
+						options={projectOptions}
+						value={projectId}
+						onChange={(v) => {
+							setProjectId(v);
+							if (v) setIsNewBuild(true);
+						}}
+					/>
+				</FormField>
+				<FormField label="Yapı durumu">
+					<Dropdown
+						options={NEW_BUILD_OPTIONS}
+						value={isNewBuild ? "yes" : "no"}
+						onChange={(v) => setIsNewBuild(v === "yes")}
+					/>
 				</FormField>
 			</div>
 

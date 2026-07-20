@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Property, PropertyStatus, ListingType, Lead, LeadStatus } from "@/src/lib/db/types";
+import type { Property, PropertyStatus, ListingType, Lead, LeadStatus, Project } from "@/src/lib/db/types";
 import type { TeamContext } from "@/src/lib/db/teams";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 
@@ -19,7 +19,16 @@ interface Filters {
 	nitelik: string[];
 	furnished: FurnishedFilter;
 	location: string[];
+	/** Budget bounds; null = open-ended. */
+	min_price: number | null;
+	max_price: number | null;
+	/** Currency a price range applies to — prices are never FX-converted. */
+	currency: string;
+	/** "all" | "yes" (new build) | "no" (second-hand). */
+	new_build: NewBuildFilter;
 }
+
+export type NewBuildFilter = "all" | "yes" | "no";
 
 const EMPTY_FILTERS: Filters = {
 	listing_type: "all",
@@ -28,6 +37,10 @@ const EMPTY_FILTERS: Filters = {
 	nitelik: [],
 	furnished: "all",
 	location: [],
+	min_price: null,
+	max_price: null,
+	currency: "TRY",
+	new_build: "all",
 };
 
 interface LeadFilters {
@@ -69,6 +82,13 @@ interface AppState {
 	leadFilters: LeadFilters;
 	setLeadFilter: <K extends keyof LeadFilters>(k: K, v: LeadFilters[K]) => void;
 	resetLeadFilters: () => void;
+
+	projects: Project[];
+	setProjects: (p: Project[]) => void;
+	upsertProject: (p: Project) => void;
+	removeProject: (id: string) => void;
+	isLoadingProjects: boolean;
+	setIsLoadingProjects: (v: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -139,6 +159,30 @@ export const useAppStore = create<AppState>((set) => ({
 	leadFilters: { ...EMPTY_LEAD_FILTERS },
 	setLeadFilter: (k, v) => set((s) => ({ leadFilters: { ...s.leadFilters, [k]: v } })),
 	resetLeadFilters: () => set({ leadFilters: { ...EMPTY_LEAD_FILTERS } }),
+
+	projects: [],
+	setProjects: (projects) => set({ projects }),
+	upsertProject: (p) =>
+		set((s) => {
+			invalidateCache("projects");
+			const idx = s.projects.findIndex((x) => x.id === p.id);
+			return {
+				projects:
+					idx === -1
+						? [p, ...s.projects]
+						: s.projects.map((x) => (x.id === p.id ? p : x)),
+			};
+		}),
+	removeProject: (id) =>
+		set((s) => {
+			invalidateCache("projects");
+			// projects.id is ON DELETE SET NULL on properties.project_id, so any
+			// cached property list may still show a stale project link.
+			invalidateCache("properties");
+			return { projects: s.projects.filter((p) => p.id !== id) };
+		}),
+	isLoadingProjects: false,
+	setIsLoadingProjects: (v) => set({ isLoadingProjects: v }),
 }));
 
 /** True once the signed-in user's team context has loaded AND a team exists.

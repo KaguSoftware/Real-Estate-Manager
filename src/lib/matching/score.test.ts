@@ -11,6 +11,9 @@ function lead(overrides: Partial<Lead> = {}): Lead {
 		pref_nitelik: null,
 		pref_min_bedrooms: null,
 		pref_location: null,
+		pref_min_price: null,
+		pref_max_price: null,
+		pref_currency: "TRY",
 		...overrides,
 	} as Lead;
 }
@@ -26,6 +29,8 @@ function property(overrides: Partial<Property> = {}): Property {
 		mahalle: "Alsancak",
 		mevkii: null,
 		address_line: "Kıbrıs Şehitleri Cd. 10",
+		list_price: 5_000_000,
+		currency: "TRY",
 		...overrides,
 	} as Property;
 }
@@ -69,6 +74,63 @@ describe("scoreLeadProperty", () => {
 		expect(scoreLeadProperty(l, property()).score).toBe(2);
 		const lUpper = lead({ pref_location: "İZMİR" });
 		expect(scoreLeadProperty(lUpper, property()).score).toBe(2);
+	});
+
+	describe("budget", () => {
+		it("scores a property inside a stated range", () => {
+			const l = lead({ pref_min_price: 4_000_000, pref_max_price: 6_000_000 });
+			const r = scoreLeadProperty(l, property());
+			expect(r.score).toBe(3);
+			expect(r.reasons).toContain("bütçe içinde");
+		});
+
+		it("hard-fails below the minimum and above the maximum", () => {
+			const l = lead({ pref_min_price: 6_000_000 });
+			expect(scoreLeadProperty(l, property({ list_price: 5_000_000 })).score).toBe(0);
+
+			const l2 = lead({ pref_max_price: 4_000_000 });
+			expect(scoreLeadProperty(l2, property({ list_price: 5_000_000 })).score).toBe(0);
+		});
+
+		it("treats each bound as open-ended when only one is set", () => {
+			const onlyMin = lead({ pref_min_price: 1_000_000 });
+			expect(scoreLeadProperty(onlyMin, property()).score).toBe(3);
+
+			const onlyMax = lead({ pref_max_price: 9_000_000 });
+			expect(scoreLeadProperty(onlyMax, property()).score).toBe(3);
+		});
+
+		it("includes the range bounds themselves", () => {
+			const l = lead({ pref_min_price: 5_000_000, pref_max_price: 5_000_000 });
+			expect(scoreLeadProperty(l, property({ list_price: 5_000_000 })).score).toBe(3);
+		});
+
+		// There is no FX conversion in the product: a 400,000 USD budget must never
+		// be compared against a TRY price. The dimension is skipped, not failed.
+		it("skips the budget dimension on a currency mismatch", () => {
+			const l = lead({
+				pref_min_price: 400_000,
+				pref_max_price: 500_000,
+				pref_currency: "USD",
+				pref_nitelik: "3+1",
+			});
+			const r = scoreLeadProperty(l, property({ list_price: 5_000_000, currency: "TRY" }));
+			// nitelik still scores; budget contributes nothing and does not zero the match.
+			expect(r.score).toBe(3);
+			expect(r.reasons).not.toContain("bütçe içinde");
+		});
+
+		it("skips the budget dimension for an unpriced property", () => {
+			const l = lead({ pref_max_price: 1_000, pref_nitelik: "3+1" });
+			const r = scoreLeadProperty(l, property({ list_price: null }));
+			expect(r.score).toBe(3);
+			expect(r.reasons).not.toContain("bütçe içinde");
+		});
+
+		it("matches a lead whose only stated preference is a budget", () => {
+			const l = lead({ pref_max_price: 6_000_000 });
+			expect(scoreLeadProperty(l, property()).score).toBe(3);
+		});
 	});
 
 	it("accumulates score across matched preferences", () => {

@@ -7,7 +7,7 @@ import type { Lead, Property } from "@/src/lib/db/types";
 export const MATCH_ACTIVE_STATUSES: Lead["status"][] = ["new", "follow_up", "interested"];
 
 export interface MatchResult {
-	/** 0 means no match. Higher is better; max is currently 9. */
+	/** 0 means no match. Higher is better; max is currently 12. */
 	score: number;
 	/** Human-readable reasons behind the score, e.g. "3+1", "3+ bedrooms". */
 	reasons: string[];
@@ -25,7 +25,8 @@ export function scoreLeadProperty(lead: Lead, p: Property): MatchResult {
 	if (!MATCH_ACTIVE_STATUSES.includes(lead.status)) return NO_MATCH;
 	const hasAnyPref =
 		lead.pref_listing_type || lead.pref_nitelik ||
-		lead.pref_min_bedrooms != null || lead.pref_location;
+		lead.pref_min_bedrooms != null || lead.pref_location ||
+		lead.pref_min_price != null || lead.pref_max_price != null;
 	if (!hasAnyPref) return NO_MATCH;
 
 	let score = 0;
@@ -55,6 +56,19 @@ export function scoreLeadProperty(lead: Lead, p: Property): MatchResult {
 		if (p.bedrooms == null || p.bedrooms < lead.pref_min_bedrooms) return NO_MATCH;
 		score += 2;
 		reasons.push(`${lead.pref_min_bedrooms}+ bedrooms`);
+	}
+
+	// Budget. There is no FX conversion in this product (rentals are usually TRY,
+	// sales often USD), so a budget is only ever compared against a price quoted
+	// in the same currency. On a currency mismatch — or an unpriced property —
+	// the dimension is SKIPPED rather than failed: silently hiding a listing
+	// because nobody set its price would be worse than showing it unscored.
+	const hasBudget = lead.pref_min_price != null || lead.pref_max_price != null;
+	if (hasBudget && p.list_price != null && lead.pref_currency === p.currency) {
+		if (lead.pref_min_price != null && p.list_price < lead.pref_min_price) return NO_MATCH;
+		if (lead.pref_max_price != null && p.list_price > lead.pref_max_price) return NO_MATCH;
+		score += 3;
+		reasons.push("bütçe içinde");
 	}
 
 	if (lead.pref_location) {
