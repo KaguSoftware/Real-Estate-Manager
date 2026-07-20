@@ -2,9 +2,9 @@
 // The partial unique index uniq_active_sale_per_property prevents two
 // concurrent active sales on the same property — see migration 0003.
 
-import { createClient } from "@/src/lib/supabase/client";
 import type { Sale, SaleStatus, TaxResponsibility, Tenant } from "./types";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 export interface SaleInput {
 	property_id: string;
@@ -23,12 +23,6 @@ export interface SaleInput {
 	document_pdf_path?: string | null;
 }
 
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { user }, error } = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
-}
 
 export async function createSale(input: SaleInput): Promise<Sale> {
 	const { supabase, user } = await requireUser();

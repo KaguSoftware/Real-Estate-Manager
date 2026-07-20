@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/src/lib/supabase/server";
+import { createClient, getUserId } from "@/src/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 export async function GET() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId(supabase);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("app_role")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   if (profile?.app_role !== "admin") {

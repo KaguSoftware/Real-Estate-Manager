@@ -10,11 +10,11 @@
 // RLS on public.projects does authorization; each call just verifies a session
 // exists and lets the database enforce team scope.
 
-import { createClient } from "@/src/lib/supabase/client";
 import type { Project } from "./types";
 import { orIlikeAnyColumn } from "./filterString";
 import { projectInputSchema, projectPatchSchema, parseInput } from "@/src/lib/schemas/inputs";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 export interface ProjectFilter {
 	q?: string;
@@ -34,16 +34,6 @@ export interface ProjectInput {
 	notes?: string | null;
 }
 
-async function requireUser() {
-	const supabase = createClient();
-	// getSession() is local (no auth-server round-trip); RLS enforces authorization.
-	const {
-		data: { session },
-		error,
-	} = await supabase.auth.getSession();
-	if (error || !session?.user) throw new Error("Not authenticated");
-	return { supabase, user: session.user };
-}
 
 export async function listProjects(filter: ProjectFilter = {}): Promise<Project[]> {
 	const { supabase } = await requireUser();

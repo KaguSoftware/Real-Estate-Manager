@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/src/lib/supabase/server";
+import { createClient, getUserId } from "@/src/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { getSiteUrl } from "@/src/lib/siteUrl";
 import { isRateLimited } from "@/src/lib/rateLimit";
@@ -16,8 +16,8 @@ import { sendTeamInviteEmail } from "@/src/lib/email";
 
 export async function POST(request: NextRequest) {
 	const supabase = await createClient();
-	const { data: { user } } = await supabase.auth.getUser();
-	if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const userId = await getUserId(supabase);
+	if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 	const body = (await request.json().catch(() => null)) as { email?: string } | null;
 	const email = body?.email?.trim().toLowerCase();
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ error: "A valid email is required" }, { status: 400 });
 	}
 	// Max 20 invites per user per hour (distributed when Upstash is configured).
-	if (await isRateLimited(`invite:${user.id}`, 20, 3_600_000)) {
+	if (await isRateLimited(`invite:${userId}`, 20, 3_600_000)) {
 		return NextResponse.json({ error: "Too many invites — try again later" }, { status: 429 });
 	}
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
 	const { data: invite, error: invErr } = await supabase
 		.from("invites")
-		.insert({ team_id: teamId, email, created_by: user.id })
+		.insert({ team_id: teamId, email, created_by: userId })
 		.select("code")
 		.single();
 	if (invErr) {
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
 	const [{ data: teamRow }, { data: inviterRow }] = await Promise.all([
 		service.from("teams").select("name").eq("id", teamId).single(),
-		service.from("profiles").select("full_name, display_name").eq("id", user.id).single(),
+		service.from("profiles").select("full_name, display_name").eq("id", userId).single(),
 	]);
 	const teamName = teamRow?.name ?? "Kagu";
 	const inviterName = inviterRow?.full_name || inviterRow?.display_name || null;

@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/src/lib/supabase/server";
+import { createClient, getUserId } from "@/src/lib/supabase/server";
 
 export async function GET(
 	request: NextRequest,
@@ -18,10 +18,10 @@ export async function GET(
 	const code = rawCode.trim();
 
 	const supabase = await createClient();
-	const { data: { user } } = await supabase.auth.getUser();
+	const userId = await getUserId(supabase);
 
 	const url = request.nextUrl.clone();
-	url.pathname = user ? "/onboarding" : "/signup";
+	url.pathname = userId ? "/onboarding" : "/signup";
 	url.search = "";
 
 	const res = NextResponse.redirect(url);

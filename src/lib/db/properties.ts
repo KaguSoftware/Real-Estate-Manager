@@ -1,7 +1,6 @@
 // Property CRUD. RLS on public.properties does authorization;
 // each call just verifies a session exists and lets the database enforce ownership.
 
-import { createClient } from "@/src/lib/supabase/client";
 import type {
 	Property,
 	PropertyWithActiveLease,
@@ -15,6 +14,7 @@ import { getLeaseBalance } from "./payments";
 import { orIlikeAnyColumn, orIlikeAnyValue } from "./filterString";
 import { parseInput, propertyInputSchema } from "@/src/lib/schemas/inputs";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 export interface PropertyFilter {
 	listing_type?: ListingType;
@@ -65,18 +65,6 @@ export interface PropertyInput {
 	is_new_build?: boolean;
 }
 
-async function requireUser() {
-	const supabase = createClient();
-	// getSession() reads the locally-cached session (no auth-server round-trip),
-	// so list/CRUD calls don't pay network latency just to confirm a session.
-	// RLS still enforces authorization on every query.
-	const {
-		data: { session },
-		error,
-	} = await supabase.auth.getSession();
-	if (error || !session?.user) throw new Error("Not authenticated");
-	return { supabase, user: session.user };
-}
 
 export async function listProperties(filter: PropertyFilter = {}): Promise<Property[]> {
 	const { supabase } = await requireUser();

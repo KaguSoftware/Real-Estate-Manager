@@ -10,18 +10,18 @@
  */
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/src/lib/supabase/server";
+import { createClient, getUserId } from "@/src/lib/supabase/server";
 import { AdminPanel } from "@/src/components/admin/AdminPanel";
 
 export default async function AdminPage() {
   const supabase = await createClient();
 
-  // Check session
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Check session. getUserId() verifies the JWT signature locally rather than
+  // calling the auth server — the token is cryptographically verified, so it is
+  // just as trustworthy here as getUser() was, without the round-trip.
+  const userId = await getUserId(supabase);
 
-  if (!user) {
+  if (!userId) {
     redirect("/");
   }
 
@@ -29,7 +29,7 @@ export default async function AdminPage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select("app_role")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   if (!profile || profile.app_role !== "admin") {

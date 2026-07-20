@@ -36,6 +36,12 @@ export async function GET(request: NextRequest) {
   // user an explicit choice at /auth/switch (the token is left unconsumed, so
   // "continue as the invited account" can replay it). Magic-link / recovery /
   // email-confirm are left alone — those target the same person, not a new one.
+  // NOTE: this file deliberately keeps getUser() rather than the local
+  // getClaims()/getUserId() used everywhere else. Both calls here straddle
+  // verifyOtp / exchangeCodeForSession, i.e. the session is mid-transition and
+  // the cookie may not yet reflect the identity we need to branch on. This
+  // route runs once per sign-in, not per request, so there is no latency win to
+  // justify the risk of getting it wrong.
   const isOnboardingLink = !!token_hash && (type === "invite" || type === "signup");
   if (isOnboardingLink) {
     const { data: { user: currentUser } } = await supabase.auth.getUser();

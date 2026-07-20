@@ -1,9 +1,9 @@
 // Payment CRUD + balance aggregation.
 
-import { createClient } from "@/src/lib/supabase/client";
 import type { Payment, LeaseBalance } from "./types";
 import { parseInput, paymentInputSchema } from "@/src/lib/schemas/inputs";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 export interface PaymentInput {
 	lease_id: string;
@@ -16,12 +16,6 @@ export interface PaymentInput {
 	notes?: string | null;
 }
 
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { user }, error } = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
-}
 
 export async function listPaymentsForLease(leaseId: string): Promise<Payment[]> {
 	const { supabase } = await requireUser();

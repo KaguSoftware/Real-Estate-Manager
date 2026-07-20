@@ -1,11 +1,11 @@
 // Lead / client CRM CRUD. RLS on public.leads does authorization;
 // each call just verifies a session exists and lets the database enforce ownership.
 
-import { createClient } from "@/src/lib/supabase/client";
 import type { Lead, LeadStatus, ListingType } from "./types";
 import { orIlikeAnyColumn } from "./filterString";
 import { leadInputSchema, leadPatchSchema, parseInput } from "@/src/lib/schemas/inputs";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 export interface LeadFilter {
 	status?: LeadStatus;
@@ -30,16 +30,6 @@ export interface LeadInput {
 	assigned_to?: string | null;
 }
 
-async function requireUser() {
-	const supabase = createClient();
-	// getSession() is local (no auth-server round-trip); RLS enforces authorization.
-	const {
-		data: { session },
-		error,
-	} = await supabase.auth.getSession();
-	if (error || !session?.user) throw new Error("Not authenticated");
-	return { supabase, user: session.user };
-}
 
 export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
 	const { supabase } = await requireUser();

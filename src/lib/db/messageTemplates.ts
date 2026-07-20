@@ -3,17 +3,11 @@
 // src/lib/whatsappMessage.ts applies. Writes are owner-only via RLS,
 // mirroring clause templates and branding.
 
-import { createClient } from "@/src/lib/supabase/client";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 export type MessageTemplateKind = "whatsapp_property";
 
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { user }, error } = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
-}
 
 /** The team's saved template, or null when the built-in default applies. */
 export async function getMessageTemplate(

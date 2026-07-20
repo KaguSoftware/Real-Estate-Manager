@@ -3,17 +3,11 @@
 // sales.document_pdf_path. Reads use short-lived signed URLs because the
 // bucket is private (contracts hold personal data).
 
-import { createClient } from "@/src/lib/supabase/client";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 const BUCKET = "documents";
 
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { session }, error } = await supabase.auth.getSession();
-	if (error || !session?.user) throw new Error("Not authenticated");
-	return { supabase, user: session.user };
-}
 
 /**
  * Upload a contract PDF and link it to its lease or sale row.

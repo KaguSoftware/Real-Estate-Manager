@@ -2,10 +2,10 @@
 // frozen snapshot of the wizard data, linked 1:1 to a lease or sale. Drafts
 // stay editable; finalize() locks them (DB-trigger enforced, not just UI).
 
-import { createClient } from "@/src/lib/supabase/client";
 import { requireTeamId } from "./teams";
 import type { EditorDocJSON } from "@/src/lib/documents/blocks";
 import type { RentalPDFData, SalesPDFData } from "@/src/lib/pdf/types";
+import { requireUser } from "./requireUser";
 
 export type ContractDocKind = "rental" | "sales";
 export type ContractDocStatus = "draft" | "finalized";
@@ -26,13 +26,6 @@ export interface ContractDocument {
 	pdf_path: string | null;
 	created_at: string;
 	updated_at: string;
-}
-
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { user }, error } = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
 }
 
 export interface ContractDocumentInput {

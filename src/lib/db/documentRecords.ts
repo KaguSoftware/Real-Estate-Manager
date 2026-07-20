@@ -3,15 +3,9 @@
 // commit or roll back together, so a mid-sequence failure can't leave
 // orphaned rows. RLS still applies (functions are SECURITY INVOKER).
 
-import { createClient } from "@/src/lib/supabase/client";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { session }, error } = await supabase.auth.getSession();
-	if (error || !session?.user) throw new Error("Not authenticated");
-	return { supabase, user: session.user };
-}
 
 export interface PartyInput {
 	full_name: string;

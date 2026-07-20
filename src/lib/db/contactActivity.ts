@@ -9,10 +9,10 @@
 // RLS on public.contact_activity does authorization; each call just verifies a
 // session exists and lets the database enforce team scope.
 
-import { createClient } from "@/src/lib/supabase/client";
 import type { ActivityKind, ContactActivity } from "./types";
 import { contactActivityInputSchema, parseInput } from "@/src/lib/schemas/inputs";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 /** An activity row plus the display name of whoever logged it. */
 export interface ContactActivityWithAuthor extends ContactActivity {
@@ -32,16 +32,6 @@ export interface ContactActivityInput {
 /** Kinds that count as "we reached the client", so `last_call_at` tracks them. */
 const CONTACT_KINDS: ActivityKind[] = ["call", "whatsapp", "meeting"];
 
-async function requireUser() {
-	const supabase = createClient();
-	// getSession() is local (no auth-server round-trip); RLS enforces authorization.
-	const {
-		data: { session },
-		error,
-	} = await supabase.auth.getSession();
-	if (error || !session?.user) throw new Error("Not authenticated");
-	return { supabase, user: session.user };
-}
 
 export async function listActivity(
 	subject: { leadId: string } | { tenantId: string },

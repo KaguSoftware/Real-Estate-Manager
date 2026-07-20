@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServiceClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createClient } from "@/src/lib/supabase/server";
+import { createClient, getUserId } from "@/src/lib/supabase/server";
 import { isRateLimited } from "@/src/lib/rateLimit";
 
 const TEAM_BUCKETS = ["property-images", "documents", "team-logos"] as const;
@@ -45,10 +45,10 @@ async function listAllPaths(
 
 export async function POST(request: NextRequest) {
 	const supabase = await createClient();
-	const { data: { user } } = await supabase.auth.getUser();
-	if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const userId = await getUserId(supabase);
+	if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-	if (await isRateLimited(`team-delete:${user.id}`, 5, 3_600_000)) {
+	if (await isRateLimited(`team-delete:${userId}`, 5, 3_600_000)) {
 		return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 	}
 
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 	const { data: membership } = await supabase
 		.from("team_members")
 		.select("team_id, role")
-		.eq("user_id", user.id)
+		.eq("user_id", userId)
 		.maybeSingle();
 
 	if (!membership || membership.role !== "owner") {

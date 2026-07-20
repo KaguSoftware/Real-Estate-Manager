@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/src/lib/supabase/server";
+import { createClient, getUserId } from "@/src/lib/supabase/server";
 import { DocumentEditorPage } from "@/src/components/documents/DocumentEditorPage";
 import { AppShell } from "@/src/components/ui";
 
@@ -9,8 +9,8 @@ export default async function DocumentPage({
 	params: Promise<{ id: string }>;
 }) {
 	const supabase = await createClient();
-	const { data: { user } } = await supabase.auth.getUser();
-	if (!user) redirect("/");
+	const userId = await getUserId(supabase);
+	if (!userId) redirect("/");
 
 	const { id } = await params;
 

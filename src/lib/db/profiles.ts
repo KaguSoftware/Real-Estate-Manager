@@ -3,12 +3,14 @@
 
 import { createClient } from "@/src/lib/supabase/client";
 import type { ProfileRow, GlobalRole } from "./types";
+import { requireUser } from "./requireUser";
 
 export async function getMyProfile(): Promise<ProfileRow | null> {
 	const supabase = createClient();
 	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+		data: { session },
+	} = await supabase.auth.getSession();
+	const user = session?.user;
 	if (!user) return null;
 
 	const { data, error } = await supabase
@@ -26,11 +28,7 @@ export async function updateMyProfile(params: {
 	fullName?: string;
 	phone?: string;
 }): Promise<void> {
-	const supabase = createClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
-	if (!user) throw new Error("Not authenticated");
+	const { supabase, user } = await requireUser();
 
 	const patch: Record<string, string | null> = {};
 	if (params.fullName !== undefined) {
@@ -66,9 +64,7 @@ export function getAvatarUrl(avatarPath: string | null): string | null {
 export async function uploadMyAvatar(file: File): Promise<string> {
 	const ext = AVATAR_TYPES[file.type];
 	if (!ext) throw new Error("Profil fotoğrafı PNG veya JPEG formatında olmalı.");
-	const supabase = createClient();
-	const { data: { user } } = await supabase.auth.getUser();
-	if (!user) throw new Error("Not authenticated");
+	const { supabase, user } = await requireUser();
 
 	// Avatars render at ≤64px; downscale phone-camera images before upload.
 	let payload: Blob = file;
@@ -102,9 +98,7 @@ export async function uploadMyAvatar(file: File): Promise<string> {
 }
 
 export async function removeMyAvatar(avatarPath: string): Promise<void> {
-	const supabase = createClient();
-	const { data: { user } } = await supabase.auth.getUser();
-	if (!user) throw new Error("Not authenticated");
+	const { supabase, user } = await requireUser();
 	const { error } = await supabase.from("profiles").update({ avatar_path: null }).eq("id", user.id);
 	if (error) throw error;
 	await supabase.storage.from(AVATAR_BUCKET).remove([avatarPath]).catch(() => {});

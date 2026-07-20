@@ -9,14 +9,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/src/lib/supabase/server";
+import { createClient, getUserId } from "@/src/lib/supabase/server";
 import { getPaymentProvider } from "@/src/lib/billing";
 import { isRateLimited } from "@/src/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
 	const supabase = await createClient();
-	const { data: { user } } = await supabase.auth.getUser();
-	if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	const userId = await getUserId(supabase);
+	if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
 	const { data: teamId } = await supabase.rpc("user_team_id");
 	if (!teamId) return NextResponse.json({ error: "No team" }, { status: 403 });

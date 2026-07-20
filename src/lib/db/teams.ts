@@ -4,6 +4,7 @@
 
 import { createClient } from "@/src/lib/supabase/client";
 import { useAppStore } from "@/src/store";
+import { requireUser } from "./requireUser";
 
 export interface TeamContext {
 	id: string;
@@ -41,13 +42,6 @@ export interface Invite {
 	accepted_at: string | null;
 	revoked_at: string | null;
 	created_at: string;
-}
-
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { session }, error } = await supabase.auth.getSession();
-	if (error || !session?.user) throw new Error("Not authenticated");
-	return { supabase, user: session.user };
 }
 
 /** The signed-in user's team id, from the store. Throws before a bad insert
