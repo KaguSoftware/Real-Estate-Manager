@@ -62,7 +62,7 @@ export function HomeDashboard() {
 		{ enabled: !!user && teamReady },
 	);
 	const { data: recentLeads } = useCachedResource(
-		user && teamReady ? "leads:recent" : null,
+		user && teamReady ? "leads:all" : null,
 		() => listLeads(),
 		undefined,
 		{ enabled: !!user && teamReady },

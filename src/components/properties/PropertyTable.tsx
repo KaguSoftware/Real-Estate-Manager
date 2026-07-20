@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore, useIsWritable } from "@/src/store";
 import type { Property } from "@/src/lib/db/types";
 import { Badge, Button, Card, SpinnerBlock, EmptyState, Pagination, usePagination, BulkActionBar, ConfirmDialog, toast, type BadgeTone } from "@/src/components/ui";
 import { useMultiSelect } from "@/src/hooks/useMultiSelect";
 import { downloadCsv } from "@/src/lib/csv";
-import { deleteProperty } from "@/src/lib/db/properties";
+import { deleteProperties, warmProperty } from "@/src/lib/db/properties";
 import { listCoverImages } from "@/src/lib/db/propertyImages";
 import { useCachedResource } from "@/src/lib/useCachedResource";
 import { exportToPDF, getPdfBrandingFromStore } from "@/src/lib/pdf";
@@ -121,7 +121,23 @@ export function PropertyTable() {
 	const { page, setPage, pageCount, pageItems, total, pageSize } = usePagination(sorted);
 
 	function open(id: string) { router.push(`/properties/${id}`); }
-	function prefetch(id: string) { router.prefetch(`/properties/${id}`); }
+
+	// Hovering a row warms BOTH halves of the next screen: the route bundle
+	// (router.prefetch) and the row's own data (warmProperty). Prefetching only
+	// the route left the detail page still waiting a full round-trip for its
+	// query on arrival, which is the part the user actually sees.
+	//
+	// Fired once per id — `warmed` guards against re-issuing the query every time
+	// the pointer crosses the row.
+	const warmed = useRef(new Set<string>());
+	function prefetch(id: string) {
+		router.prefetch(`/properties/${id}`);
+		if (warmed.current.has(id)) return;
+		warmed.current.add(id);
+		// Best-effort: a failure here must never surface: the real navigation
+		// will retry and report properly.
+		void warmProperty(id);
+	}
 
 	const pageIds = pageItems.map((p) => p.id);
 	const selectedRows = sorted.filter((p) => selected.has(p.id));
@@ -196,22 +212,23 @@ export function PropertyTable() {
 
 	async function bulkDelete() {
 		setBulkBusy(true);
-		let ok = 0;
-		let failed = 0;
-		for (const p of selectedRows) {
-			try {
-				await deleteProperty(p.id);
-				removeProperty(p.id);
-				ok++;
-			} catch {
-				failed++;
-			}
+		// One request for the whole selection. This used to await a delete per row
+		// in a loop, so removing 20 properties cost 20 sequential round-trips
+		// (~6s). The trade-off is that the batch succeeds or fails as a unit
+		// rather than reporting a per-row tally — which matches what the user
+		// asked for ("delete these"), and a partial failure was never actionable
+		// anyway since the message never said WHICH rows survived.
+		const ids = selectedRows.map((p) => p.id);
+		try {
+			await deleteProperties(ids);
+			for (const id of ids) removeProperty(id);
+			toast.success(`${ids.length} taşınmaz silindi.`);
+		} catch {
+			toast.error("Taşınmazlar silinemedi.");
 		}
 		setBulkBusy(false);
 		setConfirmDelete(false);
 		clear();
-		if (failed === 0) toast.success(`${ok} taşınmaz silindi.`);
-		else toast.error(`${ok} taşınmaz silindi, ${failed} taşınmaz silinemedi.`);
 	}
 
 	if (isLoading) {

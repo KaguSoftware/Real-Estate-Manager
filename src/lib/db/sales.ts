@@ -53,18 +53,17 @@ export async function getActiveSaleForProperty(
 	propertyId: string,
 ): Promise<(Sale & { buyer: Tenant }) | null> {
 	const { supabase } = await requireUser();
+	// One round-trip: the buyer is embedded rather than fetched in a second call
+	// that had to wait for the sale row just to learn its buyer_id.
 	const { data: sale, error } = await supabase
-		.from("sales").select("*")
+		.from("sales").select("*,tenants(*)")
 		.eq("property_id", propertyId).eq("status", "active")
 		.maybeSingle();
 	if (error) throw error;
 	if (!sale) return null;
 
-	const s = sale as Sale;
-	const { data: buyer, error: bErr } = await supabase
-		.from("tenants").select("*").eq("id", s.buyer_id).single();
-	if (bErr) throw bErr;
-	return { ...s, buyer: buyer as Tenant };
+	const { tenants, ...rest } = sale as Sale & { tenants: Tenant };
+	return { ...rest, buyer: tenants };
 }
 
 export async function closeSale(id: string): Promise<Sale> {

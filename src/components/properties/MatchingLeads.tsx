@@ -23,7 +23,7 @@ export function MatchingLeads({ property }: { property: Property }) {
 	const teamReady = useTeamReady();
 	const teamName = useAppStore((s) => s.team?.name ?? null);
 	const { data } = useCachedResource(
-		teamReady ? "leads:for-matching" : null,
+		teamReady ? "leads:all" : null,
 		() => listLeads(),
 		undefined,
 		{ enabled: teamReady },

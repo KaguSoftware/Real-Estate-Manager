@@ -53,6 +53,14 @@ export async function deleteTenant(id: string): Promise<void> {
 	if (error) throw error;
 }
 
+/** Delete many tenants in one round-trip (see deleteProperties for the why). */
+export async function deleteTenants(ids: string[]): Promise<void> {
+	if (ids.length === 0) return;
+	const { supabase } = await requireUser();
+	const { error } = await supabase.from("tenants").delete().in("id", ids);
+	if (error) throw error;
+}
+
 export interface TenantFilter {
 	q?: string;
 }

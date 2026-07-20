@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useAppStore, useTeamReady, useIsWritable } from "@/src/store";
-import { deleteLead } from "@/src/lib/db/leads";
+import { deleteLeads } from "@/src/lib/db/leads";
 import { logActivity } from "@/src/lib/db/contactActivity";
-import { deleteTenant } from "@/src/lib/db/tenants";
+import { deleteTenants } from "@/src/lib/db/tenants";
 import { listProperties } from "@/src/lib/db/properties";
 import { rankPropertiesForLead } from "@/src/lib/matching/score";
 import { humanizeError } from "@/src/lib/errors";
@@ -113,9 +113,11 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 		}
 	}
 
-	// Column-light property fetch reused across the app ("Matches" hints).
+	// Property list for the "Matches" hints. Shares the "properties:all" key with
+	// /properties and the dashboard — it is the same unfiltered query, so a user
+	// arriving from either page already has these rows and pays nothing here.
 	const { data: properties } = useCachedResource(
-		teamReady ? "properties:for-matching" : null,
+		teamReady ? "properties:all" : null,
 		() => listProperties(),
 		undefined,
 		{ enabled: teamReady },
@@ -155,33 +157,31 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 
 	async function bulkDelete() {
 		setBulkBusy(true);
-		let ok = 0;
-		let failed = 0;
-		let tenantsDeleted = 0;
-		for (const r of selectedRows) {
-			try {
-				if (r.type === "lead") {
-					await deleteLead(r.id);
-					removeLead(r.id);
-				} else {
-					await deleteTenant(r.id);
-					tenantsDeleted++;
-				}
-				ok++;
-			} catch {
-				failed++;
+		// Two requests (one per table), issued in parallel — not one per row.
+		// Deleting 20 contacts used to cost 20 sequential round-trips; the two
+		// tables are independent, so they go in the same wave.
+		const leadIds = selectedRows.filter((r) => r.type === "lead").map((r) => r.id);
+		const tenantIds = selectedRows.filter((r) => r.type === "tenant").map((r) => r.id);
+		try {
+			await Promise.all([deleteLeads(leadIds), deleteTenants(tenantIds)]);
+			for (const id of leadIds) removeLead(id);
+			if (tenantIds.length > 0) {
+				// Tenants aren't in the store; drop the cache so the dashboard refetches.
+				invalidateCache("tenants");
+				invalidateCache("stats");
 			}
-		}
-		if (tenantsDeleted > 0) {
-			// Tenants aren't in the store; drop the cache so the dashboard refetches.
+			toast.success(`${leadIds.length + tenantIds.length} kişi silindi.`);
+		} catch {
+			// Either table may have failed, so refetch both rather than guessing
+			// which rows survived.
+			invalidateCache("leads");
 			invalidateCache("tenants");
 			invalidateCache("stats");
+			toast.error("Kişiler silinemedi.");
 		}
 		setBulkBusy(false);
 		setConfirmDelete(false);
 		clear();
-		if (failed === 0) toast.success(`${ok} kişi silindi.`);
-		else toast.error(`${ok} kişi silindi, ${failed} kişi silinemedi.`);
 	}
 
 	if (loading) return <SpinnerBlock />;

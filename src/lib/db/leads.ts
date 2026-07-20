@@ -86,3 +86,11 @@ export async function deleteLead(id: string): Promise<void> {
 	const { error } = await supabase.from("leads").delete().eq("id", id);
 	if (error) throw error;
 }
+
+/** Delete many leads in one round-trip (see deleteProperties for the why). */
+export async function deleteLeads(ids: string[]): Promise<void> {
+	if (ids.length === 0) return;
+	const { supabase } = await requireUser();
+	const { error } = await supabase.from("leads").delete().in("id", ids);
+	if (error) throw error;
+}
