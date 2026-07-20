@@ -27,10 +27,10 @@ import { Button, cn, Alert, Spinner, toast, Input, FormField, ConfirmDialog } fr
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import {
 	initialSalesFormState,
-	computeCommission,
 	validateSales,
 	type SalesFormState,
 } from "./SalesDetailsForm";
+import { computeCommission } from "@/src/lib/commission";
 import {
 	initialRentalFormState,
 	validateRental,

@@ -4,13 +4,19 @@
 import { createClient } from "@/src/lib/supabase/client";
 
 export type NotificationType =
+	// Billing / team lifecycle (0011, 0022)
 	| "trial_started"
 	| "invite_accepted"
 	| "member_joined"
 	| "trial_ending"
 	| "trial_ended"
 	| "subscription_activated"
-	| "team_invite";
+	| "team_invite"
+	// The actual job (0029) — swept daily by /api/cron/trial-check.
+	| "rent_overdue"
+	| "lease_expiring"
+	| "lead_silent"
+	| "project_delivery";
 
 export interface AppNotification {
 	id: string;

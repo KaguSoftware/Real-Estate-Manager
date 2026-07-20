@@ -98,6 +98,41 @@ export async function cancelSale(id: string): Promise<Sale> {
 	return data as Sale;
 }
 
+/** A sale plus the bits of its property needed to attribute the commission. */
+export type SaleWithProperty = Sale & {
+	property: { id: string; address_line: string; assigned_to: string | null } | null;
+};
+
+export interface SalesFilter {
+	/** Inclusive ISO date bounds on sale_date. */
+	from?: string;
+	to?: string;
+	status?: SaleStatus;
+}
+
+/**
+ * Team-wide sales for commission reporting. RLS scopes the rows to the team;
+ * the property join supplies `assigned_to` for the per-agent breakdown.
+ */
+export async function listSalesForTeam(filter: SalesFilter = {}): Promise<SaleWithProperty[]> {
+	const { supabase } = await requireUser();
+	let q = supabase
+		.from("sales")
+		.select("*, property:properties(id, address_line, assigned_to)")
+		.order("sale_date", { ascending: false });
+	if (filter.from) q = q.gte("sale_date", filter.from);
+	if (filter.to) q = q.lte("sale_date", filter.to);
+	if (filter.status) q = q.eq("status", filter.status);
+	const { data, error } = await q;
+	if (error) throw error;
+	// PostgREST types a to-one join loosely; normalise the array form.
+	return (data ?? []).map((row) => {
+		const r = row as SaleWithProperty & { property: unknown };
+		const p = Array.isArray(r.property) ? r.property[0] : r.property;
+		return { ...r, property: (p ?? null) as SaleWithProperty["property"] };
+	});
+}
+
 export async function listSalesForProperty(
 	propertyId: string,
 ): Promise<(Sale & { buyer: Tenant | null })[]> {

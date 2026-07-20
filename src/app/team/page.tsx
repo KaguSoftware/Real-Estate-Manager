@@ -28,6 +28,7 @@ import { humanizeError } from "@/src/lib/errors";
 import { getSiteUrl } from "@/src/lib/siteUrl";
 import { BrandingCard } from "@/src/components/team/BrandingCard";
 import { ClauseTemplatesCard } from "@/src/components/team/ClauseTemplatesCard";
+import { MessageTemplateCard } from "@/src/components/team/MessageTemplateCard";
 import { TeamSizeCard } from "@/src/components/team/TeamSizeCard";
 import { TeamDangerZone } from "@/src/components/team/TeamDangerZone";
 
@@ -188,6 +189,8 @@ export default function TeamPage() {
 						<BrandingCard />
 
 						<ClauseTemplatesCard />
+
+						<MessageTemplateCard />
 
 						<Card>
 							<CardLabel>E-posta ile davet et</CardLabel>

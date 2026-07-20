@@ -67,14 +67,36 @@ active budget filter (same-currency only, never folded into the scorer).
 property, reusing the existing `PropertyListing` section. Wired to a
 "Broşür oluştur" button in the property table's existing `BulkActionBar`.
 
-⚠️ **Nothing has been exercised against a real database** (migration 0026 is
-still unapplied) and none of it has been clicked through in a browser. The
-brochure is covered by a real render test; the rest is compile-time only.
+**Phase 5 — the gap backlog.** WhatsApp prefill with team-editable templates;
+work notifications (overdue rent, expiring lease, quiet lead, project delivery)
+swept daily; commission & earnings reporting on the dashboard.
+
+✅ **All migrations are applied** — remote history in sync at 0001–0030
+(verified 2026-07-20 via `supabase migration list --linked`).
+✅ **`run_work_checks()` idempotency verified on the live database**: first run
+inserted 4, second inserted 0.
+✅ **Both cron sweeps verified blocked for the anon key** (SQLSTATE 42501) and
+working for `service_role`.
+
+⚠️ **None of it has been clicked through in a browser yet.** Schema is live and
+the code compiles and passes 113 tests, but no phase has been exercised by a
+real user against real data. The brochure has a genuine render test; the rest is
+compile-time confidence only.
 
 ## File map (key files)
 | File | What it does |
 | --- | --- |
-| [supabase/migrations/0026_budget_and_projects.sql](supabase/migrations/0026_budget_and_projects.sql) | **Unapplied.** Lead budget columns, `projects` table + RLS, `properties.project_id`/`is_new_build`, cross-team guard trigger |
+| [supabase/migrations/0026_budget_and_projects.sql](supabase/migrations/0026_budget_and_projects.sql) | *Applied.* Lead budget columns, `projects` table + RLS, `properties.project_id`/`is_new_build`, cross-team guard trigger |
+| [supabase/migrations/0027_contact_activity.sql](supabase/migrations/0027_contact_activity.sql) | *Applied.* `contact_activity` table + RLS + cross-team guard; fixes the notes-clobbering data loss |
+| [src/lib/db/contactActivity.ts](src/lib/db/contactActivity.ts) | Activity CRUD; also advances `leads.last_call_at` (never backwards) |
+| [src/components/contacts/ActivityTimeline.tsx](src/components/contacts/ActivityTimeline.tsx) | Per-contact timeline + composer, mounted in Lead/Tenant forms (edit mode only) |
+| [src/components/ui/Combobox.tsx](src/components/ui/Combobox.tsx) | Free-text input with filtered suggestions; used for city (81 provinces) |
+| [src/lib/turkeyGeo.ts](src/lib/turkeyGeo.ts) | `TURKEY_PROVINCES` + `foldTr` (Turkish dotted-i-safe search folding) |
+| [src/components/ui/DatePicker.tsx](src/components/ui/DatePicker.tsx) | Custom calendar replacing native `<input type="date">` everywhere |
+| [src/lib/commission.ts](src/lib/commission.ts) | **`KDV_RATE` (0.20) lives here — never inline it.** Commission maths + per-currency totals |
+| [src/lib/whatsappMessage.ts](src/lib/whatsappMessage.ts) | Token whitelist + template rendering; the reason a message can't leak homeowner/tapu data |
+| [supabase/migrations/0029_work_notifications.sql](supabase/migrations/0029_work_notifications.sql) | `run_work_checks()` — the daily work sweep; every insert guarded by a 30-day NOT EXISTS |
+| [supabase/migrations/0030_revoke_sweep_execute.sql](supabase/migrations/0030_revoke_sweep_execute.sql) | Closes the anon-callable sweep hole. **Revoke from PUBLIC, not just anon/authenticated** |
 | [src/lib/matching/score.ts](src/lib/matching/score.ts) | The match engine. Budget dimension + currency guard live here |
 | [src/lib/db/types.ts](src/lib/db/types.ts) | Row types — `Lead`, `Property`, new `Project` |
 | [src/lib/db/properties.ts](src/lib/db/properties.ts) | `PropertyFilter` (price/currency/project) + `listProperties` |
@@ -90,9 +112,9 @@ brochure is covered by a real render test; the rest is compile-time only.
 | [src/lib/pdf/brochure.test.tsx](src/lib/pdf/brochure.test.tsx) | Real `renderToBuffer` page-count assertions; guards the multi-page restructure |
 
 ## Roadmap / next steps
-1. **← ACTIVE: apply migration 0026** (see Gotchas for the exact safe procedure).
-   Everything below is blocked on this — all three phases read columns it adds.
-2. Browser pass, in this order:
+1. ~~Apply migrations 0026 + 0027.~~ **Done 2026-07-20** — remote history synced
+   at 0001–0027. `db push` is safe here now; still `--dry-run` first (Gotchas).
+2. **← ACTIVE: browser pass**, in this order:
    - Create a project with an https Drive link → `/projects` groups it by firma,
      the Drive button opens in a new tab.
    - Add a property from the project page (`?project=` prefills the link) →
@@ -102,8 +124,55 @@ brochure is covered by a real render test; the rest is compile-time only.
      a matching project appears in "Bu bütçeye uyan projeler".
    - Select 3 properties → "Broşür oluştur" → cover + 3 pages, **no homeowner
      name and no ada/parsel number anywhere**. Select 16 → the button disables.
-3. Commit all three phases.
-4. Then: the parked items (see the scope ledger and the plan file).
+   - **Phase 4 regression check**: open a lead → log 3 calls → all persist,
+     newest first, attributed to you. Then clear the notes box and save →
+     **the calls survive**. That failure is the bug this phase exists to fix.
+   - City field: type "izmir" (no accents, lowercase) → "İzmir" appears in the
+     suggestions; type "Alsancak" → no suggestion but the value still saves.
+3. Commit Phases 1–4 (nothing is committed yet).
+4. Then the gap backlog below, in order.
+
+## Gap backlog — ALL THREE BUILT 2026-07-20
+
+A, B and C below are **done** (Phase 5), migrations 0028–0030 applied, 140 tests
+green. Kept here for the reasoning; the descriptions are now history, not TODO.
+
+Two things found while building them:
+- **KDV was 18 %, should be 20 %** (raised July 2023). It printed on every
+  generated sales contract. Now a single `KDV_RATE` in
+  [src/lib/commission.ts](src/lib/commission.ts), pinned by tests.
+- **Both cron sweeps were callable with the public anon key** — a pre-existing
+  hole, not introduced by this work. `REVOKE … FROM anon, authenticated` does
+  nothing on its own because Postgres grants EXECUTE to `PUBLIC` on creation.
+  Fixed in [0030](supabase/migrations/0030_revoke_sweep_execute.sql); verified
+  blocked (SQLSTATE 42501) for anon and still working for `service_role`.
+
+
+**A. WhatsApp prefilled message + brochure.** `whatsappUrl()`
+([phone.ts:4-14](src/lib/phone.ts#L4-L14)) returns a bare `https://wa.me/<digits>`,
+so the button opens an **empty chat**. `wa.me` supports `?text=` — prefill the
+property address, price and key stats, and hand over the Phase 3 brochure.
+Turkish agents work in WhatsApp; this closes the loop (budget → find → *share*).
+Small change, high daily value. Pairs with logging a `whatsapp` activity row.
+
+**B. Work notifications.** All seven `NotificationType` values
+([notifications.ts:6-13](src/lib/db/notifications.ts#L6-L13)) are billing/team
+lifecycle (`trial_started`, `invite_accepted`, `subscription_activated`…).
+**None concern the actual job.** Overdue rent, expiring leases and silent leads
+live only in a dashboard panel an agent must remember to open. The daily cron at
+`/api/cron/trial-check`
+([0015](supabase/migrations/0015_turkish_notifications_cron.sql)) is already the
+delivery mechanism — it needs work-shaped notification types, not new plumbing.
+
+**C. Commission & earnings.** `sales.buyer_commission_rate` /
+`seller_commission_rate` ([0003_sales.sql:31-32](supabase/migrations/0003_sales.sql#L31-L32))
+are **written** by the document wizard
+([DocumentWizard.tsx:860-861](src/components/documents/DocumentWizard.tsx#L860-L861))
+but **never read back into any view** — effectively write-only data. No screen
+shows an agent what they earned or are owed, or an owner what the office booked.
+The meeting notes raise commission repeatedly. With `assigned_to` already on
+properties and leads, per-agent earnings is largely a reporting view over
+existing data.
 
 ## Deliberately partial — grows later (scope ledger)
 | Area | What shipped now | Intended full shape | Grows in |
@@ -120,16 +189,38 @@ filter once Phase 1 is live. Commission fields already exist on `sales`
 (`buyer_commission_rate`, `seller_commission_rate`).
 
 ## Gotchas / open issues
-- **☠️ NEVER run `npx supabase db push` on this repo as-is.** Migration
+- **In new migrations use `gen_random_uuid()`, not `uuid_generate_v4()`.**
+  The latter lives in the `uuid-ossp` schema, which is not on the CLI migration
+  runner's `search_path` — `db push` fails with SQLSTATE 42883 even though the
+  extension is installed and older migrations use it happily. 0027/0028 were
+  switched; 0001–0026 still contain it and would fail if ever replayed.
+- **`REVOKE EXECUTE … FROM anon, authenticated` does nothing on its own.**
+  Postgres grants EXECUTE to `PUBLIC` when a function is created, and those
+  roles inherit through it. Always `REVOKE … FROM PUBLIC, anon, authenticated`
+  then `GRANT` back to `service_role` — see
+  [0030](supabase/migrations/0030_revoke_sweep_execute.sql).
+- **⚠️ Live data-loss bug: call history is stored in `leads.notes`.**
+  `markCalledToday` ([ContactTable.tsx:92-105](src/components/contacts/ContactTable.tsx#L92-L105))
+  prepends `[tarih] Arandı.` into the free-text `notes` column, but `LeadForm`
+  loads `notes` into state and writes it back wholesale on save
+  ([LeadForm.tsx:91](src/components/leads/LeadForm.tsx#L91)) — so an agent who
+  clears the notes box and saves **silently erases every logged call**.
+  `TenantForm` has the same shape. Phase 4 fixes this with a real
+  `contact_activity` table. Until then, don't build anything else on `notes`.
+  Note `leads.last_call_at` is also a single overwritten timestamp: only the
+  most recent call is retained, by design.
+- **`db push` is now SAFE — but always `--dry-run` first.** Migration
   [0010_multitenant.sql:175](supabase/migrations/0010_multitenant.sql#L175) contains an
   unconditional `TRUNCATE public.payments, leases, sales, property_images,
-  properties, tenants, leads CASCADE` ("fresh start: data cleared"). The remote's
-  `schema_migrations` table is empty because migrations were historically applied
-  by pasting SQL, so `db push` treats all 26 files as unapplied and **replays that
-  TRUNCATE, wiping all live data**.
-  **Safe procedure**: paste the new migration into the Supabase SQL editor, then
-  `npx supabase migration repair --status applied 0001 0002 … 0026` (writes
-  tracking rows only, executes no SQL). After that, `db push` is safe for 0027+.
+  properties, tenants, leads CASCADE` ("fresh start: data cleared"). It is
+  **destructive if ever replayed**.
+  As of 2026-07-20 the remote `schema_migrations` history is fully repaired
+  (0001–0027 all recorded), so `db push` only applies genuinely new files and
+  will not replay 0010. Verify with `npx supabase db push --dry-run --linked`
+  and confirm the printed list contains *only* the migration you expect.
+  If the history is ever reset or a fresh project is linked, that guarantee is
+  gone: repair first (`npx supabase migration repair --status applied 0001 …`,
+  which writes tracking rows without executing SQL), never push blind.
 - `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` is reportedly the **anon** key — see
   [LAUNCH_RUNBOOK.md](LAUNCH_RUNBOOK.md) §1. Admin list, invites, billing webhook,
   account deletion and the trial cron fail silently until fixed. **Unverified this session.**

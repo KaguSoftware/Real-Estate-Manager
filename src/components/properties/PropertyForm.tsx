@@ -11,12 +11,13 @@ import {
 	type PropertyInput,
 } from "@/src/lib/db/properties";
 import type { Property, ListingType, PropertyStatus } from "@/src/lib/db/types";
-import { FormField, Input, NumberInput, Textarea, Dropdown, Button, Alert, ConfirmDialog, toast, type DropdownOption } from "@/src/components/ui";
+import { FormField, Input, NumberInput, Textarea, Dropdown, Combobox, Button, Alert, ConfirmDialog, toast, type DropdownOption } from "@/src/components/ui";
 import type { ReverseAddress } from "@/src/lib/geocode";
 import { splitPlaceName, type ResolveResult } from "@/src/lib/maps-url";
 import { LocationPicker, type LatLon } from "./LocationPicker";
 import { AssigneeSelect } from "@/src/components/team/AssigneeSelect";
 import { listProjects } from "@/src/lib/db/projects";
+import { TURKEY_PROVINCES } from "@/src/lib/turkeyGeo";
 import { Trash2 } from "lucide-react";
 
 interface Props {
@@ -390,7 +391,12 @@ export function PropertyForm({ mode, initial, onDone, onCancel, defaultProjectId
 						<Input value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="Kadıköy" />
 					</FormField>
 					<FormField label="İl">
-						<Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="İstanbul" />
+						<Combobox
+							value={city}
+							onChange={setCity}
+							options={TURKEY_PROVINCES}
+							placeholder="İstanbul"
+						/>
 					</FormField>
 				</div>
 

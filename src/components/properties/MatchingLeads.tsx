@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useTeamReady } from "@/src/store";
+import { useAppStore, useTeamReady } from "@/src/store";
 import { listLeads } from "@/src/lib/db/leads";
+import { logActivity } from "@/src/lib/db/contactActivity";
+import { getMessageTemplate } from "@/src/lib/db/messageTemplates";
+import { renderPropertyMessage } from "@/src/lib/whatsappMessage";
 import { rankLeadsForProperty } from "@/src/lib/matching/score";
 import { useCachedResource } from "@/src/lib/useCachedResource";
 import { Card, CardLabel, Badge } from "@/src/components/ui";
@@ -18,9 +21,17 @@ import { Users } from "lucide-react";
  */
 export function MatchingLeads({ property }: { property: Property }) {
 	const teamReady = useTeamReady();
+	const teamName = useAppStore((s) => s.team?.name ?? null);
 	const { data } = useCachedResource(
 		teamReady ? "leads:for-matching" : null,
 		() => listLeads(),
+		undefined,
+		{ enabled: teamReady },
+	);
+	// The team's WhatsApp wording; null falls back to the built-in default.
+	const { data: template } = useCachedResource(
+		teamReady ? "messageTemplate:whatsapp_property" : null,
+		() => getMessageTemplate(),
 		undefined,
 		{ enabled: teamReady },
 	);
@@ -59,7 +70,26 @@ export function MatchingLeads({ property }: { property: Property }) {
 						{l.phone && (
 							<>
 								<span className="text-xs text-base-content/60 whitespace-nowrap hidden sm:inline">{l.phone}</span>
-								<WhatsAppButton phone={l.phone} name={l.full_name} />
+								<WhatsAppButton
+									phone={l.phone}
+									name={l.full_name}
+									// The agent is looking at this lead *because* of this
+									// property, so that's the message.
+									text={renderPropertyMessage(
+										property,
+										{ recipientName: l.full_name, senderName: teamName },
+										template ?? undefined,
+									)}
+									onSend={() => {
+										// Fire-and-forget: a failed log must not block the share.
+										logActivity({
+											lead_id: l.id,
+											kind: "whatsapp",
+											body: `${property.address_line} gönderildi.`,
+											property_id: property.id,
+										}).catch(() => {});
+									}}
+								/>
 							</>
 						)}
 					</li>

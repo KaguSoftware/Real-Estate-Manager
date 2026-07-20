@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useAppStore, useTeamReady, useIsWritable } from "@/src/store";
-import { updateLead, deleteLead } from "@/src/lib/db/leads";
+import { deleteLead } from "@/src/lib/db/leads";
+import { logActivity } from "@/src/lib/db/contactActivity";
 import { deleteTenant } from "@/src/lib/db/tenants";
 import { listProperties } from "@/src/lib/db/properties";
 import { rankPropertiesForLead } from "@/src/lib/matching/score";
@@ -93,16 +94,17 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 	async function markCalledToday(lead: Lead) {
 		setCallBusyId(lead.id);
 		try {
-			const today = new Date().toISOString();
-			// Keep a lightweight contact history by prepending a dated line to
-			// the free-text notes, so past calls stay visible in the lead form.
-			const logLine = `[${today.slice(0, 10)}] Arandı.`;
-			const notes = lead.notes ? `${logLine}\n${lead.notes}` : logLine;
-			const updated = await updateLead(lead.id, { last_call_at: today, notes });
-			upsertLead(updated);
-			// The attention panel's "gone quiet" list depends on last_call_at.
+			const now = new Date().toISOString();
+			// Records a real activity row. This used to prepend "[tarih] Arandı."
+			// into the free-text notes column, which the lead form then overwrote
+			// wholesale on save — silently destroying the call history.
+			// logActivity also advances leads.last_call_at, which the attention
+			// panel's "gone quiet" list reads.
+			await logActivity({ lead_id: lead.id, kind: "call", occurred_at: now });
+			upsertLead({ ...lead, last_call_at: now });
 			invalidateCache("attention");
 			invalidateCache("leads");
+			invalidateCache(`activity:lead:${lead.id}`);
 			toast.success(`${lead.full_name} bugün arandı olarak işaretlendi.`);
 		} catch (e) {
 			toast.error(humanizeError(e));

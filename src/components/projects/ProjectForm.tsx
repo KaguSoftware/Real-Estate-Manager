@@ -7,8 +7,9 @@ import { createProject, updateProject, deleteProject, type ProjectInput } from "
 import type { Project } from "@/src/lib/db/types";
 import {
 	Sheet, Button, FormField, Input, NumberInput, Textarea, Dropdown, DatePicker,
-	Alert, ConfirmDialog, toast, type DropdownOption,
+	Combobox, Alert, ConfirmDialog, toast, type DropdownOption,
 } from "@/src/components/ui";
+import { TURKEY_PROVINCES } from "@/src/lib/turkeyGeo";
 import { compactErrors } from "@/src/lib/validation";
 import { Trash2 } from "lucide-react";
 
@@ -160,7 +161,12 @@ export function ProjectForm({ mode, initial, onClose, onDone }: Props) {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Şehir">
-						<Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="örn. İzmir" />
+						<Combobox
+							value={city}
+							onChange={setCity}
+							options={TURKEY_PROVINCES}
+							placeholder="örn. İzmir"
+						/>
 					</FormField>
 					<FormField label="Mahalle / mevkii">
 						<Input value={mahalle} onChange={(e) => setMahalle(e.target.value)} placeholder="örn. Alsancak" />

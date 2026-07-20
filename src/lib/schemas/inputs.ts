@@ -120,6 +120,27 @@ export const projectInputSchema = projectInputObject;
 /** Patch schema for updateProject() — every field optional. */
 export const projectPatchSchema = projectInputObject.partial();
 
+export const activityKindSchema = z.enum([
+	"call", "whatsapp", "meeting", "viewing", "note", "status_change",
+]);
+
+const contactActivityObject = z.object({
+	lead_id: z.string().uuid().nullish(),
+	tenant_id: z.string().uuid().nullish(),
+	kind: activityKindSchema,
+	body: z.string().nullish(),
+	property_id: z.string().uuid().nullish(),
+	occurred_at: z.string().nullish(),
+});
+
+// Mirrors contact_activity_one_subject_check in 0027: an activity belongs to
+// exactly one contact. Catching it here turns a raw Postgres constraint error
+// into a readable message.
+export const contactActivityInputSchema = contactActivityObject.refine(
+	(a) => (a.lead_id == null) !== (a.tenant_id == null),
+	{ message: "an activity must belong to exactly one lead or tenant", path: ["lead_id"] },
+);
+
 export const tenantInputSchema = z.object({
 	full_name: trimmedName,
 	email: optionalEmail,

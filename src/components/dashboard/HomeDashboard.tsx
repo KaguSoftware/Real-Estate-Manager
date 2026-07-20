@@ -11,6 +11,7 @@ import { AppShell, Card, CardLabel, Badge, type BadgeTone } from "@/src/componen
 import { AttentionPanel } from "@/src/components/properties/AttentionPanel";
 import { DashboardStats } from "@/src/components/properties/DashboardStats";
 import { PortfolioAnalytics } from "./PortfolioAnalytics";
+import { CommissionSummary } from "@/src/components/sales/CommissionSummary";
 import { LEAD_STATUS_META } from "@/src/components/leads/leadStatus";
 import { fmtMoney } from "@/src/lib/format";
 import {
@@ -73,6 +74,9 @@ export function HomeDashboard() {
 				<>
 					<AttentionPanel />
 					<DashboardStats />
+					<div className="mb-4">
+						<CommissionSummary />
+					</div>
 					<PortfolioAnalytics />
 
 					{/* Quick actions */}

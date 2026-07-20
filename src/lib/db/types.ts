@@ -84,6 +84,36 @@ export interface Project {
 	updated_at: string;
 }
 
+/** Agent-entered interaction kinds. Not a row-mutation audit log. */
+export type ActivityKind =
+	| "call"
+	| "whatsapp"
+	| "meeting"
+	| "viewing"
+	| "note"
+	| "status_change";
+
+/**
+ * One recorded interaction with a contact. Replaces the lossy
+ * `last_call_at` + "[tarih] Arandı." -in-notes workaround: history is now
+ * structured, attributed, and safe from a notes-field overwrite.
+ *
+ * Exactly one of lead_id / tenant_id is set (DB CHECK enforces it).
+ */
+export interface ContactActivity {
+	id: string;
+	team_id: string;
+	created_by: string | null;
+	lead_id: string | null;
+	tenant_id: string | null;
+	kind: ActivityKind;
+	body: string | null;
+	/** Property the interaction was about; survives that property's deletion. */
+	property_id: string | null;
+	occurred_at: string;
+	created_at: string;
+}
+
 export interface Tenant {
 	id: string;
 	team_id: string;

@@ -66,7 +66,7 @@ export interface PartyInfo {
 export interface CommissionLine {
 	rate: number | null;          // %, e.g. 2 = 2 %
 	matrah: number | null;        // sale_price * rate / 100
-	kdv: number | null;           // matrah * 0.18
+	kdv: number | null;           // matrah * KDV_RATE (see lib/commission.ts)
 	total: number | null;         // matrah + kdv
 }
 

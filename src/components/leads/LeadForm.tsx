@@ -10,6 +10,7 @@ import { Sheet, Button, FormField, Input, NumberInput, DatePicker, EmailInput, P
 import { validEmail, compactErrors } from "@/src/lib/validation";
 import { LEAD_STATUS_META, LEAD_STATUS_ORDER } from "./leadStatus";
 import { AssigneeSelect } from "@/src/components/team/AssigneeSelect";
+import { ActivityTimeline } from "@/src/components/contacts/ActivityTimeline";
 import { Trash2, Search } from "lucide-react";
 
 interface Props {
@@ -286,6 +287,9 @@ export function LeadForm({ mode, initial, onClose, onDone }: Props) {
 				<FormField label="Notlar">
 					<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Hatırlanmaya değer her şey…" />
 				</FormField>
+
+				{/* Only on edit — a new lead has no id to attach activity to yet. */}
+				{mode === "edit" && initial && <ActivityTimeline leadId={initial.id} />}
 			</form>
 
 			<ConfirmDialog

@@ -7,3 +7,5 @@ export * from "./payments";
 export * from "./propertyImages";
 export * from "./sales";
 export * from "./projects";
+export * from "./contactActivity";
+export * from "./messageTemplates";

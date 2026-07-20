@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { Property, TaxResponsibility } from "@/src/lib/db/types";
 import { FormField, Input, NumberInput, DatePicker, EmailInput, PhoneInput, Textarea, Dropdown, type DropdownOption } from "@/src/components/ui";
+import { computeCommission } from "@/src/lib/commission";
 
 /**
  * State container for the sales wizard step 3.
@@ -107,13 +108,11 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 	const sellerRate = Number(state.sellerCommissionRate || 0);
 
 	const commissionPreview = useMemo(() => {
-		function line(rate: number) {
-			if (!rate || !salePrice) return null;
-			const matrah = salePrice * rate / 100;
-			const kdv = matrah * 0.18;
-			const total = matrah + kdv;
-			return { matrah, kdv, total };
-		}
+		// Same helper the PDF uses, so the preview can't drift from the contract.
+		const line = (rate: number) => {
+			const c = computeCommission(salePrice, rate);
+			return c.matrah === null ? null : { matrah: c.matrah, kdv: c.kdv!, total: c.total! };
+		};
 		return { buyer: line(buyerRate), seller: line(sellerRate) };
 	}, [salePrice, buyerRate, sellerRate]);
 
@@ -284,12 +283,3 @@ export function SalesDetailsForm({ state, onChange, errors = {} }: Props) {
 	);
 }
 
-/** Compute the commission lines for the PDF from rates + sale price. */
-export function computeCommission(salePrice: number, rate: number | null) {
-	if (!rate || !salePrice) {
-		return { rate: rate ?? null, matrah: null, kdv: null, total: null };
-	}
-	const matrah = salePrice * rate / 100;
-	const kdv = matrah * 0.18;
-	return { rate, matrah, kdv, total: matrah + kdv };
-}

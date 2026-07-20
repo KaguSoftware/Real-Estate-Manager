@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, PartyPopper, UserPlus, Clock, CreditCard, AlertTriangle } from "lucide-react";
+import { Bell, PartyPopper, UserPlus, Clock, CreditCard, AlertTriangle, PhoneMissed, Building2 } from "lucide-react";
 import {
 	listNotifications,
 	unreadNotificationCount,
@@ -26,6 +26,10 @@ const ICONS: Record<NotificationType, React.ComponentType<{ className?: string }
 	trial_ended: AlertTriangle,
 	subscription_activated: CreditCard,
 	team_invite: UserPlus,
+	rent_overdue: AlertTriangle,
+	lease_expiring: Clock,
+	lead_silent: PhoneMissed,
+	project_delivery: Building2,
 };
 
 function timeAgo(iso: string): string {
