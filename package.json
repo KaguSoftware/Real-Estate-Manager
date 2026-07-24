@@ -65,6 +65,8 @@
     "vitest": "^4.1.9"
   },
   "overrides": {
-    "eslint-plugin-react-hooks": "7.0.1"
+    "eslint-plugin-react-hooks": "7.0.1",
+    "@emnapi/core": "1.11.2",
+    "@emnapi/runtime": "1.11.2"
   }
 }
