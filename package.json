@@ -10,7 +10,13 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "backfill:geocode": "tsx scripts/backfill-geocode.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "promo": "remotion studio",
+    "promo:render": "remotion render Promo out/promo.mp4",
+    "promo:render:vertical": "remotion render PromoVertical out/promo-vertical.mp4",
+    "promo:vo": "tsx --env-file=.env.local scripts/generate-vo.ts",
+    "promo:voices": "tsx --env-file=.env.local scripts/generate-vo.ts --list",
+    "promo:build": "bash scripts/build-promo.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -42,6 +48,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@remotion/cli": "^4.0.490",
+    "@remotion/google-fonts": "^4.0.490",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20",
@@ -50,6 +58,7 @@
     "daisyui": "^5.5.19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "remotion": "^4.0.490",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",
     "typescript": "^5",
