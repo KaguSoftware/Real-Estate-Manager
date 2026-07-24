@@ -6,6 +6,7 @@
 import { createClient } from "@/src/lib/supabase/client";
 import type { PropertyImage } from "./types";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 const BUCKET = "property-images";
 
@@ -17,13 +18,6 @@ interface PropertyImageRow {
 	storage_path: string;
 	position: number;
 	created_at: string;
-}
-
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { user }, error } = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
 }
 
 function withUrl(row: PropertyImageRow, supabase: ReturnType<typeof createClient>): PropertyImage {

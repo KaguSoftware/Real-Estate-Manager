@@ -11,6 +11,7 @@ import { AppShell, Card, CardLabel, Badge, type BadgeTone } from "@/src/componen
 import { AttentionPanel } from "@/src/components/properties/AttentionPanel";
 import { DashboardStats } from "@/src/components/properties/DashboardStats";
 import { PortfolioAnalytics } from "./PortfolioAnalytics";
+import { CommissionSummary } from "@/src/components/sales/CommissionSummary";
 import { LEAD_STATUS_META } from "@/src/components/leads/leadStatus";
 import { fmtMoney } from "@/src/lib/format";
 import {
@@ -49,14 +50,19 @@ export function HomeDashboard() {
 	}, [user, teamLoaded, team, router]);
 
 	const teamReady = teamLoaded && team != null;
+	// Deliberately the SAME cache key and fetcher as /properties ("properties:all")
+	// rather than a private "properties:recent": it is the identical query, so
+	// sharing the key means the dashboard and the portfolio page hydrate each
+	// other. Landing here first makes /properties paint instantly, and vice
+	// versa, instead of each paying its own ~330ms round-trip for the same rows.
 	const { data: recentProperties } = useCachedResource(
-		user && teamReady ? "properties:recent" : null,
+		user && teamReady ? "properties:all" : null,
 		() => listProperties({}),
 		undefined,
 		{ enabled: !!user && teamReady },
 	);
 	const { data: recentLeads } = useCachedResource(
-		user && teamReady ? "leads:recent" : null,
+		user && teamReady ? "leads:all" : null,
 		() => listLeads(),
 		undefined,
 		{ enabled: !!user && teamReady },
@@ -73,6 +79,9 @@ export function HomeDashboard() {
 				<>
 					<AttentionPanel />
 					<DashboardStats />
+					<div className="mb-4">
+						<CommissionSummary />
+					</div>
 					<PortfolioAnalytics />
 
 					{/* Quick actions */}

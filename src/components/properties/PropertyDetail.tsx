@@ -4,7 +4,7 @@ import { humanizeError } from "@/src/lib/errors";
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/src/store";
-import { getProperty, updateProperty } from "@/src/lib/db/properties";
+import { getProperty, takeWarmProperty, updateProperty } from "@/src/lib/db/properties";
 import { endLease, listLeasesForProperty } from "@/src/lib/db/leases";
 import { listPaymentsForLease, recordPayment } from "@/src/lib/db/payments";
 import { getDocumentUrl } from "@/src/lib/db/documents";
@@ -13,6 +13,7 @@ import { cancelSale, closeSale, getActiveSaleForProperty, listSalesForProperty }
 import { listPropertyImages } from "@/src/lib/db/propertyImages";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import { exportToPDF, downloadUrl, getPdfBrandingFromStore, type ListingPDFData } from "@/src/lib/pdf";
+import { toDataUrl } from "@/src/lib/pdf/imageData";
 import { buildReceiptPDFData, receiptFilename } from "@/src/lib/pdf/receiptData";
 import { fmtMoney } from "@/src/lib/format";
 import type { Lease, Payment, PropertyWithActiveLease, Sale, Tenant } from "@/src/lib/db/types";
@@ -42,23 +43,6 @@ function currentMonthPeriod(): { start: string; end: string } {
 	};
 }
 
-/** Fetch a public image URL and return it as a data URL so @react-pdf embeds
- *  it reliably (avoids intermittent remote-fetch/CORS failures during render). */
-async function toDataUrl(url: string): Promise<string | null> {
-	try {
-		const res = await fetch(url);
-		if (!res.ok) return null;
-		const blob = await res.blob();
-		return await new Promise((resolve) => {
-			const reader = new FileReader();
-			reader.onloadend = () => resolve(reader.result as string);
-			reader.onerror = () => resolve(null);
-			reader.readAsDataURL(blob);
-		});
-	} catch {
-		return null;
-	}
-}
 
 
 // Display labels for DB enum values (values themselves stay in English).
@@ -102,13 +86,23 @@ export function PropertyDetail({ propertyId }: Props) {
 		setLoading(true);
 		setError(null);
 		try {
-			const prop = await getProperty(propertyId);
+			// ONE wave, not two. This used to await getProperty() and only then
+			// decide whether to fetch the active sale, so a for-sale property paid
+			// two sequential round-trips (~660ms) before anything rendered. The
+			// sale query only needs the property ID — which we already have from
+			// the URL — so it does not have to wait for the property row.
+			//
+			// The sale is fetched speculatively for every property and discarded
+			// for rentals: one wasted parallel query costs ~0ms of wall-clock,
+			// while waiting to find out costs a full round-trip.
+			// If the table warmed this property on hover, its query is already in
+			// flight (or done) — adopt it instead of starting a second one.
+			const [prop, activeSale] = await Promise.all([
+				takeWarmProperty(propertyId) ?? getProperty(propertyId),
+				getActiveSaleForProperty(propertyId),
+			]);
 			setData(prop);
-			if (prop.listing_type === "for_sale") {
-				setSale(await getActiveSaleForProperty(propertyId));
-			} else {
-				setSale(null);
-			}
+			setSale(prop.listing_type === "for_sale" ? activeSale : null);
 		}
 		catch (e) { setError(humanizeError(e)); }
 		finally { setLoading(false); }

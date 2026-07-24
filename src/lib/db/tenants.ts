@@ -1,10 +1,10 @@
 // Tenant CRUD. RLS on public.tenants enforces owner-scoping.
 
-import { createClient } from "@/src/lib/supabase/client";
 import type { Tenant } from "./types";
 import { orIlikeAnyColumn } from "./filterString";
 import { parseInput, tenantInputSchema } from "@/src/lib/schemas/inputs";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 export interface TenantInput {
 	full_name: string;
@@ -14,12 +14,6 @@ export interface TenantInput {
 	notes?: string | null;
 }
 
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { user }, error } = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
-}
 
 export async function createTenant(input: TenantInput): Promise<Tenant> {
 	const parsed = parseInput(tenantInputSchema, input);
@@ -56,6 +50,14 @@ export async function updateTenant(
 export async function deleteTenant(id: string): Promise<void> {
 	const { supabase } = await requireUser();
 	const { error } = await supabase.from("tenants").delete().eq("id", id);
+	if (error) throw error;
+}
+
+/** Delete many tenants in one round-trip (see deleteProperties for the why). */
+export async function deleteTenants(ids: string[]): Promise<void> {
+	if (ids.length === 0) return;
+	const { supabase } = await requireUser();
+	const { error } = await supabase.from("tenants").delete().in("id", ids);
 	if (error) throw error;
 }
 

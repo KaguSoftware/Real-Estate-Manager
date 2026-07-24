@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useAppStore, useTeamReady, useIsWritable } from "@/src/store";
-import { updateLead, deleteLead } from "@/src/lib/db/leads";
-import { deleteTenant } from "@/src/lib/db/tenants";
+import { deleteLeads } from "@/src/lib/db/leads";
+import { logActivity } from "@/src/lib/db/contactActivity";
+import { deleteTenants } from "@/src/lib/db/tenants";
 import { listProperties } from "@/src/lib/db/properties";
 import { rankPropertiesForLead } from "@/src/lib/matching/score";
 import { humanizeError } from "@/src/lib/errors";
@@ -93,16 +94,17 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 	async function markCalledToday(lead: Lead) {
 		setCallBusyId(lead.id);
 		try {
-			const today = new Date().toISOString();
-			// Keep a lightweight contact history by prepending a dated line to
-			// the free-text notes, so past calls stay visible in the lead form.
-			const logLine = `[${today.slice(0, 10)}] Arandı.`;
-			const notes = lead.notes ? `${logLine}\n${lead.notes}` : logLine;
-			const updated = await updateLead(lead.id, { last_call_at: today, notes });
-			upsertLead(updated);
-			// The attention panel's "gone quiet" list depends on last_call_at.
+			const now = new Date().toISOString();
+			// Records a real activity row. This used to prepend "[tarih] Arandı."
+			// into the free-text notes column, which the lead form then overwrote
+			// wholesale on save — silently destroying the call history.
+			// logActivity also advances leads.last_call_at, which the attention
+			// panel's "gone quiet" list reads.
+			await logActivity({ lead_id: lead.id, kind: "call", occurred_at: now });
+			upsertLead({ ...lead, last_call_at: now });
 			invalidateCache("attention");
 			invalidateCache("leads");
+			invalidateCache(`activity:lead:${lead.id}`);
 			toast.success(`${lead.full_name} bugün arandı olarak işaretlendi.`);
 		} catch (e) {
 			toast.error(humanizeError(e));
@@ -111,9 +113,11 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 		}
 	}
 
-	// Column-light property fetch reused across the app ("Matches" hints).
+	// Property list for the "Matches" hints. Shares the "properties:all" key with
+	// /properties and the dashboard — it is the same unfiltered query, so a user
+	// arriving from either page already has these rows and pays nothing here.
 	const { data: properties } = useCachedResource(
-		teamReady ? "properties:for-matching" : null,
+		teamReady ? "properties:all" : null,
 		() => listProperties(),
 		undefined,
 		{ enabled: teamReady },
@@ -153,33 +157,31 @@ export function ContactTable({ rows, loading, onEditLead, onEditTenant }: Props)
 
 	async function bulkDelete() {
 		setBulkBusy(true);
-		let ok = 0;
-		let failed = 0;
-		let tenantsDeleted = 0;
-		for (const r of selectedRows) {
-			try {
-				if (r.type === "lead") {
-					await deleteLead(r.id);
-					removeLead(r.id);
-				} else {
-					await deleteTenant(r.id);
-					tenantsDeleted++;
-				}
-				ok++;
-			} catch {
-				failed++;
+		// Two requests (one per table), issued in parallel — not one per row.
+		// Deleting 20 contacts used to cost 20 sequential round-trips; the two
+		// tables are independent, so they go in the same wave.
+		const leadIds = selectedRows.filter((r) => r.type === "lead").map((r) => r.id);
+		const tenantIds = selectedRows.filter((r) => r.type === "tenant").map((r) => r.id);
+		try {
+			await Promise.all([deleteLeads(leadIds), deleteTenants(tenantIds)]);
+			for (const id of leadIds) removeLead(id);
+			if (tenantIds.length > 0) {
+				// Tenants aren't in the store; drop the cache so the dashboard refetches.
+				invalidateCache("tenants");
+				invalidateCache("stats");
 			}
-		}
-		if (tenantsDeleted > 0) {
-			// Tenants aren't in the store; drop the cache so the dashboard refetches.
+			toast.success(`${leadIds.length + tenantIds.length} kişi silindi.`);
+		} catch {
+			// Either table may have failed, so refetch both rather than guessing
+			// which rows survived.
+			invalidateCache("leads");
 			invalidateCache("tenants");
 			invalidateCache("stats");
+			toast.error("Kişiler silinemedi.");
 		}
 		setBulkBusy(false);
 		setConfirmDelete(false);
 		clear();
-		if (failed === 0) toast.success(`${ok} kişi silindi.`);
-		else toast.error(`${ok} kişi silindi, ${failed} kişi silinemedi.`);
 	}
 
 	if (loading) return <SpinnerBlock />;

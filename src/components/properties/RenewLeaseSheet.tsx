@@ -5,7 +5,7 @@ import { useState } from "react";
 import { computeLeaseEndDate, renewLease } from "@/src/lib/db/leases";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 import type { Lease, LeaseTerm, Tenant } from "@/src/lib/db/types";
-import { Sheet, FormField, Input, NumberInput, Dropdown, Button, Alert, toast, type DropdownOption } from "@/src/components/ui";
+import { Sheet, FormField, NumberInput, DatePicker, Dropdown, Button, Alert, toast, type DropdownOption } from "@/src/components/ui";
 import { positiveNumberValue, compactErrors } from "@/src/lib/validation";
 
 const TERM_OPTIONS: DropdownOption<LeaseTerm>[] = [
@@ -92,7 +92,7 @@ export function RenewLeaseSheet({ open, lease, onClose, onRenewed }: Props) {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<FormField label="Yeni başlangıç tarihi" error={fieldErrors.startDate}>
-						<Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+						<DatePicker value={startDate} onChange={setStartDate} required />
 					</FormField>
 					<FormField
 						label="Süre"

@@ -54,12 +54,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // the signed-in identity actually changes.
     let lastUserId: string | null = null;
 
-    // Set user immediately from session, then enrich with app_role
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { setUser(null); return; }
-      lastUserId = user.id;
-      setUser({ id: user.id, email: user.email ?? "" });
-      resolveUser(supabase, user.id, user.email ?? "").then(setUser);
+    // Set user immediately from the verified token, then enrich with app_role.
+    // getClaims() verifies the JWT locally (ES256) instead of the ~300ms
+    // auth-server round-trip getUser() costs. This call gates `teamLoaded`,
+    // which in turn gates EVERY dashboard fetch — so it is directly on the
+    // critical path to first data, not just page-level bookkeeping.
+    supabase.auth.getClaims().then(({ data }) => {
+      const claims = data?.claims;
+      if (!claims?.sub) { setUser(null); return; }
+      const id = claims.sub;
+      const email = typeof claims.email === "string" ? claims.email : "";
+      lastUserId = id;
+      setUser({ id, email });
+      resolveUser(supabase, id, email).then(setUser);
       loadTeam(setTeam);
     });
 

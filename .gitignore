@@ -54,5 +54,5 @@ PRODUCTION_READINESS.md
 # machine-specific skill symlinks
 .claude/skills/
 
-# Remotion promo renders
-out/
+# supabase CLI local link state (contains the pooler connection URL)
+supabase/.temp/

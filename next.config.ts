@@ -17,6 +17,22 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+				experimental: {
+								// Client-side route cache. `dynamic` defaults to 0 in Next 15+, so
+								// every navigation — including Back — re-ran the server component and
+								// its auth check before rendering anything. 30s means moving between
+								// /properties, a detail page and back is served from the client cache
+								// within a working burst, while still refreshing on any real revisit.
+								//
+								// This caches the RENDERED SEGMENT, not the data: the lists fetch
+								// through useCachedResource, which revalidates in the background on
+								// mount regardless, so nobody sees stale rows for 30s — they see the
+								// last known rows instantly and the fresh ones a moment later.
+								staleTimes: {
+												dynamic: 30,
+												static: 180,
+								},
+				},
 				images: {
 								remotePatterns: [
 												{

@@ -28,8 +28,16 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return supabaseResponse // unauthenticated UX is handled client-side
+  // getClaims() — NOT getUser(). getUser() is a round-trip to the auth server
+  // (~300ms) paid on EVERY matched request before any page starts rendering.
+  // This project signs JWTs with ES256 (asymmetric), so getClaims() verifies the
+  // token locally via WebCrypto against the cached JWKS, and it still refreshes
+  // an about-to-expire session exactly like getUser() does — which is the part
+  // that must not move. Keep this call here, with nothing between it and
+  // createServerClient above, or sessions start dropping.
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  if (!userId) return supabaseResponse // unauthenticated UX is handled client-side
 
   const { pathname } = request.nextUrl
 
@@ -50,7 +58,7 @@ export async function proxy(request: NextRequest) {
   const { data: membership } = await supabase
     .from('team_members')
     .select('team_id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle()
 
   if (!membership && !allowedWithoutTeam) {

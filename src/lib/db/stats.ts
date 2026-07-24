@@ -4,8 +4,8 @@
 // "stats" key via useCachedResource; mutations that affect these numbers call
 // invalidateCache("stats").
 
-import { createClient } from "@/src/lib/supabase/client";
 import type { LeadStatus, PropertyStatus } from "./types";
+import { requireUser } from "./requireUser";
 
 /** One row of the "Portföy sağlığı" panel (rentals only, worst-first, ≤50). */
 export interface PropertyHealthRow {
@@ -45,12 +45,6 @@ export interface DashboardStats {
 	propertyHealth: PropertyHealthRow[];
 }
 
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { user }, error } = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
-}
 
 export async function getDashboardStats(): Promise<DashboardStats> {
 	const { supabase } = await requireUser();

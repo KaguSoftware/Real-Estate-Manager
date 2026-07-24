@@ -66,7 +66,7 @@ export interface PartyInfo {
 export interface CommissionLine {
 	rate: number | null;          // %, e.g. 2 = 2 %
 	matrah: number | null;        // sale_price * rate / 100
-	kdv: number | null;           // matrah * 0.18
+	kdv: number | null;           // matrah * KDV_RATE (see lib/commission.ts)
 	total: number | null;         // matrah + kdv
 }
 
@@ -139,9 +139,25 @@ export interface ListingPDFData {
 	generatedAt: string;         // ISO timestamp
 }
 
+/**
+ * Multi-property brochure — a selection from the portfolio shared with one
+ * client as a single file, one page per property.
+ *
+ * Each entry is a ListingPDFData, so the same privacy guarantee applies
+ * structurally: there is no field for homeowner name or tapu data, so none can
+ * leak. Photos are limited to the cover image per property (see the bulk
+ * action) — inlining every gallery photo as base64 would produce a file too
+ * large to render on a phone or send over WhatsApp.
+ */
+export interface BrochurePDFData {
+	properties: ListingPDFData[];
+	generatedAt: string; // ISO timestamp
+}
+
 export type PDFDataByKind = {
-	rental:  RentalPDFData;
-	sales:   SalesPDFData;
-	receipt: ReceiptPDFData;
-	listing: ListingPDFData;
+	rental:   RentalPDFData;
+	sales:    SalesPDFData;
+	receipt:  ReceiptPDFData;
+	listing:  ListingPDFData;
+	brochure: BrochurePDFData;
 };

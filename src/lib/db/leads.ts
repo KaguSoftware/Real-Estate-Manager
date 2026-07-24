@@ -1,11 +1,11 @@
 // Lead / client CRM CRUD. RLS on public.leads does authorization;
 // each call just verifies a session exists and lets the database enforce ownership.
 
-import { createClient } from "@/src/lib/supabase/client";
 import type { Lead, LeadStatus, ListingType } from "./types";
 import { orIlikeAnyColumn } from "./filterString";
-import { leadInputSchema, parseInput } from "@/src/lib/schemas/inputs";
+import { leadInputSchema, leadPatchSchema, parseInput } from "@/src/lib/schemas/inputs";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 export interface LeadFilter {
 	status?: LeadStatus;
@@ -21,22 +21,15 @@ export interface LeadInput {
 	pref_nitelik?: string | null;
 	pref_min_bedrooms?: number | null;
 	pref_location?: string | null;
+	pref_min_price?: number | null;
+	pref_max_price?: number | null;
+	pref_currency?: string;
 	status?: LeadStatus;
 	notes?: string | null;
 	last_call_at?: string | null;
 	assigned_to?: string | null;
 }
 
-async function requireUser() {
-	const supabase = createClient();
-	// getSession() is local (no auth-server round-trip); RLS enforces authorization.
-	const {
-		data: { session },
-		error,
-	} = await supabase.auth.getSession();
-	if (error || !session?.user) throw new Error("Not authenticated");
-	return { supabase, user: session.user };
-}
 
 export async function listLeads(filter: LeadFilter = {}): Promise<Lead[]> {
 	const { supabase } = await requireUser();
@@ -76,7 +69,7 @@ export async function updateLead(
 	id: string,
 	patch: Partial<LeadInput>,
 ): Promise<Lead> {
-	const parsed = parseInput(leadInputSchema.partial(), patch);
+	const parsed = parseInput(leadPatchSchema, patch);
 	const { supabase } = await requireUser();
 	const { data, error } = await supabase
 		.from("leads")
@@ -91,5 +84,13 @@ export async function updateLead(
 export async function deleteLead(id: string): Promise<void> {
 	const { supabase } = await requireUser();
 	const { error } = await supabase.from("leads").delete().eq("id", id);
+	if (error) throw error;
+}
+
+/** Delete many leads in one round-trip (see deleteProperties for the why). */
+export async function deleteLeads(ids: string[]): Promise<void> {
+	if (ids.length === 0) return;
+	const { supabase } = await requireUser();
+	const { error } = await supabase.from("leads").delete().in("id", ids);
 	if (error) throw error;
 }

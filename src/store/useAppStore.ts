@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Property, PropertyStatus, ListingType, Lead, LeadStatus } from "@/src/lib/db/types";
+import type { Property, PropertyStatus, ListingType, Lead, LeadStatus, Project } from "@/src/lib/db/types";
 import type { TeamContext } from "@/src/lib/db/teams";
 import { invalidateCache } from "@/src/lib/useCachedResource";
 
@@ -19,7 +19,16 @@ interface Filters {
 	nitelik: string[];
 	furnished: FurnishedFilter;
 	location: string[];
+	/** Budget bounds; null = open-ended. */
+	min_price: number | null;
+	max_price: number | null;
+	/** Currency a price range applies to — prices are never FX-converted. */
+	currency: string;
+	/** "all" | "yes" (new build) | "no" (second-hand). */
+	new_build: NewBuildFilter;
 }
+
+export type NewBuildFilter = "all" | "yes" | "no";
 
 const EMPTY_FILTERS: Filters = {
 	listing_type: "all",
@@ -28,6 +37,10 @@ const EMPTY_FILTERS: Filters = {
 	nitelik: [],
 	furnished: "all",
 	location: [],
+	min_price: null,
+	max_price: null,
+	currency: "TRY",
+	new_build: "all",
 };
 
 interface LeadFilters {
@@ -46,8 +59,16 @@ interface AppState {
 	teamLoaded: boolean;
 	setTeam: (t: TeamContext | null) => void;
 
+	/** The rows currently VISIBLE — i.e. after the active filters are applied.
+	 *  This is what the table and map render. */
 	properties: Property[];
 	setProperties: (p: Property[]) => void;
+	/** Every property the team has, unfiltered. The filter bar builds its
+	 *  dropdown options from this: deriving them from `properties` would make the
+	 *  options collapse as you narrow, so picking one value would delete the
+	 *  others from the list and you could never widen the selection again. */
+	allProperties: Property[];
+	setAllProperties: (p: Property[]) => void;
 	upsertProperty: (p: Property) => void;
 	removeProperty: (id: string) => void;
 	isLoadingProperties: boolean;
@@ -69,6 +90,13 @@ interface AppState {
 	leadFilters: LeadFilters;
 	setLeadFilter: <K extends keyof LeadFilters>(k: K, v: LeadFilters[K]) => void;
 	resetLeadFilters: () => void;
+
+	projects: Project[];
+	setProjects: (p: Project[]) => void;
+	upsertProject: (p: Project) => void;
+	removeProject: (id: string) => void;
+	isLoadingProjects: boolean;
+	setIsLoadingProjects: (v: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -81,6 +109,8 @@ export const useAppStore = create<AppState>((set) => ({
 
 	properties: [],
 	setProperties: (properties) => set({ properties }),
+	allProperties: [],
+	setAllProperties: (allProperties) => set({ allProperties }),
 	upsertProperty: (p) =>
 		set((s) => {
 			// A create/update may change which filtered queries this row belongs to,
@@ -88,20 +118,24 @@ export const useAppStore = create<AppState>((set) => ({
 			invalidateCache("properties");
 			invalidateCache("stats");
 			invalidateCache("attention");
-			const idx = s.properties.findIndex((x) => x.id === p.id);
-			return {
-				properties:
-					idx === -1
-						? [p, ...s.properties]
-						: s.properties.map((x) => (x.id === p.id ? p : x)),
-			};
+			// Both lists are updated optimistically: `properties` so the visible
+			// table reacts immediately, `allProperties` so the filter bar's options
+			// include a brand-new property's city/nitelik right away.
+			const upsert = (list: Property[]) =>
+				list.some((x) => x.id === p.id)
+					? list.map((x) => (x.id === p.id ? p : x))
+					: [p, ...list];
+			return { properties: upsert(s.properties), allProperties: upsert(s.allProperties) };
 		}),
 	removeProperty: (id) =>
 		set((s) => {
 			invalidateCache("properties");
 			invalidateCache("stats");
 			invalidateCache("attention");
-			return { properties: s.properties.filter((p) => p.id !== id) };
+			return {
+				properties: s.properties.filter((p) => p.id !== id),
+				allProperties: s.allProperties.filter((p) => p.id !== id),
+			};
 		}),
 	isLoadingProperties: false,
 	setIsLoadingProperties: (v) => set({ isLoadingProperties: v }),
@@ -139,6 +173,30 @@ export const useAppStore = create<AppState>((set) => ({
 	leadFilters: { ...EMPTY_LEAD_FILTERS },
 	setLeadFilter: (k, v) => set((s) => ({ leadFilters: { ...s.leadFilters, [k]: v } })),
 	resetLeadFilters: () => set({ leadFilters: { ...EMPTY_LEAD_FILTERS } }),
+
+	projects: [],
+	setProjects: (projects) => set({ projects }),
+	upsertProject: (p) =>
+		set((s) => {
+			invalidateCache("projects");
+			const idx = s.projects.findIndex((x) => x.id === p.id);
+			return {
+				projects:
+					idx === -1
+						? [p, ...s.projects]
+						: s.projects.map((x) => (x.id === p.id ? p : x)),
+			};
+		}),
+	removeProject: (id) =>
+		set((s) => {
+			invalidateCache("projects");
+			// projects.id is ON DELETE SET NULL on properties.project_id, so any
+			// cached property list may still show a stale project link.
+			invalidateCache("properties");
+			return { projects: s.projects.filter((p) => p.id !== id) };
+		}),
+	isLoadingProjects: false,
+	setIsLoadingProjects: (v) => set({ isLoadingProjects: v }),
 }));
 
 /** True once the signed-in user's team context has loaded AND a team exists.

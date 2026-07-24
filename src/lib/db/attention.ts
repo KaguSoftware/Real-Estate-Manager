@@ -7,7 +7,7 @@
 // thresholds default to DEFAULT_ATTENTION_THRESHOLDS and can be overridden
 // per user via profiles.settings (see settings.ts).
 
-import { createClient } from "@/src/lib/supabase/client";
+import { requireUser } from "./requireUser";
 import {
 	DEFAULT_ATTENTION_THRESHOLDS,
 	classifyLeads,
@@ -35,9 +35,7 @@ export interface AttentionData {
 export async function getAttentionData(
 	thresholds: AttentionThresholds = DEFAULT_ATTENTION_THRESHOLDS,
 ): Promise<AttentionData> {
-	const supabase = createClient();
-	const { data: { user }, error: authErr } = await supabase.auth.getUser();
-	if (authErr || !user) throw new Error("Not authenticated");
+	const { supabase } = await requireUser();
 
 	const now = new Date();
 	const todayISO = now.toISOString().slice(0, 10);

@@ -3,16 +3,9 @@
 // built-in defaults (src/lib/documents/clauses.ts) apply. Writes are
 // owner-only via RLS, mirroring branding.
 
-import { createClient } from "@/src/lib/supabase/client";
 import { requireTeamId } from "./teams";
 import type { TemplateKind } from "@/src/lib/documents/placeholders";
-
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { user }, error } = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
-}
+import { requireUser } from "./requireUser";
 
 /** The team's saved clause set for a document kind, or null (use defaults). */
 export async function getClauseTemplate(kind: TemplateKind): Promise<string[] | null> {

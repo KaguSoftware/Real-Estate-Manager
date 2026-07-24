@@ -1,4 +1,4 @@
-import { createClient } from "@/src/lib/supabase/server";
+import { createClient, getUserId } from "@/src/lib/supabase/server";
 import { HomeDashboard } from "@/src/components/dashboard/HomeDashboard";
 import { LandingPage } from "@/src/components/marketing/LandingPage";
 
@@ -9,7 +9,7 @@ import { LandingPage } from "@/src/components/marketing/LandingPage";
  */
 export default async function HomePage() {
 	const supabase = await createClient();
-	const { data: { user } } = await supabase.auth.getUser();
-	if (!user) return <LandingPage />;
+	const userId = await getUserId(supabase);
+	if (!userId) return <LandingPage />;
 	return <HomeDashboard />;
 }

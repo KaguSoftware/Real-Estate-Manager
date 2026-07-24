@@ -15,6 +15,7 @@ import {
 	Sheet, Button, FormField, Input, EmailInput, PhoneInput, Textarea, Alert, ConfirmDialog, toast,
 } from "@/src/components/ui";
 import { required, validEmail, compactErrors } from "@/src/lib/validation";
+import { ActivityTimeline } from "@/src/components/contacts/ActivityTimeline";
 import { Trash2 } from "lucide-react";
 
 interface Props {
@@ -160,6 +161,9 @@ export function TenantForm({ mode, initial, onClose, onDone }: Props) {
 				<FormField label="Notlar">
 					<Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Hatırlamaya değer her şey…" />
 				</FormField>
+
+				{/* Only on edit — a new tenant has no id to attach activity to yet. */}
+				{mode === "edit" && initial && <ActivityTimeline tenantId={initial.id} />}
 			</form>
 
 			<ConfirmDialog

@@ -1,7 +1,7 @@
-import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData } from "./types";
+import type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData, BrochurePDFData } from "./types";
 import type { PdfBranding } from "./branding";
 
-export type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData };
+export type { DocKind, RentalPDFData, SalesPDFData, ReceiptPDFData, ListingPDFData, BrochurePDFData };
 export type { PdfBranding };
 export { getPdfBrandingFromStore, DEFAULT_PALETTE, paletteFromColors } from "./branding";
 export { PDFDocument, EditorPDFDocument } from "./document";
@@ -11,7 +11,7 @@ export type { EditorPDFProps } from "./document";
  *  download and/or upload the same bytes (see exportToPDF / uploadDocumentPdf). */
 export async function generatePdfFile(
 	kind: DocKind,
-	data: RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData,
+	data: RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData | BrochurePDFData,
 	filename: string,
 	branding?: PdfBranding,
 ): Promise<File> {
@@ -43,7 +43,7 @@ export async function generateEditorPdfFile(
 
 export async function exportToPDF(
 	kind: DocKind,
-	data: RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData,
+	data: RentalPDFData | SalesPDFData | ReceiptPDFData | ListingPDFData | BrochurePDFData,
 	filename: string,
 	branding?: PdfBranding,
 ) {

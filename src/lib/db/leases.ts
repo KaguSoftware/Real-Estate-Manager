@@ -1,10 +1,10 @@
 // Lease CRUD. The partial unique index uniq_active_lease_per_property
 // DB-enforces "at most one active lease per property" — see migration 0006.
 
-import { createClient } from "@/src/lib/supabase/client";
 import type { InventoryItem, Lease, LeaseTerm, Tenant, UtilityResponsibility } from "./types";
 import { leaseInputSchema, parseInput } from "@/src/lib/schemas/inputs";
 import { requireTeamId } from "./teams";
+import { requireUser } from "./requireUser";
 
 export interface LeaseInput {
 	property_id: string;
@@ -34,12 +34,6 @@ export interface LeaseInput {
 	special_conditions?: string | null;
 }
 
-async function requireUser() {
-	const supabase = createClient();
-	const { data: { user }, error } = await supabase.auth.getUser();
-	if (error || !user) throw new Error("Not authenticated");
-	return { supabase, user };
-}
 
 export async function createLease(input: LeaseInput): Promise<Lease> {
 	const parsed = parseInput(leaseInputSchema, input);

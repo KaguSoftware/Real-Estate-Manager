@@ -6,7 +6,7 @@ import type {
 	Property,
 	UtilityResponsibility,
 } from "@/src/lib/db/types";
-import { FormField, Input, NumberInput, EmailInput, PhoneInput, Textarea, Dropdown, Button, type DropdownOption } from "@/src/components/ui";
+import { FormField, Input, NumberInput, DatePicker, EmailInput, PhoneInput, Textarea, Dropdown, Button, type DropdownOption } from "@/src/components/ui";
 
 /**
  * State container for the rental wizard details step (Turkish kira sözleşmesi).
@@ -169,6 +169,10 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 		(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
 			onChange(k, e.target.value as RentalFormState[K]);
 
+	/** DatePicker emits the ISO value directly rather than a change event. */
+	const setDate = <K extends keyof RentalFormState>(k: K) =>
+		(v: string) => onChange(k, v as RentalFormState[K]);
+
 	// RentalFormState keeps numbers as strings (the wizard/PDF layer consumes
 	// them with Number()); these adapt string-state ↔ NumberInput's number|null.
 	const numValue = (k: "monthlyRent" | "deposit" | "paymentDay") =>
@@ -308,7 +312,7 @@ export function RentalDetailsForm({ state, onChange, errors = {} }: Props) {
 						<Dropdown options={TERM_OPTIONS} value={state.term} onChange={(v) => onChange("term", v)} />
 					</FormField>
 					<FormField label="Başlangıç Tarihi" id="startDate" error={errors.startDate}>
-						<Input required type="date" value={state.startDate} onChange={set("startDate")} />
+						<DatePicker required value={state.startDate} onChange={setDate("startDate")} />
 					</FormField>
 					<FormField label="Para Birimi">
 						<Dropdown options={[{ value: "TRY", label: "TL" }]} value="TRY" onChange={() => {}} disabled />

@@ -1,7 +1,10 @@
 /**
- * GET /api/cron/trial-check — daily Vercel cron (vercel.json). Sweeps every
- * team via run_trial_checks() (migration 0015) so owners get trial-ending /
- * trial-ended notifications even if they never open the app.
+ * GET /api/cron/trial-check — the daily sweep (vercel.json, 06:00). Runs two
+ * jobs so users are told what changed even if they never open the app:
+ *   1. run_trial_checks()  (0015) — trial-ending / trial-ended, per team.
+ *   2. run_work_checks()   (0029) — overdue rent, expiring leases, quiet
+ *      leads, approaching project deliveries.
+ * Route name kept for the existing vercel.json entry and cron history.
  *
  * Auth: Vercel sends "Authorization: Bearer ${CRON_SECRET}" when the env var
  * is set. Reject everything else so the route can't be triggered publicly.
@@ -25,5 +28,17 @@ export async function GET(request: NextRequest) {
 		console.error("trial-check cron failed", error);
 		return NextResponse.json({ error: "sweep failed" }, { status: 500 });
 	}
-	return NextResponse.json({ ok: true, teamsChecked: data ?? 0 });
+
+	// Work notifications (0029): overdue rent, expiring leases, quiet leads,
+	// approaching project deliveries. Each insert is guarded inside the function
+	// so re-running the sweep never duplicates. A failure here must not fail the
+	// trial sweep that already succeeded, so it's reported, not thrown.
+	const { data: workCount, error: workError } = await service.rpc("run_work_checks");
+	if (workError) console.error("work-check sweep failed", workError);
+
+	return NextResponse.json({
+		ok: true,
+		teamsChecked: data ?? 0,
+		workNotifications: workError ? null : (workCount ?? 0),
+	});
 }

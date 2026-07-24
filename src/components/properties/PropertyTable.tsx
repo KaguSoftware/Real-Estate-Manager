@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore, useIsWritable } from "@/src/store";
 import type { Property } from "@/src/lib/db/types";
 import { Badge, Button, Card, SpinnerBlock, EmptyState, Pagination, usePagination, BulkActionBar, ConfirmDialog, toast, type BadgeTone } from "@/src/components/ui";
 import { useMultiSelect } from "@/src/hooks/useMultiSelect";
 import { downloadCsv } from "@/src/lib/csv";
-import { deleteProperty } from "@/src/lib/db/properties";
+import { deleteProperties, warmProperty } from "@/src/lib/db/properties";
 import { listCoverImages } from "@/src/lib/db/propertyImages";
 import { useCachedResource } from "@/src/lib/useCachedResource";
-import { Home, Download, Trash2 } from "lucide-react";
+import { exportToPDF, getPdfBrandingFromStore } from "@/src/lib/pdf";
+import { toDataUrl } from "@/src/lib/pdf/imageData";
+import { humanizeError } from "@/src/lib/errors";
+import { Home, Download, Trash2, Share2 } from "lucide-react";
+
+/** Ceiling on a single brochure. Each page inlines a base64 cover photo, so an
+ *  unbounded selection would build a file too heavy to render on a phone. */
+const BROCHURE_MAX = 15;
 
 /** Cover photo or a neutral placeholder, sized for list rows/cards. */
 function Thumb({ src, className }: { src: string | undefined; className?: string }) {
@@ -66,6 +73,7 @@ export function PropertyTable() {
 	const { selected, toggle: toggleRow, toggleAll, clear, isSelected, allSelected, count } = useMultiSelect();
 	const [confirmDelete, setConfirmDelete] = useState(false);
 	const [bulkBusy, setBulkBusy] = useState(false);
+	const [brochureBusy, setBrochureBusy] = useState(false);
 
 	const hasActiveFilter =
 		filters.listing_type !== "all" ||
@@ -113,7 +121,23 @@ export function PropertyTable() {
 	const { page, setPage, pageCount, pageItems, total, pageSize } = usePagination(sorted);
 
 	function open(id: string) { router.push(`/properties/${id}`); }
-	function prefetch(id: string) { router.prefetch(`/properties/${id}`); }
+
+	// Hovering a row warms BOTH halves of the next screen: the route bundle
+	// (router.prefetch) and the row's own data (warmProperty). Prefetching only
+	// the route left the detail page still waiting a full round-trip for its
+	// query on arrival, which is the part the user actually sees.
+	//
+	// Fired once per id — `warmed` guards against re-issuing the query every time
+	// the pointer crosses the row.
+	const warmed = useRef(new Set<string>());
+	function prefetch(id: string) {
+		router.prefetch(`/properties/${id}`);
+		if (warmed.current.has(id)) return;
+		warmed.current.add(id);
+		// Best-effort: a failure here must never surface: the real navigation
+		// will retry and report properly.
+		void warmProperty(id);
+	}
 
 	const pageIds = pageItems.map((p) => p.id);
 	const selectedRows = sorted.filter((p) => selected.has(p.id));
@@ -132,24 +156,79 @@ export function PropertyTable() {
 		);
 	}
 
+	/**
+	 * One client-facing PDF for the whole selection, a page per property.
+	 *
+	 * Only the cover photo per property is embedded: @react-pdf inlines images
+	 * as base64, and gallery photos are stored at up to 1 MB each, so including
+	 * all of them would build a file too heavy to render on a phone or send over
+	 * WhatsApp. The single-property share on the detail page still includes the
+	 * full gallery.
+	 */
+	async function exportSelectedBrochure() {
+		if (selectedRows.length > BROCHURE_MAX) {
+			toast.error(`Broşüre en fazla ${BROCHURE_MAX} taşınmaz eklenebilir.`);
+			return;
+		}
+		setBrochureBusy(true);
+		try {
+			const covers = await listCoverImages(selectedRows.map((p) => p.id));
+			const withPhotos = await Promise.all(
+				selectedRows.map(async (p) => {
+					const url = covers[p.id];
+					const dataUrl = url ? await toDataUrl(url) : null;
+					// ListingPDFData has no homeowner/tapu fields at all — the client
+					// safety of this document is structural, not a filter applied here.
+					return {
+						address_line: p.address_line,
+						city: p.city,
+						listing_type: p.listing_type,
+						nitelik: p.nitelik,
+						bedrooms: p.bedrooms,
+						bathrooms: p.bathrooms,
+						size_sqm: p.size_sqm,
+						list_price: p.list_price,
+						currency: p.currency,
+						notes: p.notes,
+						images: dataUrl ? [dataUrl] : [],
+						generatedAt: new Date().toISOString(),
+					};
+				}),
+			);
+
+			await exportToPDF(
+				"brochure",
+				{ properties: withPhotos, generatedAt: new Date().toISOString() },
+				"portfoy-seckisi",
+				await getPdfBrandingFromStore(),
+			);
+			toast.success(`${withPhotos.length} taşınmazlık broşür hazır.`);
+		} catch (e) {
+			toast.error(humanizeError(e));
+		} finally {
+			setBrochureBusy(false);
+		}
+	}
+
 	async function bulkDelete() {
 		setBulkBusy(true);
-		let ok = 0;
-		let failed = 0;
-		for (const p of selectedRows) {
-			try {
-				await deleteProperty(p.id);
-				removeProperty(p.id);
-				ok++;
-			} catch {
-				failed++;
-			}
+		// One request for the whole selection. This used to await a delete per row
+		// in a loop, so removing 20 properties cost 20 sequential round-trips
+		// (~6s). The trade-off is that the batch succeeds or fails as a unit
+		// rather than reporting a per-row tally — which matches what the user
+		// asked for ("delete these"), and a partial failure was never actionable
+		// anyway since the message never said WHICH rows survived.
+		const ids = selectedRows.map((p) => p.id);
+		try {
+			await deleteProperties(ids);
+			for (const id of ids) removeProperty(id);
+			toast.success(`${ids.length} taşınmaz silindi.`);
+		} catch {
+			toast.error("Taşınmazlar silinemedi.");
 		}
 		setBulkBusy(false);
 		setConfirmDelete(false);
 		clear();
-		if (failed === 0) toast.success(`${ok} taşınmaz silindi.`);
-		else toast.error(`${ok} taşınmaz silindi, ${failed} taşınmaz silinemedi.`);
 	}
 
 	if (isLoading) {
@@ -323,6 +402,16 @@ export function PropertyTable() {
 				<Button size="sm" variant="outline" onClick={exportSelectedCsv}>
 					<Download className="w-4 h-4" />
 					CSV indir
+				</Button>
+				<Button
+					size="sm"
+					variant="outline"
+					onClick={exportSelectedBrochure}
+					disabled={brochureBusy || count > BROCHURE_MAX}
+					title={count > BROCHURE_MAX ? `En fazla ${BROCHURE_MAX} taşınmaz seçebilirsiniz.` : undefined}
+				>
+					<Share2 className="w-4 h-4" />
+					{brochureBusy ? "Hazırlanıyor…" : "Broşür oluştur"}
 				</Button>
 				{isWritable && (
 					<Button size="sm" variant="danger" onClick={() => setConfirmDelete(true)}>

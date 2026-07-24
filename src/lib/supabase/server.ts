@@ -36,3 +36,22 @@ export async function createClient() {
     }
   )
 }
+
+/**
+ * The signed-in user's id on the server, or null.
+ *
+ * Uses `getClaims()`, NOT `getUser()`. `getUser()` is a network round-trip to the
+ * Supabase auth server (~300ms) — paid on every page render just to answer "is
+ * anyone signed in?". This project signs JWTs with ES256 (asymmetric), so
+ * `getClaims()` verifies the token locally via WebCrypto against a cached JWKS,
+ * and still refreshes an about-to-expire session on the way through.
+ *
+ * This establishes identity for convenience only. RLS remains the authority on
+ * what any query may read or write, which is why the local check is safe.
+ */
+export async function getUserId(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<string | null> {
+  const { data } = await supabase.auth.getClaims()
+  return data?.claims?.sub ?? null
+}
